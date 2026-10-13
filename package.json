@@ -1,0 +1,24 @@
+{
+  "name": "mehta-siemens-crm",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Phase 2 sales pipeline CRM for Mehta Electronics",
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "seed:demo": "node scripts/seed-demo.mjs",
+    "pdf:sample": "node scripts/generate-sample-quotation.mjs",
+    "reset-password": "node scripts/reset-password.mjs",
+    "test": "node --test --test-isolation=none --test-concurrency=1",
+    "lint": "node scripts/lint.mjs",
+    "build": "node scripts/build.mjs"
+  },
+  "engines": {
+    "node": ">=22.5"
+  },
+  "dependencies": {
+    "nodemailer": "^10.0.15",
+    "pdfkit": "^0.20.2"
+  }
+}
