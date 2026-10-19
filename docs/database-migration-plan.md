@@ -4,6 +4,14 @@
 
 The application uses Node's built-in `node:sqlite`. The existing schema is embedded in `src/db.js`; 17 tables were identified in Phase 0. Foreign keys, indexes, WAL mode, and audit/revision immutability triggers exist. No versioned migration system was identified. Monetary columns currently include customer `credit_limit` and quotation/order unit prices as SQLite `REAL`. This document proposes a safe future migration; it does not modify data or code.
 
+## Implemented migration foundation
+
+`src/migrations.js` now validates four-digit ordered SQL migration filenames, verifies the legacy table set before initializing a ledger, records version/name/SHA-256 checksum/applied time in `schema_migrations`, applies each migration in its own `BEGIN IMMEDIATE` transaction, skips matching applied versions, and rejects checksum drift, gaps, missing/unknown versions, or invalid migration SQL. `0001_legacy-schema-baseline.sql` records the schema already created by `src/db.js`; it has no business-table effect. Existing inline schema initialization remains in place for compatibility. Future schema changes must be additive versioned SQL migrations; never edit an applied migration.
+
+`openDatabase` runs the migration runner after the existing schema bootstrap and before owner seed/backfill behavior. This adds migration metadata on next application startup but does not convert or rewrite business records. Migration tests use an in-memory disposable schema. `scripts/verify-migrations-copy.mjs` makes a SQLite online backup of the configured database into an OS temporary directory, applies the runner only to that copy, verifies table row counts, `integrity_check`, and `foreign_key_check`, then removes only that generated temporary directory.
+
+Create a durable backup with `node scripts/backup-database.mjs <new-backup-path>`. The command refuses to overwrite an existing destination and verifies the backup integrity. To restore, stop the app, preserve the current database files, place a verified backup at the configured path, and run integrity and application checks before reopening writes. A restore drill against a disposable file is covered by `test/database-backup.test.js`; production restore timing/retention and RPO/RTO remain unapproved.
+
 ## Proposed migration framework
 
 - Store ordered SQL migrations under `database/migrations/`, each with a stable sequence/name and checksum.

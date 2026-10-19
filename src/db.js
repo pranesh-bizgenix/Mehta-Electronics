@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { hashPassword, normalizeKey } from './security.js';
+import { applyMigrations } from './migrations.js';
 
 const schema = `
 PRAGMA foreign_keys = ON;
@@ -279,11 +280,17 @@ BEGIN SELECT RAISE(ABORT, 'Quotation revisions are immutable'); END;
 export function openDatabase(config) {
   if (config.databasePath !== ':memory:') fs.mkdirSync(path.dirname(path.resolve(config.databasePath)), { recursive: true });
   const db = new DatabaseSync(config.databasePath);
-  db.exec(schema);
-  seedOwner(db, config);
-  backfillDocumentRevisions(db);
-  db.exec('PRAGMA optimize');
-  return db;
+  try {
+    db.exec(schema);
+    applyMigrations(db);
+    seedOwner(db, config);
+    backfillDocumentRevisions(db);
+    db.exec('PRAGMA optimize');
+    return db;
+  } catch (error) {
+    db.close();
+    throw error;
+  }
 }
 
 function seedOwner(db, config) {

@@ -4,6 +4,17 @@
 
 Introduce Next.js, React, TypeScript, and App Router without moving authoritative business logic from the separate Node.js ES-module backend using the built-in HTTP server. The existing UI/API stays usable until replacement workflows are verified and accepted. This is a proposal; routing and deployment choices require approval.
 
+## Implemented foundation slice
+
+- `apps/web/` is a separate npm package with Next.js App Router, React, and TypeScript. It does not add a root npm workspace or change root package scripts.
+- `MEHTA_API_URL` is read by Next configuration, defaults to `http://127.0.0.1:3000`, and is used in a same-origin rewrite for `/api/:path*`. It must be an HTTP(S) origin, not a path or credential-bearing URL.
+- The typed client calls the verified existing `GET /api/auth/me` endpoint. The UI distinguishes loading, authenticated, expected 401/unauthenticated, and connection/API error states. No endpoint or business behavior was added.
+- A Node test exercises the actual route against an in-memory backend and verifies the expected unauthenticated 401 response. A manual local check is also required to verify the Next rewrite end to end.
+- Run the existing backend in one terminal with `npm.cmd start`; run the frontend from the repository root with `npm.cmd --prefix apps/web run dev`. Open `http://127.0.0.1:3001`; the existing app remains at `http://127.0.0.1:3000`.
+- To point the web app elsewhere, copy `apps/web/.env.example` to `apps/web/.env.local` and set `MEHTA_API_URL`. Do not put credentials in this URL.
+
+This is a connectivity shell, not workflow parity or a production-ready frontend. It does not replace the legacy login or business screens.
+
 ## Stages and gates
 
 ### 0. Characterize current behavior

@@ -4,6 +4,10 @@
 
 Planning proposal. It records the explicitly requested target shape; stakeholder approval of deployment, contracts, module boundaries, and production non-functional targets remains pending. The existing application continues to be authoritative until replacement behavior passes the gates in `frontend-migration-plan.md` and `implementation-roadmap.md`.
 
+## Implemented foundation increment
+
+The repository now contains a separate `apps/web/` Next.js App Router application and a typed client that checks the existing `GET /api/auth/me` route through a same-origin Next.js rewrite. The existing Node server remains the only business API. The UI reports the actual unauthenticated response and displays no fabricated business data. The backend now records schema migration versions after its existing schema bootstrap; version 1 is a no-op legacy baseline. No financial columns or business calculations were changed. See `frontend-migration-plan.md` and `database-migration-plan.md` for commands and evidence.
+
 ## Context
 
 The current project is a single Node.js ES-module application with the built-in HTTP server, SQLite via `node:sqlite`, static HTML/CSS/browser JavaScript, PDFKit, Nodemailer, and a read-only Tally adapter. The target request requires a Next.js/React/TypeScript frontend, while retaining the separate built-in HTTP backend and SQLite. Do not use Express, Next.js API routes, or Server Actions for business operations.
