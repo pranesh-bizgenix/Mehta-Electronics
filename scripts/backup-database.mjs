@@ -7,6 +7,6 @@ if (!destination) {
   console.error('Usage: node scripts/backup-database.mjs <new-backup-path>');
   process.exitCode = 2;
 } else {
-  const result = await createDatabaseBackup(getConfig().databasePath, path.resolve(destination));
-  console.log(`Verified SQLite backup created at ${result}`);
+  const result = await createDatabaseBackup(getConfig().databaseUrl, path.resolve(destination));
+  console.log(`PostgreSQL backup archive created at ${result}`);
 }

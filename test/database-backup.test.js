@@ -2,30 +2,26 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { DatabaseSync } from 'node:sqlite';
-import { describe, test } from 'node:test';
-import { createDatabaseBackup } from '../src/database-backup.js';
+import { test } from 'node:test';
+import { connectPostgres } from '../src/postgres.js';
+import { createDatabaseBackup, restoreDatabaseBackup } from '../src/database-backup.js';
+import { temporaryDatabase } from '../test-support/postgres.js';
 
-describe('SQLite backup and restore verification', () => {
-  test('creates a consistent backup that can be reopened with its records intact', async () => {
-    const tempRoot = path.resolve(os.tmpdir());
-    const workDir = fs.mkdtempSync(path.join(tempRoot, 'mehta-backup-test-'));
-    assert.ok(path.resolve(workDir).startsWith(`${tempRoot}${path.sep}`));
-    const sourcePath = path.join(workDir, 'source.db');
-    const backupPath = path.join(workDir, 'backup.db');
-    const source = new DatabaseSync(sourcePath);
-    source.exec('CREATE TABLE sample(id INTEGER PRIMARY KEY, value TEXT NOT NULL); INSERT INTO sample(value) VALUES(\'preserved\');');
-    source.close();
-    try {
-      await createDatabaseBackup(sourcePath, backupPath);
-      const restored = new DatabaseSync(backupPath, { readOnly: true });
-      try {
-        assert.equal(restored.prepare('PRAGMA integrity_check').get().integrity_check, 'ok');
-        assert.equal(restored.prepare('SELECT value FROM sample WHERE id=1').get().value, 'preserved');
-      } finally { restored.close(); }
-      await assert.rejects(createDatabaseBackup(sourcePath, backupPath), /already exists/);
-    } finally {
-      fs.rmSync(workDir, { recursive: true, force: true });
-    }
-  });
+test('PostgreSQL dump restores into an isolated database with records intact', async () => {
+  const source = await temporaryDatabase();
+  const target = await temporaryDatabase();
+  const sql = connectPostgres(source.databaseUrl);
+  const restored = connectPostgres(target.databaseUrl);
+  const archive = path.join(os.tmpdir(), `mehta-backup-${Date.now()}.dump`);
+  try {
+    await sql`CREATE TABLE sample(id integer PRIMARY KEY, value text NOT NULL)`;
+    await sql`INSERT INTO sample VALUES(1,'preserved')`;
+    await createDatabaseBackup(source.databaseUrl, archive);
+    await restoreDatabaseBackup(target.databaseUrl, archive);
+    assert.equal((await restored`SELECT value FROM sample WHERE id=1`)[0].value, 'preserved');
+    await assert.rejects(createDatabaseBackup(source.databaseUrl, archive), /already exists/);
+  } finally {
+    fs.rmSync(archive, { force: true });
+    await sql.end(); await restored.end(); await source.close(); await target.close();
+  }
 });

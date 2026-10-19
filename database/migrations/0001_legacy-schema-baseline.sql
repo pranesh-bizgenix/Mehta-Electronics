@@ -1,2 +1,0 @@
--- The existing schema is initialized by src/db.js before versioned migrations run.
--- This baseline records that schema as version 1 without changing business tables.

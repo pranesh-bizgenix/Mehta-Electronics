@@ -19,11 +19,11 @@ try{
   const password=await hiddenPrompt('New password: ');const confirmation=await hiddenPrompt('Confirm password: ');
   if(password!==confirmation)throw new Error('Passwords do not match.');
   const validation=validatePassword(password);if(validation)throw new Error(validation);
-  const db=openDatabase(getConfig());
-  try{
-    const user=db.prepare('SELECT id,email FROM users WHERE email=? COLLATE NOCASE').get(email);if(!user)throw new Error(`No account exists for ${email}.`);
-    db.exec('BEGIN IMMEDIATE');
-    try{db.prepare('UPDATE users SET password_hash=?,must_change_password=0,failed_login_count=0,locked_until=NULL,updated_at=CURRENT_TIMESTAMP WHERE id=?').run(hashPassword(password),user.id);db.prepare('DELETE FROM sessions WHERE user_id=?').run(user.id);writeAudit(db,{userId:user.id,entity:'USER',recordId:user.id,action:'PASSWORD_RECOVERY'});db.exec('COMMIT');}catch(error){db.exec('ROLLBACK');throw error}
-  }finally{db.close()}
+  const db=(await openDatabase(getConfig()));
+  try{ await db.withConnection(async () => {
+    const user=(await db.prepare('SELECT id,email FROM users WHERE email=?').get(email));if(!user)throw new Error(`No account exists for ${email}.`);
+    (await db.exec('BEGIN'));
+    try{(await db.prepare('UPDATE users SET password_hash=?,must_change_password=0,failed_login_count=0,locked_until=NULL,updated_at=CURRENT_TIMESTAMP WHERE id=?').run(hashPassword(password),user.id));(await db.prepare('DELETE FROM sessions WHERE user_id=?').run(user.id));(await writeAudit(db,{userId:user.id,entity:'USER',recordId:user.id,action:'PASSWORD_RECOVERY'}));(await db.exec('COMMIT'));}catch(error){(await db.exec('ROLLBACK'));throw error}
+  }); }finally{(await db.close())}
   console.log(`Password reset completed for ${email}.`);
 }catch(error){console.error(error.message);process.exit(1)}

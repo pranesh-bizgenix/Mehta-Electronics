@@ -16,7 +16,7 @@ This roadmap is conditional on receiving authoritative requirements and named st
 
 **Dependencies:** approved module boundaries, hosting/session model, currency/precision decision, migration and recovery policy.
 
-**Work:** versioned SQLite migration runner; exact-money foundation; contract characterization; structured safe errors/correlation IDs; security and permission model; test infrastructure; frontend shell only after deployment decisions.
+**Work:** versioned PostgreSQL migration runner; exact-money foundation; contract characterization; structured safe errors/correlation IDs; security and permission model; test infrastructure; frontend shell only after deployment decisions.
 
 **Tests/evidence:** fresh and upgrade migrations; copy-of-production-schema migration; FK/constraint/transaction/lock tests; backup/restore drill; auth/CSRF/role tests; API compatibility tests.
 

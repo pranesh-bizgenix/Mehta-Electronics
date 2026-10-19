@@ -1,8 +1,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-function loadEnvFile() {
-  const file = path.resolve('.env');
+function loadEnvFile(filename) {
+  const file = path.resolve(filename);
   if (!fs.existsSync(file)) return;
   for (const line of fs.readFileSync(file, 'utf8').split(/\r?\n/)) {
     const match = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*?)\s*$/);
@@ -13,7 +13,8 @@ function loadEnvFile() {
   }
 }
 
-loadEnvFile();
+loadEnvFile('.env');
+loadEnvFile('.env.local');
 
 const integer = (value, fallback) => {
   const parsed = Number.parseInt(value ?? '', 10);
@@ -21,10 +22,14 @@ const integer = (value, fallback) => {
 };
 
 export function getConfig(overrides = {}) {
+  const databaseUrl = String(process.env.DATABASE_URL || '').trim().replace(/^DATABASE_URL\s*=/i, '').trim();
   return {
     host: process.env.HOST || '127.0.0.1',
     port: integer(process.env.PORT, 3000),
-    databasePath: process.env.DATABASE_PATH || path.resolve('data/crm.db'),
+    databaseUrl,
+    tallyConnectorOrgId: process.env.TALLY_CONNECTOR_ORG_ID || 'mehta-electronics',
+    tallyStalledRunMinutes: Math.max(1, integer(process.env.TALLY_STALLED_RUN_MINUTES, 30)),
+    tallyFinancialRoles: (process.env.TALLY_FINANCIAL_ROLES || 'OWNER,ACCOUNTS').split(',').map(role=>role.trim().toUpperCase()),
     sessionTtlMinutes: integer(process.env.SESSION_TTL_MINUTES, 480),
     tallyUrl: process.env.TALLY_URL || 'http://127.0.0.1:9000',
     tallyCompany: process.env.TALLY_COMPANY || 'Mehta Electronics',

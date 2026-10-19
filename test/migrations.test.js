@@ -1,73 +1,52 @@
 import assert from 'node:assert/strict';
-import { DatabaseSync } from 'node:sqlite';
 import { describe, test } from 'node:test';
+import { connectPostgres, createDatabase } from '../src/postgres.js';
 import { applyMigrations } from '../src/migrations.js';
+import { temporaryDatabase } from '../test-support/postgres.js';
 
-function preparedDatabase() {
-  const db = new DatabaseSync(':memory:');
-  db.exec(`CREATE TABLE users(id INTEGER PRIMARY KEY);
-    CREATE TABLE sessions(id INTEGER PRIMARY KEY);
-    CREATE TABLE customers(id INTEGER PRIMARY KEY);
-    CREATE TABLE customer_contacts(id INTEGER PRIMARY KEY);
-    CREATE TABLE items(id INTEGER PRIMARY KEY);
-    CREATE TABLE enquiries(id INTEGER PRIMARY KEY);
-    CREATE TABLE enquiry_lines(id INTEGER PRIMARY KEY);
-    CREATE TABLE quotations(id INTEGER PRIMARY KEY);
-    CREATE TABLE quotation_lines(id INTEGER PRIMARY KEY);
-    CREATE TABLE enquiry_revisions(id INTEGER PRIMARY KEY);
-    CREATE TABLE quotation_revisions(id INTEGER PRIMARY KEY);
-    CREATE TABLE sales_orders(id INTEGER PRIMARY KEY);
-    CREATE TABLE sales_order_lines(id INTEGER PRIMARY KEY);
-    CREATE TABLE tally_sync_jobs(id INTEGER PRIMARY KEY);
-    CREATE TABLE tally_customers(id INTEGER PRIMARY KEY);
-    CREATE TABLE tally_items(id INTEGER PRIMARY KEY);
-    CREATE TABLE audit_logs(id INTEGER PRIMARY KEY);
-    INSERT INTO customers(id) VALUES(42);`);
-  return db;
-}
-
-describe('versioned SQLite migrations', () => {
-  test('applies in order exactly once and preserves existing business rows', () => {
-    const db = preparedDatabase();
+describe('PostgreSQL migrations', () => {
+  test('requires PostgreSQL configuration without a storage fallback', () => {
+    assert.throws(() => createDatabase({ databaseUrl: '' }), /DATABASE_URL is required/);
+  });
+  test('applies once, detects edits, rolls back failures, and preserves rows', async () => {
+    const temporary = await temporaryDatabase();
+    const sql = connectPostgres(temporary.databaseUrl);
+    const baseline = [{ name: '0001_probe.sql', sql: 'CREATE TABLE probe(id integer PRIMARY KEY, value text); INSERT INTO probe VALUES(1,\'preserved\');' }];
     try {
-      const migrations = [
-        { version: 1, name: 'legacy-schema-baseline', sql: '-- existing schema baseline' },
-        { version: 2, name: 'connectivity-marker', sql: 'CREATE TABLE connectivity_marker(id INTEGER PRIMARY KEY);' }
-      ];
-      assert.deepEqual(applyMigrations(db, { migrations }), { applied: 2, latestVersion: 2 });
-      assert.deepEqual(applyMigrations(db, { migrations }), { applied: 2, latestVersion: 2 });
-      assert.equal(db.prepare('SELECT COUNT(*) AS count FROM customers').get().count, 1);
-      assert.equal(db.prepare('SELECT COUNT(*) AS count FROM schema_migrations').get().count, 2);
-      assert.ok(db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='connectivity_marker'").get());
-    } finally { db.close(); }
+      assert.deepEqual(await applyMigrations(sql, { migrations: baseline }), { applied: 1, total: 1 });
+      assert.deepEqual(await applyMigrations(sql, { migrations: baseline }), { applied: 0, total: 1 });
+      await assert.rejects(applyMigrations(sql, { migrations: [{ ...baseline[0], sql: '-- edited' }] }), /checksum/);
+      await assert.rejects(applyMigrations(sql, { migrations: [...baseline, { name: '0002_broken.sql', sql: 'CREATE TABLE rollback_probe(id integer); INVALID SQL;' }] }));
+      assert.equal((await sql`SELECT COUNT(*) AS count FROM mehta_schema_migrations`)[0].count, 1);
+      assert.equal((await sql`SELECT to_regclass('rollback_probe') AS name`)[0].name, null);
+      assert.equal((await sql`SELECT value FROM probe`)[0].value, 'preserved');
+      await assert.rejects(applyMigrations(sql, { migrations: [] }), /unknown migrations/);
+    } finally { await sql.end(); await temporary.close(); }
   });
 
-  test('rolls back a failed migration and does not record its version', () => {
-    const db = preparedDatabase();
+  test('keeps concurrent request transactions isolated and rolls back on connection release', async () => {
+    const temporary = await temporaryDatabase();
+    const db = createDatabase(temporary);
     try {
-      assert.throws(() => applyMigrations(db, { migrations: [
-        { version: 1, name: 'legacy-schema-baseline', sql: '-- existing schema baseline' },
-        { version: 2, name: 'broken-change', sql: 'CREATE TABLE rollback_probe(id INTEGER); INVALID SQL;' }
-      ] }), /failed; no version was recorded/);
-      assert.equal(db.prepare('SELECT COUNT(*) AS count FROM schema_migrations').get().count, 1);
-      assert.equal(db.prepare("SELECT COUNT(*) AS count FROM sqlite_master WHERE type='table' AND name='rollback_probe'").get().count, 0);
-    } finally { db.close(); }
-  });
-
-  test('rejects edited contents of an already applied migration', () => {
-    const db = preparedDatabase();
-    try {
-      const original = [{ version: 1, name: 'legacy-schema-baseline', sql: '-- approved baseline' }];
-      applyMigrations(db, { migrations: original });
-      assert.throws(() => applyMigrations(db, { migrations: [{ ...original[0], sql: '-- silently edited baseline' }] }), /does not match its recorded name\/checksum/);
-    } finally { db.close(); }
-  });
-
-  test('refuses to initialize against an unknown or incomplete schema', () => {
-    const db = new DatabaseSync(':memory:');
-    try {
-      assert.throws(() => applyMigrations(db, { migrations: [{ version: 1, name: 'legacy-schema-baseline', sql: '' }] }), /incomplete schema/);
-      assert.equal(db.prepare("SELECT COUNT(*) AS count FROM sqlite_master WHERE type='table' AND name='schema_migrations'").get().count, 0);
-    } finally { db.close(); }
+      await db.exec('CREATE TABLE probe(id integer PRIMARY KEY)');
+      await Promise.all([
+        db.withConnection(async () => {
+          await db.exec('BEGIN');
+          await db.prepare('INSERT INTO probe(id) VALUES(?)').all(1);
+          await db.exec('ROLLBACK');
+        }),
+        db.withConnection(async () => {
+          await db.exec('BEGIN');
+          await db.prepare('INSERT INTO probe(id) VALUES(?)').all(2);
+          await db.exec('COMMIT');
+        })
+      ]);
+      await assert.rejects(db.withConnection(async () => {
+        await db.exec('BEGIN');
+        await db.prepare('INSERT INTO probe(id) VALUES(?)').all(3);
+        throw new Error('interrupted');
+      }), /interrupted/);
+      assert.deepEqual((await db.prepare('SELECT id FROM probe ORDER BY id').all()).map(row => row.id), [2]);
+    } finally { await db.close(); await temporary.close(); }
   });
 });

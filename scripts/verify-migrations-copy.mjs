@@ -1,38 +1,41 @@
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { DatabaseSync } from 'node:sqlite';
 import { getConfig } from '../src/config.js';
-import { createDatabaseBackup } from '../src/database-backup.js';
+import { connectPostgres } from '../src/postgres.js';
+import { createDatabaseBackup, restoreDatabaseBackup } from '../src/database-backup.js';
 import { applyMigrations } from '../src/migrations.js';
 
-const sourcePath = path.resolve(getConfig().databasePath);
-const tempRoot = path.resolve(os.tmpdir());
-const workDir = fs.mkdtempSync(path.join(tempRoot, 'mehta-migration-check-'));
-if (!path.resolve(workDir).startsWith(`${tempRoot}${path.sep}`)) throw new Error('Temporary work directory escaped the OS temp directory.');
-const copyPath = path.join(workDir, 'crm-copy.db');
+const config = getConfig();
+const admin = connectPostgres(config.databaseUrl);
+const name = `mehta_verify_${crypto.randomBytes(8).toString('hex')}`;
+const url = new URL(config.databaseUrl);
+url.pathname = `/${name}`;
+const archive = path.join(os.tmpdir(), `${name}.dump`);
+let copy;
+let created = false;
 
-function businessTableCounts(db) {
-  return Object.fromEntries(db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name <> 'schema_migrations' ORDER BY name")
-    .all().map(({ name }) => [name, db.prepare(`SELECT COUNT(*) AS count FROM "${name.replaceAll('"', '""')}"`).get().count]));
+async function counts(sql) {
+  const tables = await sql`SELECT tablename FROM pg_tables WHERE schemaname='public' AND tablename<>'mehta_schema_migrations' ORDER BY tablename`;
+  const result = {};
+  for (const { tablename } of tables) result[tablename] = (await sql`SELECT COUNT(*) AS n FROM ${sql(tablename)}`)[0].n;
+  return result;
 }
 
 try {
-  await createDatabaseBackup(sourcePath, copyPath);
-  const db = new DatabaseSync(copyPath);
-  try {
-    const before = businessTableCounts(db);
-    const migrationResult = applyMigrations(db);
-    const after = businessTableCounts(db);
-    if (JSON.stringify(before) !== JSON.stringify(after)) throw new Error('Migration changed business table row counts in the disposable copy.');
-    const integrity = db.prepare('PRAGMA integrity_check').get().integrity_check;
-    if (integrity !== 'ok') throw new Error(`Post-migration integrity check failed: ${integrity}`);
-    const foreignKeyErrors = db.prepare('PRAGMA foreign_key_check').all();
-    if (foreignKeyErrors.length) throw new Error(`Foreign-key check found ${foreignKeyErrors.length} issue(s).`);
-    console.log(`Disposable copy verified: ${Object.keys(before).length} business tables, ${migrationResult.applied} migration(s), row counts unchanged, integrity ok.`);
-  } finally {
-    db.close();
-  }
+  await createDatabaseBackup(config.databaseUrl, archive);
+  await admin.unsafe(`CREATE DATABASE "${name}"`);
+  created = true;
+  await restoreDatabaseBackup(url.toString(), archive);
+  copy = connectPostgres(url.toString());
+  const before = await counts(copy);
+  const result = await applyMigrations(copy);
+  const after = await counts(copy);
+  for (const table of Object.keys(before)) if (before[table] !== after[table]) throw new Error(`Migration changed row counts in ${table}.`);
+  console.log(`PostgreSQL restore verified: ${Object.keys(before).length} business tables, row counts unchanged, ${result.total} migrations current.`);
 } finally {
-  fs.rmSync(workDir, { recursive: true, force: true });
+  if (copy) await copy.end();
+  try { if (created) await admin.unsafe(`DROP DATABASE "${name}" WITH (FORCE)`); }
+  finally { await admin.end(); fs.rmSync(archive, { force: true }); }
 }

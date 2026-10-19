@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import { normalizeKey } from './security.js';
 
 const escapeXml = (value) => String(value).replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' })[char]);
@@ -15,14 +16,21 @@ const tag = (xml, names) => {
   return '';
 };
 
-const blocks = (xml, element) => [...xml.matchAll(new RegExp(`<${element}(?:\\s[^>]*)?>([\\s\\S]*?)<\\/${element}>`, 'gi'))].map((x) => x[1]);
+const blocks = (xml, element) => [...xml.matchAll(new RegExp(`<${element}(?:\\s[^>]*)?>([\\s\\S]*?)<\\/${element}>`, 'gi'))].map((x) => x[0]);
+const masterName = (xml) => decodeXml(xml.match(/^<[^>]*\bNAME\s*=\s*(["'])(.*?)\1/i)?.[2] || '') || tag(xml, ['NAME']);
+
+export function parseTallyCompanies(xml) {
+  const error = tag(xml, ['LINEERROR']);
+  if (error) throw new Error(`Tally error: ${error}`);
+  return blocks(xml, 'COMPANY').map(raw => ({ name: masterName(raw) || tag(raw, ['SVCURRENTCOMPANY', 'REMOTECMPNAME', 'COMPANYNAME', 'CURRENTCOMPANY']), guid: tag(raw, ['GUID']) || null })).filter(company => company.name);
+}
 
 export function parseTallyCustomers(xml) {
   const error = tag(xml, ['LINEERROR']);
   if (error) throw new Error(`Tally error: ${error}`);
   return blocks(xml, 'LEDGER').map((raw) => ({
-    guid: tag(raw, ['GUID', 'REMOTEID']) || `ledger-${normalizeKey(tag(raw, ['NAME']))}`,
-    name: tag(raw, ['NAME']),
+    guid: tag(raw, ['GUID', 'REMOTEID']) || `ledger-${normalizeKey(masterName(raw))}`,
+    name: masterName(raw),
     gstin: tag(raw, ['PARTYGSTIN', 'GSTIN']),
     pan: tag(raw, ['INCOMETAXNUMBER', 'PAN']),
     phone: tag(raw, ['LEDGERPHONE', 'PHONE']),
@@ -35,8 +43,8 @@ export function parseTallyItems(xml) {
   const error = tag(xml, ['LINEERROR']);
   if (error) throw new Error(`Tally error: ${error}`);
   return blocks(xml, 'STOCKITEM').map((raw) => ({
-    guid: tag(raw, ['GUID', 'REMOTEID']) || `item-${normalizeKey(tag(raw, ['NAME']))}`,
-    partCode: tag(raw, ['NAME', 'PARTNO']),
+    guid: tag(raw, ['GUID', 'REMOTEID']) || `item-${crypto.createHash('sha256').update(masterName(raw)).digest('hex')}`,
+    partCode: masterName(raw) || tag(raw, ['PARTNO']),
     description: tag(raw, ['DESCRIPTION', 'BASICUSERDESCRIPTION']),
     brand: tag(raw, ['BRAND']),
     hsn: tag(raw, ['HSNCODE', 'GSTHSNCODE']),
@@ -47,7 +55,7 @@ export function parseTallyItems(xml) {
 async function requestWithRetry(config, body, fetchImpl, onAttempt) {
   let lastError;
   for (let attempt = 1; attempt <= config.tallyMaxRetries; attempt += 1) {
-    onAttempt(attempt);
+    (await onAttempt(attempt));
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), config.tallyTimeoutMs);
     try {
@@ -63,31 +71,46 @@ async function requestWithRetry(config, body, fetchImpl, onAttempt) {
 }
 
 export async function runTallySync(db, config, jobId, fetchImpl = fetch) {
-  const updateAttempt = db.prepare("UPDATE tally_sync_jobs SET status='RUNNING',attempt=?,started_at=COALESCE(started_at,CURRENT_TIMESTAMP),error_message=NULL WHERE id=?");
+  const updateAttempt = db.prepare("UPDATE crm_tally_sync_jobs SET status='RUNNING',attempt=?,started_at=COALESCE(started_at,CURRENT_TIMESTAMP),error_message=NULL WHERE id=?");
   try {
-    const customersXml = await requestWithRetry(config, exportRequest(config.tallyCompany, 'CRM Ledgers', 'Ledger'), fetchImpl, (attempt) => updateAttempt.run(attempt, jobId));
-    const itemsXml = await requestWithRetry(config, exportRequest(config.tallyCompany, 'CRM Stock Items', 'Stock Item'), fetchImpl, (attempt) => updateAttempt.run(attempt, jobId));
+    const customersXml = await requestWithRetry(config, exportRequest(config.tallyCompany, 'CRM Ledgers', 'Ledger'), fetchImpl, async (attempt) => (await updateAttempt.run(attempt, jobId)));
+    const itemsXml = await requestWithRetry(config, exportRequest(config.tallyCompany, 'CRM Stock Items', 'Stock Item'), fetchImpl, async (attempt) => (await updateAttempt.run(attempt, jobId)));
     const customers = parseTallyCustomers(customersXml);
     const items = parseTallyItems(itemsXml);
 
-    db.exec('BEGIN IMMEDIATE');
+    (await db.exec('BEGIN'));
     try {
-      db.exec('DELETE FROM tally_customers; DELETE FROM tally_items;');
-      const addCustomer = db.prepare(`INSERT INTO tally_customers(guid,name,gstin,pan,phone,email,address,raw_json) VALUES(?,?,?,?,?,?,?,?)`);
-      customers.forEach((x) => addCustomer.run(x.guid, x.name, x.gstin || null, x.pan || null, x.phone || null, x.email || null, x.address || null, JSON.stringify(x)));
-      const addItem = db.prepare(`INSERT INTO tally_items(guid,part_code,description,brand,hsn,uom,raw_json) VALUES(?,?,?,?,?,?,?)`);
-      items.forEach((x) => addItem.run(x.guid, x.partCode, x.description || null, x.brand || null, x.hsn || null, x.uom || null, JSON.stringify(x)));
-      db.prepare("UPDATE tally_sync_jobs SET status='SUCCEEDED',completed_at=CURRENT_TIMESTAMP,customer_count=?,item_count=? WHERE id=?").run(customers.length, items.length, jobId);
-      db.exec('COMMIT');
-    } catch (error) { db.exec('ROLLBACK'); throw error; }
+
+      const addCustomer = db.prepare(`INSERT INTO tally_customers(guid,name,gstin,pan,phone,email,address,raw_json) VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(guid) DO UPDATE SET name=EXCLUDED.name,gstin=EXCLUDED.gstin,pan=EXCLUDED.pan,phone=EXCLUDED.phone,email=EXCLUDED.email,address=EXCLUDED.address,raw_json=EXCLUDED.raw_json,fetched_at=now()`);
+      (await Promise.all(customers.map(async (x) => (await addCustomer.run(x.guid, x.name, x.gstin || null, x.pan || null, x.phone || null, x.email || null, x.address || null, JSON.stringify(x))))));
+      const addItem = db.prepare(`INSERT INTO tally_items(guid,part_code,description,brand,hsn,uom,raw_json) VALUES(?,?,?,?,?,?,?) ON CONFLICT(guid) DO UPDATE SET part_code=EXCLUDED.part_code,description=EXCLUDED.description,brand=EXCLUDED.brand,hsn=EXCLUDED.hsn,uom=EXCLUDED.uom,raw_json=EXCLUDED.raw_json,fetched_at=now()`);
+      (await Promise.all(items.map(async (x) => (await addItem.run(x.guid, x.partCode, x.description || null, x.brand || null, x.hsn || null, x.uom || null, JSON.stringify(x))))));
+      (await db.prepare("UPDATE crm_tally_sync_jobs SET status='SUCCEEDED',completed_at=CURRENT_TIMESTAMP,customer_count=?,item_count=? WHERE id=?").run(customers.length, items.length, jobId));
+      (await db.exec('COMMIT'));
+    } catch (error) { (await db.exec('ROLLBACK')); throw error; }
     return { customers: customers.length, items: items.length };
   } catch (error) {
-    const job = db.prepare('SELECT attempt,max_attempts FROM tally_sync_jobs WHERE id=?').get(jobId);
+    const job = (await db.prepare('SELECT attempt,max_attempts FROM crm_tally_sync_jobs WHERE id=?').get(jobId));
     const retry = job.attempt < job.max_attempts;
-    db.prepare(`UPDATE tally_sync_jobs SET status=?,completed_at=CURRENT_TIMESTAMP,next_retry_at=?,error_message=? WHERE id=?`).run(
-      retry ? 'RETRY_SCHEDULED' : 'FAILED', retry ? new Date(Date.now() + (2 ** job.attempt) * 60_000).toISOString() : null, String(error.message).slice(0, 1000), jobId);
+    (await db.prepare(`UPDATE crm_tally_sync_jobs SET status=?,completed_at=CURRENT_TIMESTAMP,next_retry_at=?,error_message=? WHERE id=?`).run(
+      retry ? 'RETRY_SCHEDULED' : 'FAILED', retry ? new Date(Date.now() + (2 ** job.attempt) * 60_000).toISOString() : null, String(error.message).slice(0, 1000), jobId));
     throw error;
   }
+}
+
+export async function applyConnectorMasterSnapshot(db, fields) {
+  const customers = parseTallyCustomers(fields.ledgersXml || '');
+  const items = parseTallyItems(fields.stockXml || '');
+  (await db.exec('BEGIN'));
+  try {
+
+    const addCustomer = db.prepare(`INSERT INTO tally_customers(guid,name,gstin,pan,phone,email,address,raw_json) VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(guid) DO UPDATE SET name=EXCLUDED.name,gstin=EXCLUDED.gstin,pan=EXCLUDED.pan,phone=EXCLUDED.phone,email=EXCLUDED.email,address=EXCLUDED.address,raw_json=EXCLUDED.raw_json,fetched_at=now()`);
+    (await Promise.all(customers.map(async (x) => (await addCustomer.run(x.guid, x.name, x.gstin || null, x.pan || null, x.phone || null, x.email || null, x.address || null, JSON.stringify(x))))));
+    const addItem = db.prepare(`INSERT INTO tally_items(guid,part_code,description,brand,hsn,uom,raw_json) VALUES(?,?,?,?,?,?,?) ON CONFLICT(guid) DO UPDATE SET part_code=EXCLUDED.part_code,description=EXCLUDED.description,brand=EXCLUDED.brand,hsn=EXCLUDED.hsn,uom=EXCLUDED.uom,raw_json=EXCLUDED.raw_json,fetched_at=now()`);
+    (await Promise.all(items.map(async (x) => (await addItem.run(x.guid, x.partCode, x.description || null, x.brand || null, x.hsn || null, x.uom || null, JSON.stringify(x))))));
+    (await db.exec('COMMIT'));
+  } catch (error) { (await db.exec('ROLLBACK')); throw error; }
+  return { customers: customers.length, items: items.length };
 }
 
 function customerConflicts(crm, tally) {
@@ -106,9 +129,9 @@ function itemConflicts(crm, tally) {
   return fields;
 }
 
-export function reconcile(db) {
-  const crmCustomers = db.prepare('SELECT id,name,gstin,pan,tally_guid FROM customers').all();
-  const tallyCustomers = db.prepare('SELECT * FROM tally_customers').all();
+export async function reconcile(db) {
+  const crmCustomers = (await db.prepare('SELECT id,name,gstin,pan,tally_guid FROM customers').all());
+  const tallyCustomers = (await db.prepare('SELECT * FROM tally_customers').all());
   const matchedTallyCustomers = new Set();
   const customerMatches = [];
   const missingInTallyCustomers = [];
@@ -119,8 +142,8 @@ export function reconcile(db) {
   }
   const missingInCrmCustomers = tallyCustomers.filter((x) => !matchedTallyCustomers.has(x.guid));
 
-  const crmItems = db.prepare('SELECT id,part_code,description,brand,hsn,uom,alternate_codes,tally_guid FROM items').all();
-  const tallyItems = db.prepare('SELECT * FROM tally_items').all();
+  const crmItems = (await db.prepare('SELECT id,part_code,description,brand,hsn,uom,alternate_codes,tally_guid FROM items').all());
+  const tallyItems = (await db.prepare('SELECT * FROM tally_items').all());
   const matchedTallyItems = new Set();
   const itemMatches = [];
   const missingInTallyItems = [];

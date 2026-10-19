@@ -56,7 +56,7 @@ Suggested order: auth/shell; dashboard; customers/items; enquiries; quotations/P
 
 ## Compatibility and data safeguards
 
-- Both frontends call one backend and one SQLite database; no parallel business-rule implementation.
+- Both frontends call one backend and one PostgreSQL database; no parallel business-rule implementation.
 - Do not rename or change API behavior incidentally during screen migration.
 - Preserve backend permissions even when the UI hides actions.
 - Avoid API contract changes mixed into visual migration.

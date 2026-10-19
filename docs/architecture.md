@@ -6,11 +6,11 @@ Planning proposal. It records the explicitly requested target shape; stakeholder
 
 ## Implemented foundation increment
 
-The repository now contains a separate `apps/web/` Next.js App Router application and a typed client that checks the existing `GET /api/auth/me` route through a same-origin Next.js rewrite. The existing Node server remains the only business API. The UI reports the actual unauthenticated response and displays no fabricated business data. The backend now records schema migration versions after its existing schema bootstrap; version 1 is a no-op legacy baseline. No financial columns or business calculations were changed. See `frontend-migration-plan.md` and `database-migration-plan.md` for commands and evidence.
+The repository now contains a separate `apps/web/` Next.js App Router application and a typed client that checks the existing `GET /api/auth/me` route through a same-origin Next.js rewrite. The existing Node server remains the only business API. The UI reports the actual unauthenticated response and displays no fabricated business data. The backend applies checksummed PostgreSQL migrations before startup. CRM and connector records share PostgreSQL. Financial columns use NUMERIC(20,6); API calculations retain their existing JavaScript number behavior. See `frontend-migration-plan.md` and `database-migration-plan.md` for commands and evidence.
 
 ## Context
 
-The current project is a single Node.js ES-module application with the built-in HTTP server, SQLite via `node:sqlite`, static HTML/CSS/browser JavaScript, PDFKit, Nodemailer, and a read-only Tally adapter. The target request requires a Next.js/React/TypeScript frontend, while retaining the separate built-in HTTP backend and SQLite. Do not use Express, Next.js API routes, or Server Actions for business operations.
+The current project is a single Node.js ES-module application with the built-in HTTP server, PostgreSQL via the `postgres` driver, static HTML/CSS/browser JavaScript, PDFKit, Nodemailer, and a read-only Tally adapter. The target request requires a Next.js/React/TypeScript frontend, while retaining the separate built-in HTTP backend and PostgreSQL. Do not use Express, Next.js API routes, or Server Actions for business operations.
 
 ## Proposed logical view
 
@@ -19,12 +19,12 @@ flowchart LR
   U[Browser: responsive React / Next.js App Router / TypeScript] -->|versioned HTTP API; typed contracts| API[Node.js ES modules; built-in HTTP server]
   API --> MW[Request context, auth, authorization, validation, error mapping]
   MW --> APP[Application use cases and domain policies]
-  APP --> REPO[SQLite repositories; parameterized SQL; transactions]
-  REPO --> DB[(SQLite; versioned migrations; backup and integrity checks)]
+  APP --> REPO[PostgreSQL repositories; parameterized SQL; transactions]
+  REPO --> DB[(PostgreSQL; versioned migrations; backup and integrity checks)]
   APP --> PDF[PDFKit document adapter]
   APP --> MAIL[Nodemailer email adapter]
   APP --> TALLY[Tally adapter; read-only until separately approved]
-  APP --> JOBS[Durable SQLite-backed jobs/outbox where side effects require recovery]
+  APP --> JOBS[Durable PostgreSQL-backed jobs/outbox where side effects require recovery]
   JOBS --> WORKER[Async worker process / worker_threads only for measured CPU-bound work]
   WORKER --> MAIL
   WORKER --> TALLY
@@ -37,8 +37,8 @@ This diagram is a logical proposal, not a claim that these boundaries or jobs ha
 - **`apps/web/`**: Next.js UI, accessible responsive screens, typed API client, display and client-side convenience validation. No authoritative business rule or direct DB access.
 - **`apps/api/`**: Separate Node.js server. Organize routes/middleware, application use cases, domain policies, repository implementations, integrations, jobs, PDF generation, configuration, and observability into explicit modules. The built-in HTTP server remains the transport.
 - **`packages/contracts/`**: Shared request/response schemas and TypeScript types where beneficial. Runtime validation must also execute in the backend; a type alone is not input validation.
-- **`database/migrations/`**: Ordered, checksummed migration scripts and migration metadata. Schema changes are forward-applied; production rollback uses an explicitly rehearsed recovery path, not destructive automatic downgrade.
-- **SQLite**: Single relational source for CRM-owned operational data. Enable and verify foreign keys per connection, use parameterized SQL, transactions for multi-step writes, documented busy handling, integrity checks, and tested backup/restore. Tally remains the accounting system of record as stated in the supplied scope.
+- **`database/postgres/migrations/`**: Ordered, checksummed migration scripts and migration metadata. Schema changes are forward-applied; production rollback uses an explicitly rehearsed recovery path, not destructive automatic downgrade.
+- **PostgreSQL**: Single relational source for CRM-owned operational data. Use database foreign keys, parameterized SQL, request-scoped connections for transactions, and tested pg_dump/pg_restore backup and recovery. Tally remains the accounting system of record as stated in the supplied scope.
 - **Integration adapters**: Tally, email, PDF, and later authorized providers behind explicit contracts, with bounded timeouts/retries, idempotency/reconciliation as relevant, and safe failure states.
 
 ## API compatibility and versioning
@@ -58,4 +58,4 @@ Backend permission checks remain authoritative. Define record-level scope and se
 - Hosting, scale, latency, availability, backup/RPO/RTO targets.
 - Approved provider contracts and whether/when Tally write capability is authorized.
 
-Related records: `architecture-decisions/ADR-0001-frontend-backend-boundary.md`, `ADR-0002-sqlite-migrations-and-money.md`, and `ADR-0003-compatibility-first-migration.md`.
+Related records: `architecture-decisions/ADR-0001-frontend-backend-boundary.md`, `ADR-0002-postgresql-migrations-and-money.md`, and `ADR-0003-compatibility-first-migration.md`.
