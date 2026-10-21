@@ -48,3 +48,4 @@
   .detail-grid { grid-template-columns: 1fr; }
   .quote-total { align-items: flex-end; flex-direction: column; gap: 4px; }
 }
+.metric-money{font-size:1.45rem!important}.metric-status{font-size:1rem!important}.tally-all-fields{white-space:pre-wrap;overflow-wrap:anywhere;font-size:.8rem;padding:1rem}th,td{font-variant-numeric:tabular-nums}.table-wrap thead th{position:sticky;top:0;background:#f5f8f5;z-index:1}button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #418667;outline-offset:2px}

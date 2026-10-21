@@ -9,7 +9,7 @@ function files(dir) {
   });
 }
 
-for (const file of [...files('src'), ...files('public'), ...files('scripts'), ...(fs.existsSync('test') ? files('test') : [])]) {
+for (const file of [...files('src'), ...files('public'), ...files('scripts'), ...(fs.existsSync('test') ? files('test') : []), ...(fs.existsSync('test-support') ? files('test-support') : []), ...(fs.existsSync('apps/web/test') ? files('apps/web/test') : [])]) {
   execFileSync(process.execPath, ['--check', file], { stdio: 'inherit' });
 }
 console.log('Syntax lint passed.');

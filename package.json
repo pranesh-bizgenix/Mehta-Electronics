@@ -10,15 +10,28 @@
     "seed:demo": "node scripts/seed-demo.mjs",
     "pdf:sample": "node scripts/generate-sample-quotation.mjs",
     "reset-password": "node scripts/reset-password.mjs",
-    "test": "node --test --test-isolation=none --test-concurrency=1",
+    "test": "node --test --test-concurrency=1",
     "lint": "node scripts/lint.mjs",
-    "build": "node scripts/build.mjs"
+    "build": "node scripts/build.mjs",
+    "db:migrate:postgres": "node scripts/migrate-postgres.mjs",
+    "db:backup": "node scripts/backup-database.mjs",
+    "db:verify": "node scripts/verify-migrations-copy.mjs",
+    "tally:diagnose": "node scripts/diagnose-tally.mjs",
+    "tally:replay": "node scripts/replay-tally-imports.mjs",
+    "tally:verify:checkpoint-a": "node scripts/verify-tally-checkpoint-a.mjs",
+    "tally:verify:overview": "node scripts/verify-overview.mjs"
   },
   "engines": {
     "node": ">=22.5"
   },
   "dependencies": {
+    "fast-xml-parser": "^5.11.2",
+    "fontkit": "^2.0.4",
     "nodemailer": "^10.0.15",
-    "pdfkit": "^0.20.2"
+    "pdfkit": "^0.20.2",
+    "postgres": "^3.4.9"
+  },
+  "devDependencies": {
+    "playwright": "^1.64.1"
   }
 }
