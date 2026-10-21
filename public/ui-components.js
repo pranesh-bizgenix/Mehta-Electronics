@@ -61,6 +61,7 @@ export class Sidebar {
     $('#app').append(scrim);
     this.scrim = scrim;
     $('#menu-toggle').addEventListener('click', () => this.toggle());
+    matchMedia('(min-width: 761px)').addEventListener('change', event => { if (event.matches) this.close(false); });
     $('#nav').addEventListener('click', event => {
       if (event.target.closest('button[data-view]')) this.close(false);
     });
@@ -147,7 +148,7 @@ export class DataTable {
         [...table.rows].forEach(row => { if (row.cells[index]) row.cells[index].hidden = !check.checked; });
       });
       // Existing master-table sorting retains its original API handler.
-      if (cell.querySelector('button,a,input')) return;
+      if (cell.querySelector('button,a,input') || this.rows.some(row => row.cells[index]?.querySelector('button,a,input'))) return;
       const sort = button(label, () => this.sort(index), 'table-sort');
       const indicator = node('span', 'sort-indicator', '↕');
       indicator.setAttribute('aria-hidden', 'true'); sort.append(indicator);
