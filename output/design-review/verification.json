@@ -1,0 +1,246 @@
+{
+  "fixtureData": true,
+  "browserErrors": [],
+  "checks": [
+    "loaded-row filter / no matches / sorting / column picker / dialog Escape / persisted dark mode / error retry / skeleton / empty state / confirmation cancel",
+    "45-row local pagination / keyboard tab selection / desktop and tablet overflow checks / simulated 4G mobile"
+  ],
+  "pages": [
+    "dashboard",
+    "customers",
+    "items",
+    "enquiries",
+    "quotations",
+    "orders",
+    "users",
+    "tally",
+    "tally-connector",
+    "audit"
+  ],
+  "screenRequests": {
+    "before/dashboard": [
+      "GET /api/dashboard",
+      "GET /api/dashboard/tally"
+    ],
+    "before/customers": [
+      "GET /api/tally/companies",
+      "GET /api/tally/masters/ledgers"
+    ],
+    "before/items": [
+      "GET /api/tally/companies",
+      "GET /api/tally/masters/items"
+    ],
+    "before/enquiries": [
+      "GET /api/enquiries"
+    ],
+    "before/quotations": [
+      "GET /api/quotations"
+    ],
+    "before/orders": [
+      "GET /api/orders"
+    ],
+    "before/users": [
+      "GET /api/users"
+    ],
+    "before/tally": [
+      "GET /api/reconciliation",
+      "GET /api/tally/status"
+    ],
+    "before/tally-connector": [
+      "GET /api/tally-connector/status"
+    ],
+    "before/audit": [
+      "GET /api/audit-logs"
+    ],
+    "after/dashboard": [
+      "GET /api/dashboard",
+      "GET /api/dashboard/tally"
+    ],
+    "after/customers": [
+      "GET /api/tally/companies",
+      "GET /api/tally/masters/ledgers"
+    ],
+    "after/items": [
+      "GET /api/tally/companies",
+      "GET /api/tally/masters/items"
+    ],
+    "after/enquiries": [
+      "GET /api/enquiries"
+    ],
+    "after/quotations": [
+      "GET /api/quotations"
+    ],
+    "after/orders": [
+      "GET /api/orders"
+    ],
+    "after/users": [
+      "GET /api/users"
+    ],
+    "after/tally": [
+      "GET /api/reconciliation",
+      "GET /api/tally/status"
+    ],
+    "after/tally-connector": [
+      "GET /api/tally-connector/status"
+    ],
+    "after/audit": [
+      "GET /api/audit-logs"
+    ],
+    "mobile/dashboard": [
+      "GET /api/dashboard",
+      "GET /api/dashboard/tally"
+    ],
+    "mobile/customers": [
+      "GET /api/tally/companies",
+      "GET /api/tally/masters/ledgers"
+    ],
+    "mobile/items": [
+      "GET /api/tally/companies",
+      "GET /api/tally/masters/items"
+    ],
+    "mobile/enquiries": [
+      "GET /api/enquiries"
+    ],
+    "mobile/quotations": [
+      "GET /api/quotations"
+    ],
+    "mobile/orders": [
+      "GET /api/orders"
+    ],
+    "mobile/users": [
+      "GET /api/users"
+    ],
+    "mobile/tally": [
+      "GET /api/reconciliation",
+      "GET /api/tally/status"
+    ],
+    "mobile/tally-connector": [
+      "GET /api/tally-connector/status"
+    ],
+    "mobile/audit": [
+      "GET /api/audit-logs"
+    ]
+  },
+  "requests": {
+    "before/dashboard": [
+      "GET /api/auth/me",
+      "GET /api/dashboard",
+      "GET /api/dashboard/tally",
+      "GET /api/dashboard",
+      "GET /api/dashboard/tally"
+    ],
+    "before/customers": [
+      "GET /api/tally/companies",
+      "GET /api/tally/masters/ledgers"
+    ],
+    "before/items": [
+      "GET /api/tally/companies",
+      "GET /api/tally/masters/items"
+    ],
+    "before/enquiries": [
+      "GET /api/enquiries"
+    ],
+    "before/quotations": [
+      "GET /api/quotations"
+    ],
+    "before/orders": [
+      "GET /api/orders"
+    ],
+    "before/users": [
+      "GET /api/users"
+    ],
+    "before/tally": [
+      "GET /api/tally/status",
+      "GET /api/reconciliation"
+    ],
+    "before/tally-connector": [
+      "GET /api/tally-connector/status"
+    ],
+    "before/audit": [
+      "GET /api/audit-logs"
+    ],
+    "after/dashboard": [
+      "GET /api/auth/me",
+      "GET /api/dashboard",
+      "GET /api/dashboard/tally",
+      "GET /api/dashboard",
+      "GET /api/dashboard/tally"
+    ],
+    "after/customers": [
+      "GET /api/tally/companies",
+      "GET /api/tally/masters/ledgers"
+    ],
+    "after/items": [
+      "GET /api/tally/companies",
+      "GET /api/tally/masters/items"
+    ],
+    "after/enquiries": [
+      "GET /api/enquiries"
+    ],
+    "after/quotations": [
+      "GET /api/quotations"
+    ],
+    "after/orders": [
+      "GET /api/orders"
+    ],
+    "after/users": [
+      "GET /api/users",
+      "GET /api/users",
+      "GET /api/dashboard",
+      "GET /api/dashboard/tally",
+      "GET /api/auth/me",
+      "GET /api/dashboard",
+      "GET /api/dashboard/tally",
+      "GET /api/users",
+      "GET /api/users",
+      "GET /api/enquiries"
+    ],
+    "after/tally": [
+      "GET /api/tally/status",
+      "GET /api/reconciliation"
+    ],
+    "after/tally-connector": [
+      "GET /api/tally-connector/status"
+    ],
+    "after/audit": [
+      "GET /api/audit-logs"
+    ],
+    "mobile/dashboard": [
+      "GET /api/auth/me",
+      "GET /api/dashboard",
+      "GET /api/dashboard/tally",
+      "GET /api/dashboard",
+      "GET /api/dashboard/tally"
+    ],
+    "mobile/customers": [
+      "GET /api/tally/companies",
+      "GET /api/tally/masters/ledgers"
+    ],
+    "mobile/items": [
+      "GET /api/tally/companies",
+      "GET /api/tally/masters/items"
+    ],
+    "mobile/enquiries": [
+      "GET /api/enquiries"
+    ],
+    "mobile/quotations": [
+      "GET /api/quotations"
+    ],
+    "mobile/orders": [
+      "GET /api/orders"
+    ],
+    "mobile/users": [
+      "GET /api/users"
+    ],
+    "mobile/tally": [
+      "GET /api/tally/status",
+      "GET /api/reconciliation"
+    ],
+    "mobile/tally-connector": [
+      "GET /api/tally-connector/status"
+    ],
+    "mobile/audit": [
+      "GET /api/audit-logs"
+    ]
+  }
+}

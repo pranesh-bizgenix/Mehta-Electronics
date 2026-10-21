@@ -17,3 +17,4 @@ dialog{background:var(--surface);color:var(--ink);border:1px solid var(--line);b
 @media(max-width:400px){.ov-hero,.cards{grid-template-columns:1fr}.header-actions{flex-basis:100%;justify-content:flex-end}.page-heading{min-width:180px}.login-card{padding:24px}.data-pagination{gap:8px;font-size:11px}}
 /* Keep short pages anchored to the top of the workspace. */
 .content{margin:0 auto}.cards+.panel{margin-top:24px}
+@media(max-width:760px){.sidebar{box-shadow:none}.app.nav-open .sidebar{box-shadow:16px 0 60px #0003}}
