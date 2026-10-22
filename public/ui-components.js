@@ -330,4 +330,4 @@ export class AppShell {
   }
 }
 
-new AppShell();
+if ($('#theme-toggle') && $('#menu-toggle')) new AppShell();
