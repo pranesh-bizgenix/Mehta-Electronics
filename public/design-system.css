@@ -36,3 +36,15 @@ dialog.quotation-editor{width:min(1200px,96vw);max-width:96vw}
 #q-history-body pre{max-height:300px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere}
 .multiline{white-space:pre-wrap;overflow-wrap:anywhere}
 @media(max-width:640px){.q-totals{flex-direction:column;gap:8px}.q-totals strong{margin-left:0}.quotation-editor .form-grid{grid-template-columns:1fr}}
+/* CRM purchase-order review and dispatch; no connector styles or handlers. */
+dialog.sales-order-editor,dialog.sales-order-detail{width:min(1240px,96vw);max-width:96vw}
+.sales-order-editor #modal-body,.sales-order-detail #modal-body{padding:16px 24px}
+.sales-order-editor .form-grid{padding-inline:0}
+.sales-order-editor .table-wrap input{min-width:110px;width:100%}
+.sales-order-editor .table-wrap td:first-child{min-width:190px}
+.so-actions{display:flex;gap:8px;flex-wrap:wrap;margin:16px 0}
+.so-holds{border:1px solid var(--line);border-left:4px solid #c88a27;border-radius:8px;padding:16px;margin:16px 0;background:var(--hover)}
+.so-holds ul{columns:2;padding-left:20px}
+.sales-order-detail details{padding:16px 0;border-bottom:1px solid var(--line)}
+.sales-order-detail summary{cursor:pointer;font-weight:600}
+@media(max-width:640px){.so-holds ul{columns:1}.sales-order-editor #modal-body,.sales-order-detail #modal-body{padding:16px}.sales-order-editor .form-grid{grid-template-columns:1fr}}
