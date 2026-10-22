@@ -1,0 +1,20 @@
+{
+  "fixtureData": true,
+  "browserErrors": [],
+  "crmCreateVerified": true,
+  "requests": [
+    "GET /api/auth/me",
+    "GET /api/dashboard",
+    "GET /api/tally/read-companies",
+    "GET /api/tally/customers",
+    "GET /api/tally/read-companies",
+    "GET /api/tally/groups",
+    "GET /api/tally/read-companies",
+    "GET /api/tally/items",
+    "GET /api/tally/read-companies",
+    "GET /api/tally/reconciliation",
+    "POST /api/tally/crm-records",
+    "GET /api/tally/read-companies",
+    "GET /api/tally/reconciliation"
+  ]
+}

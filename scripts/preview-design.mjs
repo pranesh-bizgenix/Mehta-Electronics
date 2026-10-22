@@ -48,7 +48,7 @@ try {
       await cdp.send('Network.enable');
       await cdp.send('Network.emulateNetworkConditions', { offline: false, latency: 120, downloadThroughput: 200000, uploadThroughput: 90000, connectionType: 'cellular4g' });
     }
-    page.setDefaultTimeout(10000);
+    page.setDefaultTimeout(20000);
     page.on('pageerror', error => errors.push(`${variant}: ${error.message}`));
     let current = 'dashboard', failUsers = false, emptyEnquiries = false, delayUsers = false;
     await page.route('**/api/**', async route => {
@@ -62,6 +62,12 @@ try {
       else if (pathname === '/api/dashboard') result = dashboard;
       else if (pathname === '/api/dashboard/tally') result = tally;
       else if (pathname === '/api/tally/companies') result = { data: [company] };
+      else if (pathname === '/api/tally/read-companies') result = { data: [{...company,display_name:company.name}] };
+      else if (['/api/tally/customers','/api/tally/items'].includes(pathname)) result = {
+        data:(pathname.endsWith('items')?items:customers).map(row=>({...row,original_name:row.name,display_name:row.name,display_group:row.parent_name||'Sundry Debtors',display_phone:row.phone||null})),
+        company,pagination,financial:true,sync:{status:'stored',lastSyncAt:at,lastSuccessfulSyncAt:at},coverage:null
+      };
+      else if (pathname === '/api/tally/reconciliation') result = {data:[],company,pagination:{...pagination,total:0,pages:0},sync:{status:'stored',lastSyncAt:at,lastSuccessfulSyncAt:at},summary:{matched:3,missing_in_crm:0,missing_in_tally:0,conflict:0}};
       else if (pathname.startsWith('/api/tally/masters/')) result = { data: pathname.endsWith('items') ? items : customers.map(c => ({ ...c, parent_name: 'Sundry Debtors', phone: '9876543210', email: 'buyer@example.test', closing_balance: '125000.00' })), pagination, company, financial: true };
       else if (pathname === '/api/users') result = { data: [user, { ...user, id: 2, name: 'Priya Shah', role: 'MANAGER', email: 'priya@example.test' }, { ...user, id: 3, name: 'Rohan Desai', role: 'EXECUTIVE', status: 'INACTIVE', email: 'rohan@example.test' }] };
       else if (pathname === '/api/enquiries') result = { data: emptyEnquiries ? [] : documents, pagination };
