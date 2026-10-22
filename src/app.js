@@ -12,6 +12,7 @@ import { createConnectorStore } from './connector-store.js';
 import { importTallySession } from './tally-import.js';
 import { tallyMasterList,masterDefinition } from './tally-masters.js';
 import { overviewContext,workflowOverview,tallyOverview } from './overview.js';
+import { storedTallyRoutes } from './tally-read-routes.js';
 
 const publicDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'public');
 const JSON_LIMIT = 1024 * 1024;
@@ -148,6 +149,7 @@ function publicUser(row) {
 export function createApp({ db, config, fetchImpl = fetch, sendMailImpl = sendQuotationEmail }) {
   const connectorStore = createConnectorStore(config);
   const routes = [
+    ...storedTallyRoutes({db,config,route,json,readJson}),
     route('GET','/api/dashboard/tally','dashboard.read',async({res,user,url})=>{
       if(!config.tallyFinancialRoles.includes(user.role))throw new HttpError(403,'Tally financial overview requires an authorized financial role.');
       const context=await overviewContext(db,config,url);
@@ -370,7 +372,7 @@ export function createApp({ db, config, fetchImpl = fetch, sendMailImpl = sendQu
   const handler = async function handler(req, res) {
     try {
       const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`); const ip = req.socket.remoteAddress || '';
-      if (!url.pathname.startsWith('/api/')) return serveStatic(req,res,url.pathname);
+      if (!url.pathname.startsWith('/api/') && !url.pathname.startsWith('/tally/')) return serveStatic(req,res,url.pathname);
       res.setHeader('x-content-type-options','nosniff'); res.setHeader('x-frame-options','DENY'); res.setHeader('referrer-policy','no-referrer'); res.setHeader('content-security-policy',"default-src 'self'; style-src 'self'; script-src 'self'; connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'");
       const found = routes.map((r)=>({r,params:r.method===req.method?matchRoute(url.pathname,r.pattern):null})).find((x)=>x.params);
       if (!found) { const pathExists=routes.some((r)=>matchRoute(url.pathname,r.pattern)); throw new HttpError(pathExists?405:404,pathExists?'Method not allowed.':'Not found.'); }
