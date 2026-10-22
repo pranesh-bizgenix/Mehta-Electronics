@@ -33,6 +33,7 @@ try{
     if(pathname==='/api/auth/me')return route.fulfill({json:{user:{id:1,name:'Preview Owner',role:'OWNER',mustChangePassword:false},permissions:['*'],csrfToken:'preview-csrf'}});
     if(pathname==='/api/dashboard')return route.fulfill({status:503,json:{error:'Overview intentionally not loaded by this focused test'}});
     if(pathname==='/api/tally/read-companies')return route.fulfill({json:{data:[company]}});
+    if(['/api/crm/customers','/api/crm/items'].includes(pathname))return route.fulfill({json:{data:[],pagination:{...pagination,total:0,pages:0}}});
     if(pathname==='/api/tally/crm-records'){
       assert.equal(request.method(),'POST');assert.equal(request.headers()['x-csrf-token'],'preview-csrf');
       assert.deepEqual(request.postDataJSON(),{companyId:company.id,kind:'vendor',sourceId:'vendor-1'});
@@ -51,6 +52,7 @@ try{
   });
   await page.goto(base);await page.locator('#app:not(.hidden)').waitFor();
   await page.locator('#nav [data-view=customers]').click();
+  await page.getByRole('button',{name:'Saved Tally',exact:true}).click();
   await page.getByRole('heading',{name:'Saved Tally customers',exact:true}).waitFor();
   assert.match(await page.locator('#view').innerText(),/Café/);
   assert.equal(await page.locator('#stored-company').inputValue(),company.id);
@@ -62,6 +64,7 @@ try{
   assert.match(await page.locator('#view').innerText(),/78 imported groups/);
   await page.screenshot({path:path.join(output,'groups.png'),fullPage:true});
   await page.locator('#nav [data-view=items]').click();
+  await page.getByRole('button',{name:'Saved Tally',exact:true}).click();
   await page.locator('.stock-coverage').waitFor();
   assert.match(await page.locator('.stock-coverage').innerText(),/Stock total unavailable/);
   assert.match(await page.locator('.stock-coverage').innerText(),/1 items with value · 1 without value/);

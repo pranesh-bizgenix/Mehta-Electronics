@@ -74,6 +74,10 @@ try {
       else if (pathname === '/api/quotations') result = { data: documents.map((d,i) => ({ ...d, status: ['DRAFT','SENT','ACCEPTED'][i] })), pagination };
       else if (pathname === '/api/orders') result = { data: documents.map((d,i) => ({ ...d, status: ['CONFIRMED','PROCESSING','DISPATCHED'][i] })), pagination };
       else if (pathname === '/api/customers') result = { data: customers, pagination };
+      else if (pathname === '/api/crm/customers') result = { data: customers, pagination };
+      else if (pathname === '/api/crm/items') result = { data: items, pagination };
+      else if (pathname === '/api/crm/enquiries') result = { data: emptyEnquiries ? [] : documents, pagination };
+      else if (pathname === '/api/crm/owners') result = { data: [{id:1,name:user.name}] };
       else if (pathname === '/api/items') result = { data: items, pagination };
       else if (pathname === '/api/tally/status') result = { lastJob: { status: 'SUCCEEDED' } };
       else if (pathname === '/api/reconciliation') result = reconciliation;

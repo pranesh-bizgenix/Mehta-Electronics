@@ -1,0 +1,20 @@
+{
+  "syntheticDatabase": "mehta_crm_browser_9c9750d20f22",
+  "browserErrors": [],
+  "externalTallyCalls": 0,
+  "auditEntries": 20,
+  "checks": [
+    "customer create/edit",
+    "contact archival",
+    "Tally dues",
+    "item master and read-only stock",
+    "price list creation",
+    "customer part mapping",
+    "enquiry revision and NEW→QUOTED→WON",
+    "history",
+    "mobile overflow",
+    "role denial",
+    "CSRF denial",
+    "raw imports unchanged"
+  ]
+}
