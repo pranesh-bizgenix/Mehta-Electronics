@@ -1,0 +1,23 @@
+{
+  "fixtureDatabase": "mehta_crm_browser_ce955ee28c91",
+  "orderId": 1,
+  "sourceQuotation": 1,
+  "checks": [
+    "Approved quotation to order",
+    "Manual order creation",
+    "Original bytes retained and downloadable, including 2 MB upload",
+    "SHA256 plus PO duplicate rejection",
+    "PO/quote comparison",
+    "Independent review",
+    "Pick list and dispatch",
+    "Proof required for delivery",
+    "LR search",
+    "390px layout",
+    "Role and CSRF checks",
+    "Legacy order list includes manual orders",
+    "Raw Tally rows unchanged"
+  ],
+  "externalTallyCalls": 0,
+  "pageErrors": [],
+  "eventCount": 9
+}
