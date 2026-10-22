@@ -8,3 +8,5 @@ database/postgres/migrations/0011_crm_hard_delete_guards.sql text eol=lf
 database/postgres/migrations/0012_quotation_workflow.sql text eol=lf
 database/postgres/migrations/0013_sales_orders_dispatch.sql text eol=lf
 database/postgres/migrations/0014_dispatch_retry_guard.sql text eol=lf
+database/postgres/migrations/0015_procurement.sql text eol=lf
+database/postgres/migrations/0016_procurement_guard_fix.sql text eol=lf
