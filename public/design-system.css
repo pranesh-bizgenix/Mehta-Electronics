@@ -20,3 +20,19 @@ dialog{background:var(--surface);color:var(--ink);border:1px solid var(--line);b
 .stored-sync{display:flex;align-items:center;flex-wrap:wrap;gap:12px 24px;padding:16px;background:var(--hover);border-radius:12px;margin-bottom:24px;font-size:12px}.stored-sync small{flex-basis:100%;color:var(--muted)}.stock-coverage{display:grid;gap:8px;padding:20px;border:1px solid var(--line);border-radius:12px;margin:24px 0;background:var(--hover)}.stock-coverage.is-partial{border-left:4px solid #b08a39}.stock-coverage small{color:var(--muted)}.group-path{display:block;color:var(--muted);font-size:11px}.reconciliation-table{margin-top:24px}.missing-value{cursor:help;border-bottom:1px dotted var(--muted)}
 .content{margin:0 auto}.cards+.panel{margin-top:24px}
 @media(max-width:760px){.sidebar{box-shadow:none}.app.nav-open .sidebar{box-shadow:16px 0 60px #0003}}
+/* Quotations: shared modal remains keyboard accessible, with compact numeric columns. */
+dialog.quotation-editor{width:min(1200px,96vw);max-width:96vw}
+.quotation-editor .table-wrap input{min-width:96px;width:100%}
+.quotation-editor .table-wrap td:first-child{min-width:220px}
+.q-totals{display:flex;flex-wrap:wrap;gap:16px;padding:16px;background:var(--hover,#eaf2ee);border-radius:12px;margin:16px 0}
+.quotation-editor #modal-body{padding-inline:16px}
+.quotation-editor #modal-body>.form-grid{padding-inline:0}
+#q-totals .notice{padding:12px 16px;border:1px solid var(--line);border-radius:8px}
+.q-totals strong{margin-left:auto}
+.q-actions{display:flex;gap:8px;flex-wrap:wrap;margin:16px 0}
+.q-confirm{display:flex;align-items:start;gap:8px;margin:16px 0}
+.q-confirm input{width:auto;min-height:auto}
+#q-state-actions{display:flex;flex-wrap:wrap;gap:8px}
+#q-history-body pre{max-height:300px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere}
+.multiline{white-space:pre-wrap;overflow-wrap:anywhere}
+@media(max-width:640px){.q-totals{flex-direction:column;gap:8px}.q-totals strong{margin-left:0}.quotation-editor .form-grid{grid-template-columns:1fr}}
