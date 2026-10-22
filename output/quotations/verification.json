@@ -1,0 +1,21 @@
+{
+  "fixtureDatabase": "mehta_crm_browser_79ea71e69ef5",
+  "checks": [
+    "Editor live totals",
+    "Owner policy and cost entry",
+    "Independent manager approval",
+    "Below-floor exception",
+    "Legacy bypass blocked",
+    "PDF and print without costs",
+    "Enquiry conversion",
+    "Duplicate draft",
+    "History and audits",
+    "Role and CSRF enforcement",
+    "390px layout",
+    "Raw imports unchanged"
+  ],
+  "externalTallyCalls": 0,
+  "quotationId": 1,
+  "events": 10,
+  "pageErrors": []
+}

@@ -8,6 +8,7 @@ import {chromium} from 'playwright';
 import {crmFixture} from '../test-support/crm-module-fixture.js';
 import {createApp} from '../src/app.js';
 import {tokenDigest} from '../src/security.js';
+import {saveQuotePolicy} from '../src/quotation-workflow.js';
 const fixture=await crmFixture(),{db,config,owner,accounts,company}=fixture;
 const output=path.resolve('output/crm-modules');await fs.mkdir(output,{recursive:true});
 let browser,server,app,externalCalls=0;const errors=[];
@@ -60,6 +61,7 @@ try{
   await page.setViewportSize({width:390,height:844});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);await page.screenshot({path:path.join(output,'enquiry-mobile.png'),fullPage:true});
   const denied=await context.request.post(base+'/api/crm/items',{headers:{cookie:`crm_session=${accountToken}`,'x-csrf-token':'accounts-csrf'},data:{partCode:'Forbidden'}});assert.equal(denied.status(),403);
   const noCsrf=await context.request.post(base+'/api/crm/customers',{data:{name:'No CSRF'}});assert.equal(noCsrf.status(),403);
+  await saveQuotePolicy(db,{floorPercent:'20',marginBasis:'LINE_AND_TOTAL',sellerState:'27',letterhead:{name:'Mehta Electronics'},reason:'Compatibility test policy'},{id:owner,role:'OWNER'});
   const quoteBody={customerId,validUntil:'2026-12-31',lines:[{itemId,description:'Compatibility line',uom:'NOS',quantity:4,unitPrice:100,discountPercent:0,taxPercent:0}]};
   const quotation=await context.request.post(base+'/api/quotations',{headers:{'x-csrf-token':csrf},data:quoteBody});assert.equal(quotation.status(),201);
   const quote=(await quotation.json()).data;
