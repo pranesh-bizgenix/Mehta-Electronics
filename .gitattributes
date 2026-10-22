@@ -6,3 +6,5 @@ database/postgres/migrations/0009_crm_child_archival.sql text eol=lf
 database/postgres/migrations/0010_crm_quotation_line_archival.sql text eol=lf
 database/postgres/migrations/0011_crm_hard_delete_guards.sql text eol=lf
 database/postgres/migrations/0012_quotation_workflow.sql text eol=lf
+database/postgres/migrations/0013_sales_orders_dispatch.sql text eol=lf
+database/postgres/migrations/0014_dispatch_retry_guard.sql text eol=lf
