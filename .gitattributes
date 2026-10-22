@@ -1,0 +1,3 @@
+# Keep checksummed new migrations byte-stable across Windows and Linux checkouts.
+database/postgres/migrations/0006_stored_tally_read_layer.sql text eol=lf
+database/postgres/migrations/0007_stored_tally_audit_guards.sql text eol=lf
