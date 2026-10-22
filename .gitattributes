@@ -5,3 +5,4 @@ database/postgres/migrations/0008_crm_master_extensions.sql text eol=lf
 database/postgres/migrations/0009_crm_child_archival.sql text eol=lf
 database/postgres/migrations/0010_crm_quotation_line_archival.sql text eol=lf
 database/postgres/migrations/0011_crm_hard_delete_guards.sql text eol=lf
+database/postgres/migrations/0012_quotation_workflow.sql text eol=lf
