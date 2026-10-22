@@ -35,14 +35,17 @@ export async function writeAudit(db, { userId, entity, recordId, action, oldValu
 export async function customerView(db, id) {
   const customer = (await db.prepare(`SELECT c.*, u.name AS owner_name FROM customers c LEFT JOIN users u ON u.id=c.owner_id WHERE c.id=?`).get(id));
   if (!customer) return null;
-  customer.contacts = (await db.prepare('SELECT id,name,designation,phone,email,is_primary FROM customer_contacts WHERE customer_id=? ORDER BY is_primary DESC,id').all(id));
+  customer.contacts = (await db.prepare('SELECT id,name,designation,phone,email,is_primary FROM customer_contacts WHERE customer_id=? AND NOT is_deleted ORDER BY is_primary DESC,id').all(id));
   return customer;
 }
 
 export async function replaceContacts(db, customerId, contacts = []) {
-  (await db.prepare('DELETE FROM customer_contacts WHERE customer_id=?').run(customerId));
+  const old=await db.prepare('SELECT * FROM customer_contacts WHERE customer_id=? AND NOT is_deleted').all(customerId);
+  const actor=(await db.prepare('SELECT updated_by FROM customers WHERE id=?').get(customerId)).updated_by;
+  await db.prepare("UPDATE customer_contacts SET status='ARCHIVED',is_deleted=true,updated_at=now() WHERE customer_id=? AND NOT is_deleted").run(customerId);
+  for(const row of old)await writeAudit(db,{userId:actor,entity:'CUSTOMER_CONTACT',recordId:row.id,action:'ARCHIVE',oldValue:row,newValue:{...row,status:'ARCHIVED',is_deleted:true},reason:'Contact list revised through existing customer route'});
   const add = db.prepare(`INSERT INTO customer_contacts(customer_id,name,designation,phone,email,is_primary) VALUES(?,?,?,?,?,?)`);
-  for (const contact of contacts) (await add.run(customerId, contact.name, contact.designation || null, contact.phone || null, contact.email?.toLowerCase() || null, contact.isPrimary ? 1 : 0));
+  for (const contact of contacts) {const result=await add.run(customerId, contact.name, contact.designation || null, contact.phone || null, contact.email?.toLowerCase() || null, (contact.isPrimary ?? contact.is_primary) ? 1 : 0);await writeAudit(db,{userId:actor,entity:'CUSTOMER_CONTACT',recordId:result.insertedId,action:'CREATE',newValue:contact,reason:'Contact list revised through existing customer route'});}
 }
 
 export async function enquiryView(db, id) {
@@ -50,18 +53,18 @@ export async function enquiryView(db, id) {
     FROM enquiries e JOIN customers c ON c.id=e.customer_id LEFT JOIN users u ON u.id=e.assigned_to WHERE e.id=?`).get(id));
   if (!row) return null;
   row.lines = (await db.prepare(`SELECT l.*,i.part_code,i.uom FROM enquiry_lines l LEFT JOIN items i ON i.id=l.item_id
-    WHERE l.enquiry_id=? ORDER BY l.position,l.id`).all(id));
+    WHERE l.enquiry_id=? AND NOT l.is_deleted ORDER BY l.position,l.id`).all(id));
   return row;
 }
 
 export async function quotationView(db, id) {
   const row = (await db.prepare(`SELECT q.*,c.name AS customer_name,e.enquiry_number,
     (SELECT MAX(revision_number) FROM quotation_revisions qr WHERE qr.quotation_id=q.id) AS revision_number,
-    (SELECT email FROM customer_contacts cc WHERE cc.customer_id=c.id ORDER BY cc.is_primary DESC,cc.id LIMIT 1) AS contact_email
+    (SELECT email FROM customer_contacts cc WHERE cc.customer_id=c.id AND NOT cc.is_deleted ORDER BY cc.is_primary DESC,cc.id LIMIT 1) AS contact_email
     FROM quotations q JOIN customers c ON c.id=q.customer_id LEFT JOIN enquiries e ON e.id=q.enquiry_id WHERE q.id=?`).get(id));
   if (!row) return null;
   row.lines = (await db.prepare(`SELECT l.*,i.part_code FROM quotation_lines l LEFT JOIN items i ON i.id=l.item_id
-    WHERE l.quotation_id=? ORDER BY l.position,l.id`).all(id));
+    WHERE l.quotation_id=? AND NOT l.is_deleted ORDER BY l.position,l.id`).all(id));
   row.subtotal = row.lines.reduce((sum, line) => sum + line.quantity * line.unit_price * (1 - line.discount_percent / 100), 0);
   row.tax_total = row.lines.reduce((sum, line) => { const base=line.quantity*line.unit_price*(1-line.discount_percent/100); return sum+base*line.tax_percent/100; }, 0);
   row.total = row.subtotal + row.tax_total;
@@ -120,8 +123,8 @@ export async function detectCustomerDuplicates(db, input, excludeId = null) {
   add('c.normalized_name=?', normalizeKey(input.name));
   const phones = (input.contacts ?? []).map((x) => normalizeKey(x.phone)).filter(Boolean);
   const emails = (input.contacts ?? []).map((x) => String(x.email || '').trim().toLowerCase()).filter(Boolean);
-  if (phones.length) { conditions.push(`EXISTS(SELECT 1 FROM customer_contacts cc WHERE cc.customer_id=c.id AND REPLACE(REPLACE(REPLACE(REPLACE(cc.phone,' ',''),'-',''),'(',''),')','') IN (${phones.map(() => '?').join(',')}))`); params.push(...phones); }
-  if (emails.length) { conditions.push(`EXISTS(SELECT 1 FROM customer_contacts cc WHERE cc.customer_id=c.id AND LOWER(cc.email) IN (${emails.map(() => '?').join(',')}))`); params.push(...emails); }
+  if (phones.length) { conditions.push(`EXISTS(SELECT 1 FROM customer_contacts cc WHERE cc.customer_id=c.id AND NOT cc.is_deleted AND REPLACE(REPLACE(REPLACE(REPLACE(cc.phone,' ',''),'-',''),'(',''),')','') IN (${phones.map(() => '?').join(',')}))`); params.push(...phones); }
+  if (emails.length) { conditions.push(`EXISTS(SELECT 1 FROM customer_contacts cc WHERE cc.customer_id=c.id AND NOT cc.is_deleted AND LOWER(cc.email) IN (${emails.map(() => '?').join(',')}))`); params.push(...emails); }
   if (!conditions.length) return [];
   if (excludeId) { conditions.push('c.id<>?'); params.push(excludeId); }
   const rows = (await db.prepare(`SELECT c.id,c.customer_code,c.name,c.gstin,c.pan,c.status FROM customers c WHERE (${conditions.slice(0, excludeId ? -1 : undefined).join(' OR ')})${excludeId ? ' AND '+conditions.at(-1) : ''} LIMIT 20`).all(...params));

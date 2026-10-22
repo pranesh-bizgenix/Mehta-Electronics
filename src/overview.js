@@ -43,7 +43,7 @@ export async function workflowOverview(db) {
     (SELECT ROUND(COALESCE(SUM(l.ordered_quantity*l.unit_price*(1-l.discount_percent/100)*(1+l.tax_percent/100)),0),2)::text
       FROM sales_order_lines l JOIN sales_orders o ON o.id=l.sales_order_id WHERE o.status NOT IN ('COMPLETED','CANCELLED')) AS order_value,
     (SELECT ROUND(COALESCE(SUM(l.quantity*l.unit_price*(1-l.discount_percent/100)*(1+l.tax_percent/100)),0),2)::text
-      FROM quotation_lines l JOIN quotations q ON q.id=l.quotation_id WHERE q.status IN ('DRAFT','SENT')) AS pipeline,
+      FROM quotation_lines l JOIN quotations q ON q.id=l.quotation_id WHERE NOT l.is_deleted AND q.status IN ('DRAFT','SENT')) AS pipeline,
     (SELECT COUNT(*) FROM customers) AS customers,(SELECT COUNT(*) FROM items) AS items,
     (SELECT COUNT(*) FROM users WHERE status='ACTIVE') AS users`).get();
   const recent=await db.prepare(`SELECT entity,action,created_at,record_id FROM audit_logs

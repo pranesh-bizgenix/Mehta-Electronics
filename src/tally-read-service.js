@@ -173,24 +173,34 @@ async function reconciliationRows(db, company) {
   const ledgers = classifyLedgers(groups, await db.prepare('SELECT id,name,parent_name,gstin,phone FROM tally_ledgers WHERE company_id=?').all(company.id))
     .filter(row => ['customers','vendors'].includes(row.category)).map(row => ({ ...row, kind: row.category === 'customers' ? 'customer' : 'vendor' }));
   const tallyItems = (await db.prepare('SELECT id,name,base_unit AS uom FROM tally_stock_items WHERE company_id=?').all(company.id)).map(row => ({ ...row, kind: 'item' }));
+  const mappedCustomers=(await db.prepare(`SELECT c.id,p.tally_ledger_name AS name,c.name AS crm_name,c.gstin,
+    CASE WHEN p.status='ACTIVE' AND NOT p.is_deleted THEN c.status ELSE p.status END AS status
+    FROM crm_customer_profiles p JOIN customers c ON c.id=p.customer_id WHERE p.company_id=?`).all(company.id)).map(row=>({...row,kind:'customer'}));
+  const mappedItems=(await db.prepare(`SELECT i.id,p.tally_stock_name AS name,i.part_code::text AS crm_name,i.uom,
+    CASE WHEN p.status='ACTIVE' AND NOT p.is_deleted THEN i.status ELSE p.status END AS status
+    FROM crm_item_profiles p JOIN items i ON i.id=p.item_id WHERE p.company_id=?`).all(company.id)).map(row=>({...row,kind:'item'}));
   const parties = (await db.prepare(`SELECT p.id,p.name,p.party_role,p.customer_id,COALESCE(c.gstin,p.gstin) AS gstin,
     CASE WHEN p.status='ACTIVE' AND NOT p.is_deleted THEN COALESCE(c.status,p.status) ELSE p.status END AS status,
     (p.customer_id IS NOT NULL AND c.name IS DISTINCT FROM p.name) AS mapping_conflict
-    FROM crm_parties p LEFT JOIN customers c ON c.id=p.customer_id WHERE p.company_id=?`).all(company.id))
+    FROM crm_parties p LEFT JOIN customers c ON c.id=p.customer_id WHERE p.company_id=?
+    AND NOT EXISTS(SELECT 1 FROM crm_customer_profiles x WHERE x.customer_id=p.customer_id)`).all(company.id))
     .map(row => ({ ...row, kind: row.party_role === 'CUSTOMER' ? 'customer' : 'vendor' }));
   const legacyCustomers = await db.prepare(`SELECT c.id,c.name,c.gstin,c.status,
     (SELECT count(DISTINCT company_id)>1 FROM tally_ledgers l WHERE l.name=c.name) AS company_ambiguous
-    FROM customers c WHERE NOT EXISTS(SELECT 1 FROM crm_parties p WHERE p.customer_id=c.id)
-    AND (SELECT count(*) FROM tally_companies)=1
-    OR NOT EXISTS(SELECT 1 FROM crm_parties p WHERE p.customer_id=c.id) AND EXISTS(SELECT 1 FROM tally_ledgers l WHERE l.company_id=? AND l.name=c.name)`).all(company.id);
+    FROM customers c WHERE (NOT EXISTS(SELECT 1 FROM crm_parties p WHERE p.customer_id=c.id)
+      OR EXISTS(SELECT 1 FROM crm_customer_profiles p WHERE p.customer_id=c.id AND p.company_id IS NULL))
+    AND NOT EXISTS(SELECT 1 FROM crm_customer_profiles p WHERE p.customer_id=c.id AND p.company_id IS NOT NULL)
+    AND ((SELECT count(*) FROM tally_companies)=1 OR EXISTS(SELECT 1 FROM tally_ledgers l WHERE l.company_id=? AND l.name=c.name))`).all(company.id);
   const links = await db.prepare(`SELECT l.item_id AS id,l.tally_name AS name,i.uom,(i.part_code::text IS DISTINCT FROM l.tally_name) AS mapping_conflict,
     CASE WHEN l.status='ACTIVE' AND NOT l.is_deleted THEN i.status ELSE l.status END AS status FROM crm_tally_item_links l
-    JOIN items i ON i.id=l.item_id WHERE l.company_id=?`).all(company.id);
+    JOIN items i ON i.id=l.item_id WHERE l.company_id=? AND NOT EXISTS(SELECT 1 FROM crm_item_profiles p WHERE p.item_id=i.id)`).all(company.id);
   const legacyItems = await db.prepare(`SELECT i.id,i.part_code::text AS name,i.uom,i.status,
     (SELECT count(DISTINCT company_id)>1 FROM tally_stock_items s WHERE s.name=i.part_code::text) AS company_ambiguous
-    FROM items i WHERE NOT EXISTS(SELECT 1 FROM crm_tally_item_links l WHERE l.item_id=i.id)
+    FROM items i WHERE (NOT EXISTS(SELECT 1 FROM crm_tally_item_links l WHERE l.item_id=i.id)
+      OR EXISTS(SELECT 1 FROM crm_item_profiles p WHERE p.item_id=i.id AND p.company_id IS NULL))
+    AND NOT EXISTS(SELECT 1 FROM crm_item_profiles p WHERE p.item_id=i.id AND p.company_id IS NOT NULL)
     AND ((SELECT count(*) FROM tally_companies)=1 OR EXISTS(SELECT 1 FROM tally_stock_items s WHERE s.company_id=? AND s.name=i.part_code::text))`).all(company.id);
-  return reconcileExact([...ledgers, ...tallyItems], [...parties, ...legacyCustomers.map(row => ({ ...row, kind:'customer' })), ...links.map(row => ({ ...row, kind:'item' })), ...legacyItems.map(row => ({ ...row, kind:'item' }))]);
+  return reconcileExact([...ledgers, ...tallyItems], [...mappedCustomers,...mappedItems,...parties, ...legacyCustomers.map(row => ({ ...row, kind:'customer' })), ...links.map(row => ({ ...row, kind:'item' })), ...legacyItems.map(row => ({ ...row, kind:'item' }))]);
 }
 export async function readReconciliation(db, url) {
   const meta = pagination(url), company = await readCompany(db, url), sync = await readSync(db, company);

@@ -72,6 +72,7 @@ test('isolated PostgreSQL read layer: coverage, classification, audited CRM-only
     `);
     await db.sql.unsafe(await fs.readFile(new URL('../database/postgres/migrations/0006_stored_tally_read_layer.sql',import.meta.url),'utf8'));
     await db.sql.unsafe(await fs.readFile(new URL('../database/postgres/migrations/0007_stored_tally_audit_guards.sql',import.meta.url),'utf8'));
+    await db.sql.unsafe(await fs.readFile(new URL('../database/postgres/migrations/0008_crm_master_extensions.sql',import.meta.url),'utf8'));
     const company=crypto.randomUUID(),other=crypto.randomUUID();
     await db.sql`INSERT INTO tally_companies VALUES(${company},'Mehta (from 1-Apr-23) (from 1-Apr-23)'),(${other},'Other')`;
     await db.sql`INSERT INTO tally_groups(id,company_id,name,parent_name) VALUES('g1',${company},'Sundry Debtors','Primary'),('g2',${company},'Retail','Sundry Debtors'),('g3',${company},'Sundry Creditors','Primary')`;

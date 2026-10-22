@@ -1,0 +1,81 @@
+import assert from 'node:assert/strict';
+import {test} from 'node:test';
+import fs from 'node:fs/promises';
+import crypto from 'node:crypto';
+import {getConfig} from '../src/config.js';
+import {connectPostgres,createDatabase} from '../src/postgres.js';
+import {decimal,validateTax,validDate,saveCustomer,customerDetail,saveItem,itemDetail,savePartMapping,savePriceList,saveEnquiry,changeEnquiryStatus,listRecords,customerHistory,enquiryTransitions} from '../src/crm-modules.js';
+import {crmModuleRoutes} from '../src/crm-module-routes.js';
+import {readReconciliation} from '../src/tally-read-service.js';
+
+test('CRM validation preserves exact decimals and rejects invalid values',()=>{
+  assert.equal(decimal('99999999999999.123456','Price'),'99999999999999.123456');
+  for(const v of ['-1','NaN','Infinity','1e4','1.0000001',''])assert.throws(()=>decimal(v,'Price'),{status:422});
+  assert.throws(()=>decimal('0','Quantity',{positive:true}),{status:422});
+  assert.throws(()=>decimal('100.000001','Discount',{percent:true}),{status:422});
+  assert.equal(validDate('2026-02-30'),false);assert.equal(validDate('2028-02-29'),true);
+  assert.deepEqual(validateTax('27ABCDE1234F1Z5','27'),{gstin:'27ABCDE1234F1Z5',stateCode:'27'});
+  assert.throws(()=>validateTax('27ABCDE1234F1Z5','24'),{status:422});
+  assert.throws(()=>validateTax('invalid','27'),{status:422});
+  assert.deepEqual(enquiryTransitions.QUOTED,['WON','LOST','CANCELLED']);
+});
+test('all module routes declare existing role permissions',()=>{
+  const routes=crmModuleRoutes({db:{},config:{tallyFinancialRoles:['OWNER']},route:(method,pattern,permission,handler)=>({method,pattern,permission,handler}),json:()=>{},readJson:()=>{}});
+  assert.ok(routes.every(route=>route.permission));
+  assert.equal(routes.find(r=>r.method==='POST'&&r.pattern==='/api/crm/items').permission,'items.create');
+  assert.equal(routes.find(r=>r.method==='POST'&&r.pattern==='/api/crm/price-lists').permission,'items.update');
+  assert.equal(routes.find(r=>r.method==='PATCH'&&r.pattern.endsWith('/status')).permission,'enquiries.update');
+});
+test('PostgreSQL modules: CRM CRUD, read-only Tally facts, soft archives, pricing, history, audit and transitions',{skip:!process.env.RUN_CRM_MODULE_DB_TEST},async()=>{
+  const url=new URL(process.env.TEST_DATABASE_URL||getConfig().databaseUrl),admin=connectPostgres(url.toString());
+  const name=`mehta_crm_review_${crypto.randomBytes(6).toString('hex')}`;let db;
+  try{
+    await admin.unsafe(`CREATE DATABASE "${name}"`);url.pathname=`/${name}`;db=createDatabase({databaseUrl:url.toString()});
+    // Existing CRM migration unchanged, plus synthetic imported-source contracts only.
+    await db.sql.unsafe(await fs.readFile(new URL('../database/postgres/migrations/0004_crm_core.sql',import.meta.url),'utf8'));
+    await db.sql.unsafe(`CREATE TABLE tally_companies(id uuid PRIMARY KEY,name text);CREATE TABLE tally_groups(id text,company_id uuid,name text,parent_name text);CREATE TABLE tally_ledgers(id text,company_id uuid,name text,parent_name text,phone text,gstin text,closing_balance numeric(18,2),dr_cr text,fetched_at timestamptz);CREATE TABLE tally_stock_items(id text,company_id uuid,name text,parent_name text,base_unit text,closing_quantity_text text,closing_rate_text text,closing_value numeric(18,2),fetched_at timestamptz);`);
+    for(const file of ['0006_stored_tally_read_layer.sql','0007_stored_tally_audit_guards.sql','0008_crm_master_extensions.sql','0009_crm_child_archival.sql','0010_crm_quotation_line_archival.sql','0011_crm_hard_delete_guards.sql'])await db.sql.unsafe(await fs.readFile(new URL(`../database/postgres/migrations/${file}`,import.meta.url),'utf8'));
+    await db.sql.unsafe('CREATE TABLE tally_sync_jobs(id uuid,company_name text,status text,started_at timestamptz,completed_at timestamptz,last_progress_at timestamptz,message text)');
+    const userId=(await db.sql`INSERT INTO users(name,email,role,password_hash) VALUES('Review Owner','review@example.test','OWNER','not-a-login') RETURNING id`)[0].id,user={id:userId};
+    const company=crypto.randomUUID();
+    await db.sql`INSERT INTO tally_companies VALUES(${company},'Synthetic company')`;
+    await db.sql`INSERT INTO tally_groups VALUES('g1',${company},'Retail','Sundry Debtors')`;
+    await db.sql`INSERT INTO tally_ledgers(id,company_id,name,parent_name,closing_balance,dr_cr,fetched_at) VALUES('l1',${company},'Exact customer','Retail',-123.45,'Cr',now())`;
+    await db.sql`INSERT INTO tally_stock_items VALUES('s1',${company},'Exact stock','Switchgear','NOS','-2 NOS','125 / NOS',NULL,now())`;
+    const before=await db.sql`SELECT (SELECT jsonb_agg(t) FROM tally_ledgers t) AS ledgers,(SELECT jsonb_agg(t) FROM tally_stock_items t) AS stock`;
+    const customer=await saveCustomer(db,null,{name:'CRM Customer',gstin:'27ABCDE1234F1Z5',stateCode:'27',creditLimit:'10000.123456',creditDays:30,paymentTerms:'Net 30',companyId:company,tallyName:'Exact customer',contacts:[{name:'Buyer',email:'buyer@example.test',isPrimary:true}]},user);
+    assert.equal(customer.contacts.length,1);assert.equal(customer.profile.payment_terms,'Net 30');
+    const publicCustomer=await customerDetail(db,customer.id);assert.equal(Object.hasOwn(publicCustomer.dues,'closingBalance'),false);
+    const financial=await customerDetail(db,customer.id,{financial:true});assert.equal(financial.dues.closingBalance,'-123.45');assert.equal(financial.tally.linked,true);
+    await assert.rejects(saveCustomer(db,customer.id,{name:'Unaudited'},user),{status:422});
+    await assert.rejects(saveCustomer(db,customer.id,{reason:'Bad contact',contacts:[{name:'Bad',email:'not-an-email'}]},user),{status:422});
+    await saveCustomer(db,customer.id,{reason:'Buyer left company',contacts:[]},user);
+    assert.equal((await db.sql`SELECT status FROM customer_contacts WHERE customer_id=${customer.id}`)[0].status,'ARCHIVED');
+    assert.equal((await customerDetail(db,customer.id)).contacts.length,0);
+    const item=await saveItem(db,null,{partCode:'CRM-PART',description:'CRM part',uom:'NOS',packSize:2,moq:4,listPrice:'99.123456',discountPercent:5,companyId:company,tallyName:'Exact stock'},user);
+    assert.equal(item.profile.list_price,'99.123456');assert.equal(item.stock.closing_quantity_text,'-2 NOS');assert.equal(Object.hasOwn(item.stock,'closing_value'),false);
+    assert.equal((await itemDetail(db,item.id,{financial:true})).stock.closing_value,null);
+    assert.equal((await readReconciliation(db,new URL(`http://test/?companyId=${company}`))).summary.matched,2);
+    const mapping=await savePartMapping(db,customer.id,null,{itemId:item.id,customerPartNumber:'BUYER-001'},user);
+    await savePartMapping(db,customer.id,mapping.id,{itemId:item.id,customerPartNumber:'BUYER-001',status:'ARCHIVED',reason:'Part superseded'},user);
+    assert.equal((await db.sql`SELECT is_deleted FROM crm_customer_part_mappings WHERE id=${mapping.id}`)[0].is_deleted,true);
+    const price=await savePriceList(db,null,{name:'Review prices',effectiveFrom:'2026-01-01',effectiveTo:'2026-12-31',discountPercent:2,entries:[{itemId:item.id,minQuantity:4,unitPrice:'100.123456',discountPercent:3}]},user);
+    assert.equal(price.entries[0].unit_price,'100.123456');
+    await savePriceList(db,price.id,{name:'Review prices',effectiveFrom:'2026-01-01',effectiveTo:'2026-12-31',entries:[],reason:'Withdraw tier'},user);
+    assert.equal((await db.sql`SELECT status FROM crm_price_list_items WHERE price_list_id=${price.id}`)[0].status,'ARCHIVED');
+    let enquiry=await saveEnquiry(db,null,{customerId:customer.id,subject:'New requirement',source:'Email',expectedBy:'2026-11-01',ownerId:userId,lines:[{itemId:item.id,quantity:4}]},user);
+    enquiry=await saveEnquiry(db,enquiry.id,{customerId:customer.id,subject:'Updated requirement',source:'Email',ownerId:userId,reason:'Quantity increased',lines:[{itemId:item.id,quantity:8}]},user);
+    assert.equal(enquiry.lines.length,1);assert.equal(enquiry.lines[0].quantity,8);
+    assert.equal((await db.sql`SELECT count(*) AS n FROM enquiry_lines WHERE enquiry_id=${enquiry.id}`)[0].n,2);
+    await assert.rejects(changeEnquiryStatus(db,enquiry.id,{status:'WON',reason:'Invalid jump'},user),{status:409});
+    await changeEnquiryStatus(db,enquiry.id,{status:'QUOTED',reason:'Quotation prepared'},user);
+    await changeEnquiryStatus(db,enquiry.id,{status:'WON',reason:'Customer accepted'},user);
+    assert.equal((await listRecords(db,'enquiries',new URL(`http://test/?status=WON&ownerId=${userId}&source=Email`))).pagination.total,1);
+    assert.equal((await customerHistory(db,customer.id,'enquiries')).data.length,1);
+    assert.equal((await customerHistory(db,customer.id,'invoices')).available,false);
+    assert.ok((await db.sql`SELECT count(*) AS n FROM audit_logs`)[0].n>=15);
+    const after=await db.sql`SELECT (SELECT jsonb_agg(t) FROM tally_ledgers t) AS ledgers,(SELECT jsonb_agg(t) FROM tally_stock_items t) AS stock`;
+    assert.deepEqual(after,before);
+    console.log(`Retained synthetic CRM test database: ${name}`);
+  }finally{await db?.close();await admin.end();}
+});
