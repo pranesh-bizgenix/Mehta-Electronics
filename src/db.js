@@ -104,10 +104,10 @@ async function backfillDocumentRevisions(db) {
 
 export async function salesOrderView(db, id) {
   const row = (await db.prepare(`SELECT o.*,c.name AS customer_name,q.quotation_number
-    FROM sales_orders o JOIN customers c ON c.id=o.customer_id JOIN quotations q ON q.id=o.quotation_id WHERE o.id=?`).get(id));
+    FROM sales_orders o JOIN customers c ON c.id=o.customer_id LEFT JOIN quotations q ON q.id=o.quotation_id WHERE o.id=?`).get(id));
   if (!row) return null;
   row.lines = (await db.prepare(`SELECT l.*,i.part_code FROM sales_order_lines l LEFT JOIN items i ON i.id=l.item_id
-    WHERE l.sales_order_id=? ORDER BY l.position,l.id`).all(id));
+    WHERE l.sales_order_id=? AND NOT l.is_deleted ORDER BY l.position,l.id`).all(id));
   row.subtotal = row.lines.reduce((sum,line)=>sum+line.ordered_quantity*line.unit_price*(1-line.discount_percent/100),0);
   row.tax_total = row.lines.reduce((sum,line)=>{const base=line.ordered_quantity*line.unit_price*(1-line.discount_percent/100);return sum+base*line.tax_percent/100;},0);
   row.total = row.subtotal + row.tax_total;
