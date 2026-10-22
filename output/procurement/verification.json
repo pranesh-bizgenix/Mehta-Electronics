@@ -1,0 +1,26 @@
+{
+  "fixtureDatabase": "mehta_crm_browser_9ad8e54410fe",
+  "sourceSalesOrder": 1,
+  "supplierPoId": 1,
+  "checks": [
+    "Vendor create",
+    "Sales order to purchase request",
+    "RFQ vendor selection and replies",
+    "Side-by-side prices",
+    "Winner selection",
+    "Supplier PO draft and independent approval",
+    "Generic XLSX download; Connectwell template pending",
+    "Issue PO",
+    "Partial GRN and damage/shortage",
+    "Original bytes retained",
+    "Manual transcription confirmation",
+    "Customer PO vs acceptance and 10% margin alert",
+    "Independent document review",
+    "Role and CSRF checks",
+    "390px layout",
+    "Raw imports unchanged"
+  ],
+  "externalTallyCalls": 0,
+  "pageErrors": [],
+  "eventCount": 18
+}
