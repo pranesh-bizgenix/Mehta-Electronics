@@ -48,3 +48,16 @@ dialog.sales-order-editor,dialog.sales-order-detail{width:min(1240px,96vw);max-w
 .sales-order-detail details{padding:16px 0;border-bottom:1px solid var(--line)}
 .sales-order-detail summary{cursor:pointer;font-weight:600}
 @media(max-width:640px){.so-holds ul{columns:1}.sales-order-editor #modal-body,.sales-order-detail #modal-body{padding:16px}.sales-order-editor .form-grid{grid-template-columns:1fr}}
+/* Purchasing screens only; original supplier files stay in authenticated viewers. */
+dialog.procurement-editor{width:min(1280px,96vw);max-width:96vw}
+.procurement-editor #modal-body{padding:16px 24px}
+.procurement-editor .form-grid{padding-inline:0}
+.procurement-editor .table-wrap input{min-width:96px;width:100%}
+.procurement-editor .table-wrap td:first-child{min-width:180px}
+.pur-choice{display:flex;gap:8px;align-items:center;padding:8px 0}
+.pur-choice input{width:auto;min-height:auto}
+.pur-document-grid{display:grid;grid-template-columns:minmax(260px,.7fr) minmax(0,1fr);gap:24px;align-items:start}
+.pur-document-grid iframe{width:100%;height:650px;border:1px solid var(--line);border-radius:12px;background:white}
+.pur-document-grid section{min-width:0}
+@media(max-width:900px){.pur-document-grid{grid-template-columns:1fr}.pur-document-grid iframe{height:360px}}
+@media(max-width:640px){.procurement-editor #modal-body{padding:16px}.procurement-editor .form-grid{grid-template-columns:1fr}.ui-tabs{overflow-x:auto;white-space:nowrap}}

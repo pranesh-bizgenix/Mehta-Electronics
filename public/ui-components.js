@@ -20,6 +20,7 @@ const descriptions = {
   enquiries: 'Turn incoming requirements into your next opportunity.',
   quotations: 'Clear proposals. Confident conversations.',
   orders: 'Every commitment, from confirmation to completion.',
+  purchasing: 'Vendor offers, purchasing, receipts and supplier documents.',
   users: 'Your team, with the right access.',
   tally: 'Review imported records and reconciliation.',
   'tally-connector': 'Connection status and existing connector controls.',
@@ -40,7 +41,7 @@ export class Sidebar {
       'tally-connector': 'M8 2v6 M16 2v6 M5 8h14v3a7 7 0 0 1-14 0z M12 18v4',
       audit: 'M9 3H5v19h15V3h-4 M9 2h7v4H9z M8 11h8 M8 15h8 M8 19h5'
     };
-    const groups = { dashboard: 'Workspace', customers: 'Sales & relationships', users: 'Administration', tally: 'Tally · Read only' };
+    const groups = { dashboard: 'Workspace', customers: 'Sales & relationships', purchasing: 'Purchasing & receiving', users: 'Administration', tally: 'Tally · Read only' };
     $$('#nav button[data-view]').forEach(item => {
       const key = item.dataset.view;
       item.setAttribute('aria-label', item.textContent.trim());
