@@ -18,6 +18,7 @@ import { quotationWorkflowRoutes } from './quotation-workflow-routes.js';
 import { managedQuote,quoteDetail,saveQuote,quoteAction,emailWorkflowQuote,legacyQuoteView,quoteForDocument } from './quotation-workflow.js';
 import { quotationPdf } from './quotation-document.js';
 import { salesOrderRoutes } from './sales-order-routes.js';
+import { procurementRoutes } from './procurement-routes.js';
 import { managedOrder,orderDetail,orderAction,saveOrder,orderQuoteSource,legacyOrderDetail } from './sales-orders.js';
 
 const publicDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'public');
@@ -158,6 +159,7 @@ export function createApp({ db, config, fetchImpl = fetch, sendMailImpl = sendQu
     ...crmModuleRoutes({db,config,route,json,readJson}),
     ...quotationWorkflowRoutes({db,config,route,json,readJson}),
     ...salesOrderRoutes({db,route,json,readJson}),
+    ...procurementRoutes({db,route,json,readJson}),
     ...storedTallyRoutes({db,config,route,json,readJson}),
     route('GET','/api/dashboard/tally','dashboard.read',async({res,user,url})=>{
       if(!config.tallyFinancialRoles.includes(user.role))throw new HttpError(403,'Tally financial overview requires an authorized financial role.');
