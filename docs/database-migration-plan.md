@@ -16,8 +16,8 @@ Run `npm.cmd run db:backup -- ./data/backups/crm.dump`. The script uses `pg_dump
 
 Restore an archive into a separate empty PostgreSQL database using `pg_restore --exit-on-error --no-owner --no-acl --dbname=<target> <archive>`. Keep the current database available, verify the restored records and application behavior, then switch `DATABASE_URL` and restart the server. Do not restore over a running CRM database.
 
-`npm.cmd run db:verify` restores a complete archive into a disposable database, applies migrations there, and checks business-table counts before deleting the copy. The connecting role needs `CREATEDB` permission.
+`node scripts/verify-migrations-copy.mjs` (`db:verify`) checks, read-only, that the checksums recorded in the database match the migration files and lists pending migrations, then applies every migration into a throwaway `test_` schema in the same database and drops it. No second database is created.
 
-`npm.cmd test` verifies restore into an isolated database, migration idempotence and checksum drift, failed-migration rollback, concurrent transaction isolation, immutable revisions, permissions, and CRM workflows. Tests use `TEST_DATABASE_URL` or the configured `DATABASE_URL` only to provision disposable databases; the connecting role needs `CREATEDB` permission.
+`npm.cmd test` verifies backup/restore of an isolated test schema, migration idempotence and checksum drift, failed-migration rollback, concurrent transaction isolation, immutable revisions, permissions, and CRM workflows. Tests use `TEST_DATABASE_URL` or the configured `DATABASE_URL` only to provision disposable databases; the connecting role needs `CREATEDB` permission.
 
 Numeric database columns use `NUMERIC(20,6)`; API arithmetic still uses JavaScript numbers. Changing financial rounding semantics remains separate work.

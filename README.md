@@ -63,7 +63,7 @@ npm run lint
 npm run build
 ```
 
-Tests create and drop isolated PostgreSQL databases using `TEST_DATABASE_URL` (or `DATABASE_URL` when unset). The test connection needs `CREATEDB` permission. They do not write test records into the configured CRM database. PostgreSQL client tools are required for the backup/restore test; set `PG_BIN` if they are not on PATH. Windows installations under Program Files are detected automatically.
+Tests never create databases. Each run creates a uniquely named `test_<random>` schema inside the single database in `DATABASE_URL`, applies migrations into it, and drops it in a `finally` block; relations of the real `public` schema are shadowed so tests cannot read or write application data. The database user needs permission to create schemas. PostgreSQL client tools are required for the backup/restore test (it dumps and restores only its own test schema); set `PG_BIN` if they are not on PATH.
 
 Create a PostgreSQL archive with `npm.cmd run db:backup -- ./data/backups/crm.dump`. Existing destinations are never overwritten. Restore into a separate empty database with `pg_restore --exit-on-error --no-owner --no-acl --dbname=<target> <archive>`, then verify it before switching `DATABASE_URL`. See `docs/database-migration-plan.md`.
 

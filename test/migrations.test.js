@@ -2,14 +2,14 @@ import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
 import { connectPostgres, createDatabase } from '../src/postgres.js';
 import { applyMigrations } from '../src/migrations.js';
-import { temporaryDatabase } from '../test-support/postgres.js';
+import { temporarySchema } from '../test-support/postgres.js';
 
 describe('PostgreSQL migrations', () => {
   test('requires PostgreSQL configuration without a storage fallback', () => {
     assert.throws(() => createDatabase({ databaseUrl: '' }), /DATABASE_URL is required/);
   });
   test('applies once, detects edits, rolls back failures, and preserves rows', async () => {
-    const temporary = await temporaryDatabase();
+    const temporary = await temporarySchema('migrations');
     const sql = connectPostgres(temporary.databaseUrl);
     const baseline = [{ name: '0001_probe.sql', sql: 'CREATE TABLE probe(id integer PRIMARY KEY, value text); INSERT INTO probe VALUES(1,\'preserved\');' }];
     try {
@@ -25,7 +25,7 @@ describe('PostgreSQL migrations', () => {
   });
 
   test('keeps concurrent request transactions isolated and rolls back on connection release', async () => {
-    const temporary = await temporaryDatabase();
+    const temporary = await temporarySchema('migrations');
     const db = createDatabase(temporary);
     try {
       await db.exec('CREATE TABLE probe(id integer PRIMARY KEY)');
