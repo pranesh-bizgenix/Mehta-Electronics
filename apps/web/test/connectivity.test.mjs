@@ -32,5 +32,5 @@ after(async () => {
 test('existing GET /api/auth/me endpoint returns its documented unauthenticated response', async () => {
   const response = await fetch(`${baseUrl}/api/auth/me`);
   assert.equal(response.status, 401);
-  assert.deepEqual(await response.json(), { error: 'Authentication required.' });
+  assert.deepEqual(await response.json(), { error: 'Authentication required.', code: 'UNAUTHENTICATED' });
 });

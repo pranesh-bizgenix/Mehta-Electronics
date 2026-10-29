@@ -7,6 +7,9 @@ import { getConfig } from '../src/config.js';
 import { assembleChunkFields } from '../src/connector-store.js';
 import { openDatabase } from '../src/db.js';
 import { temporaryDatabase } from '../test-support/postgres.js';
+import { mfaHelper, TEST_ENCRYPTION_KEY } from '../test-support/mfa.js';
+
+const mfa = mfaHelper();
 
 let db, server, base, app, temporary;
 const owner = { cookie: '', csrf: '' };
@@ -57,16 +60,17 @@ async function login(email,password,target) {
   const {response,data}=await request('/api/auth/login',{method:'POST',body:{email,password}});
   assert.equal(response.status,200);
   target.cookie=(await response.headers.get('set-cookie')).split(';')[0];target.csrf=data.csrfToken;
+  await mfa.complete(request,target,email,data);
   return data;
 }
 
 before(async()=>{
   temporary=await temporaryDatabase();
-  const config=getConfig({databaseUrl:temporary.databaseUrl,seedOwnerEmail:'owner@test.local',seedOwnerPassword:'OwnerPass123!',tallyUrl:'http://tally.test',tallyMaxRetries:2,tallyTimeoutMs:1000});
+  const config=getConfig({databaseUrl:temporary.databaseUrl,seedOwnerEmail:'owner@test.local',seedOwnerPassword:'OwnerPass123!',tallyUrl:'http://tally.test',tallyMaxRetries:2,tallyTimeoutMs:1000,appEncryptionKey:TEST_ENCRYPTION_KEY});
   db=(await openDatabase(config));
   const fetchImpl=async(_url,options)=>{assert.match(options.body,/<TALLYREQUEST>Export<\/TALLYREQUEST>/);assert.doesNotMatch(options.body,/Import|Voucher|Create/i);tallyCall+=1;return new Response(tallyCall%2===1?customersXml:itemsXml,{status:200});};
   const sendMailImpl=async(_config,payload)=>{sentMail.push(payload);return {messageId:'test-message'}};
-  app=createApp({db,config,fetchImpl,sendMailImpl});server=http.createServer(app);await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));base=`http://127.0.0.1:${server.address().port}`;
+  app=createApp({db,config,fetchImpl,sendMailImpl,clock:mfa.clock});server=http.createServer(app);await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));base=`http://127.0.0.1:${server.address().port}`;
   await login('owner@test.local','OwnerPass123!',owner);
 });
 after(async()=>{if(server)await new Promise(resolve=>server.close(resolve));if(app)await app.close();if(db)await db.close();if(temporary)await temporary.close()});
