@@ -4,11 +4,11 @@ All application persistence uses `DATABASE_URL`. Run `npm.cmd run db:migrate:pos
 
 Migrations live in `database/postgres/migrations/`. Files must have contiguous four-digit prefixes. The runner holds a PostgreSQL advisory lock and applies pending files and their ledger records in one transaction. Failures roll back the batch. `mehta_schema_migrations` stores names, SHA-256 checksums, and application times. Unknown migrations and checksum changes stop startup. Add new files for schema changes.
 
-Migrations 0001–0003 support remote connectors. Migration 0004 adds CRM users, sessions, masters, documents, revisions, direct Tally jobs, and audits. Direct sync jobs use `crm_tally_sync_jobs` to preserve the separate UUID-based connector job contract. The database role needs schema-creation permissions and access to the `citext` extension.
+Migrations 0001–0003 support remote connectors. Migration 0004 adds CRM users, sessions, masters, documents, revisions, direct Tally jobs, and audits. Migrations 0017–0020 add customer-PO normalization, target-domain persistence structures, integrity guards, and human-approval checks for automation email sends. Direct sync jobs use `crm_tally_sync_jobs` to preserve the separate UUID-based connector job contract. The database role needs schema-creation permissions and access to the `citext` extension.
 
 ## Local conversion on 2026-10-19
 
-The existing local records were copied into PostgreSQL in one transaction with primary keys, password hashes, session tokens, relationships, audit entries, and timestamps preserved. All 17 CRM table row counts were checked. Imported nonempty tables contained 1 user, 2 sessions, 4 direct Tally sync jobs, and 14 audits. Identity sequences were advanced after explicit ID insertion. The original database and a consistent backup remain under the ignored `data/` directory for recovery; the application no longer reads them.
+The existing local records were copied into PostgreSQL in one transaction with primary keys, password hashes, session tokens, relationships, audit entries, and timestamps preserved. All 17 CRM table row counts were checked at that conversion. Identity sequences were advanced after explicit ID insertion. The application no longer reads SQLite. The SQLite database and sidecars were subsequently removed at the user's request; PostgreSQL recovery archives remain in `data/backups/`.
 
 ## Backup and restore
 

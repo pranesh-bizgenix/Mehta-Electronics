@@ -10,3 +10,11 @@ database/postgres/migrations/0013_sales_orders_dispatch.sql text eol=lf
 database/postgres/migrations/0014_dispatch_retry_guard.sql text eol=lf
 database/postgres/migrations/0015_procurement.sql text eol=lf
 database/postgres/migrations/0016_procurement_guard_fix.sql text eol=lf
+# 0017-0020 were applied locally from CRLF bytes; keep those exact bytes on every checkout.
+database/postgres/migrations/0017_customer_po_normalization.sql -text
+database/postgres/migrations/0018_target_domain_schema.sql -text
+database/postgres/migrations/0019_target_schema_integrity.sql -text
+database/postgres/migrations/0020_automation_approval_guards.sql -text
+# Migrations from 0021 onward are LF-only.
+database/postgres/migrations/002[1-9]_*.sql text eol=lf
+database/postgres/migrations/00[3-9][0-9]_*.sql text eol=lf

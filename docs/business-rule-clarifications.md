@@ -22,6 +22,19 @@ Record each answer with the decision maker, approval date, effective date, affec
 | Receipt allocation | Receivables summary calls for receipt allocation and statement imports | Source of receipt truth, reference matching, partial/multiple allocation, reversals, duplicates, unapplied cash and reconciliation | Do not allocate or mark any balance paid automatically |
 | Tally posting | Current connector is read-only; Tally is described as statutory accounting system of record | Tally version, deployment, company, authorized write path/API, document ownership, payload contract, idempotency keys, duplicate/uncertain outcomes, reconciliation and operator rights | Keep the connector read-only; a request/timeout is never evidence of a successful posting |
 
+## October 23, 2026 meeting evidence
+
+The supplied meeting transcript adds client statements, but does not resolve the policies above:
+
+- **Confirmed:** generated outbound customer emails require employee approval before sending. If required CRM information is missing or ambiguous, ask the customer for clarification instead of sending an unsupported answer.
+- **Confirmed:** customers may have multiple POs/orders, and partial billing/fulfilment status is important.
+- **Confirmed request, details pending:** customer-specific pricing, three pricing structures, pricing-list import, PO extraction, selected customer/order/invoice response workflows, follow-up reminders, warranty/customer-support handling, and salesperson activity metrics.
+- **Confirmed presentation rule:** do not expose internal list-price/discount details in customer-facing quotations; show the agreed customer-facing price and fields.
+- **Explicitly excluded in the discussed scope:** bank-email automation.
+- **Not approved as a write contract:** two-way Tally synchronization, invoice/voucher posting, payment/payable synchronization, and broad accounting data changes. The transcript mentions these capabilities but does not define ownership, supported APIs, authorization, idempotency, reversal, or reconciliation behavior. The connector remains read-only.
+
+These statements are classified as meeting evidence, not as a substitute for the missing proposal PDF or 164-row requirement matrix. Do not encode unspecified thresholds, pricing precedence, bank/accounting rules, or Tally write behavior as if approved.
+
 ## Additional blocking inputs
 
 - Approved proposal PDF and exact 164-row response matrix, including original IDs and wording.

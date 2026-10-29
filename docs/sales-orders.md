@@ -69,6 +69,8 @@ Migration `0013_sales_orders_dispatch.sql` makes the existing **CRM** `sales_ord
 
 Migration `0014_dispatch_retry_guard.sql` adds the unique retry-key index on dispatch audit events. Both migrations are new; earlier migrations and raw/imported tables are unchanged. Managed order writes are guarded against bypass through older status routes. Existing unmanaged historical routes retain their behavior. Legacy order list/detail readers include manual orders and preserve their response field aliases and stored rounded totals.
 
+Migration `0017_customer_po_normalization.sql` adds canonical party/role and part identity mappings, normalized customer PO headers/lines/schedules, and immutable PO versions. New managed-order saves write the normalized PO and lines in the same transaction as the existing order/workflow records; existing API response shapes and legacy order tables remain in place. Existing records are not deleted or rewritten by this migration. The migration and write path are covered by the isolated PostgreSQL sales-order test; the configured local database will apply the new migration at its next normal startup.
+
 | Endpoint | Purpose |
 | --- | --- |
 | `GET /api/crm/order-quotes/:id` | Eligible quotation source |

@@ -16,6 +16,12 @@ test('sales orders and dispatch enforce review, retain originals, exact comparis
  try{
  const raw=await db.sql`SELECT (SELECT jsonb_agg(t) FROM tally_ledgers t) AS ledgers,(SELECT jsonb_agg(t) FROM tally_stock_items t) AS stock`;
  let o=await saveOrder(db,null,body,executive);assert.equal(o.total,'1180.00');assert.ok(o.verification.flags.includes('MISSING_PO_FILE'));assert.equal(o.verification.pricing,undefined);assert.equal(o.verification.credit.exposure,undefined);
+ const normalizedPo=await db.prepare('SELECT p.legal_name,po.po_number,po.source_total::text AS source_total,po.calculated_total::text AS calculated_total,po.version FROM sales_orders o JOIN customer_pos po ON po.id=o.customer_po_id JOIN parties p ON p.id=po.customer_party_id WHERE o.id=?').get(o.id);
+ assert.equal(normalizedPo.legal_name,'Quotation Customer');assert.equal(normalizedPo.po_number,body.poNumber);assert.equal(normalizedPo.source_total,'1180.000000');assert.equal(normalizedPo.calculated_total,'1180.000000');assert.equal(normalizedPo.version,1);
+ const normalizedLine=await db.prepare("SELECT p.original_part_number,p.quantity::text AS quantity,p.uom,p.legacy_sales_order_line_id FROM customer_po_lines p WHERE p.customer_po_id=(SELECT customer_po_id FROM sales_orders WHERE id=?) AND p.status='ACTIVE'").get(o.id);
+ assert.equal(normalizedLine.original_part_number,body.lines[0].partCode);assert.equal(normalizedLine.quantity,'10.000000');assert.equal(normalizedLine.uom,'NOS');assert.ok(normalizedLine.legacy_sales_order_line_id);
+ assert.equal((await db.prepare("SELECT count(*) AS n FROM party_roles r JOIN party_external_mappings m ON m.party_id=r.party_id WHERE r.role='CUSTOMER' AND m.source_system='CRM' AND m.entity_type='CUSTOMER' AND m.external_id=?").get(String(customer.id))).n,1);
+ assert.equal((await db.prepare('SELECT count(*) AS n FROM customer_po_versions WHERE customer_po_id=(SELECT customer_po_id FROM sales_orders WHERE id=?)').get(o.id)).n,1);
  await assert.rejects(dispatchOrder(db,o.id,{requestKey:crypto.randomUUID(),lines:[{lineId:o.lines[0].id,quantity:'1'}],version:o.version,reason:'Skip approval'},manager),{status:409});
  await assert.rejects(saveOrder(db,null,body,executive),{status:409});
  await assert.rejects(orderAction(db,o.id,{action:'APPROVE',version:o.version,reason:'Skip verification'},manager),{status:409});

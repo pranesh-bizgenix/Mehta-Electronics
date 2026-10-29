@@ -4,6 +4,7 @@ import {quoteDetail,quoteForDocument,quotePolicy,costAccess} from './quotation-w
 import {calculateQuotation,scaled,money} from '../public/quotation-math.js';
 import {hasPermission} from './rbac.js';
 import {writeAudit} from './db.js';
+import {normalizeKey} from './security.js';
 
 const fail=(status,message)=>{throw Object.assign(new Error(message),{status});};
 const can=(u,p)=>{if(!hasPermission(u,p))fail(403,'Permission denied.');};
@@ -19,6 +20,53 @@ async function work(db,user,reason,fn){return transaction(db,user,reason,async()
  await db.prepare("SELECT pg_advisory_xact_lock(812731),set_config('mehta.order_write','authorized',true)").get();return fn();
 });}
 async function row(db,orderId){const r=await db.prepare('SELECT * FROM crm_order_workflows WHERE sales_order_id=?').get(id(orderId));if(!r)fail(404,'Workflow sales order not found.');return r;}
+async function canonicalParty(db,customerId,userId){
+ const existing=await db.prepare("SELECT p.id FROM party_external_mappings m JOIN parties p ON p.id=m.party_id WHERE m.source_system='CRM' AND m.entity_type='CUSTOMER' AND m.external_id=?").get(String(customerId));
+ const customer=await db.prepare('SELECT name,gstin,status FROM customers WHERE id=?').get(customerId);if(!customer)fail(422,'Customer no longer exists.');
+ if(existing){
+  await db.prepare('UPDATE parties SET legal_name=?,normalized_name=?,gstin=?,status=?,updated_by=?,updated_at=now() WHERE id=?').run(customer.name,normalizeKey(customer.name),customer.gstin,customer.status==='INACTIVE'?'INACTIVE':'ACTIVE',userId,existing.id);
+  await db.prepare("INSERT INTO party_roles(party_id,role,created_by) VALUES(?,'CUSTOMER',?) ON CONFLICT DO NOTHING").run(existing.id,userId);return existing.id;
+ }
+ const party=(await db.prepare('INSERT INTO parties(legal_name,normalized_name,gstin,created_by,updated_by) VALUES(?,?,?,?,?) RETURNING id').get(customer.name,normalizeKey(customer.name),customer.gstin,userId,userId)).id;
+ await db.prepare("INSERT INTO party_roles(party_id,role,created_by) VALUES(?,'CUSTOMER',?)").run(party,userId);
+ await db.prepare("INSERT INTO party_external_mappings(party_id,source_system,entity_type,external_id,created_by) VALUES(?,'CRM','CUSTOMER',?,?)").run(party,String(customerId),userId);
+ return party;
+}
+async function canonicalPart(db,itemId,userId){
+ if(!itemId)return null;
+ const externalId=String(itemId),existing=await db.prepare("SELECT part_id FROM part_external_mappings WHERE source_system='CRM' AND entity_type='ITEM' AND external_id=? AND company_id IS NULL").get(externalId);
+ if(existing)return existing.part_id;
+ const item=await db.prepare('SELECT part_code,description,brand,hsn,uom,status FROM items WHERE id=?').get(itemId);if(!item)return null;
+ let part=await db.prepare('SELECT id FROM parts WHERE part_code=?').get(item.part_code);
+ if(!part)part=await db.prepare('INSERT INTO parts(part_code,description,brand,hsn_code,base_uom,status,created_by,updated_by) VALUES(?,?,?,?,?,?,?,?) RETURNING id').get(item.part_code,item.description,item.brand,item.hsn,item.uom,item.status==='ACTIVE'?'ACTIVE':item.status==='SUPERSEDED'?'SUPERSEDED':'INACTIVE',userId,userId);
+ await db.prepare("INSERT INTO part_external_mappings(part_id,source_system,entity_type,external_id,created_by) VALUES(?,'CRM','ITEM',?,?)").run(part.id,externalId,userId);
+ return part.id;
+}
+async function saveNormalizedCustomerPo(db,s,orderId,user,lines){
+ const partyId=await canonicalParty(db,s.customerId,user.id),poKey=s.poNumber.toUpperCase();
+ const currentOrder=await db.prepare('SELECT customer_po_id FROM sales_orders WHERE id=?').get(orderId);
+ let po=currentOrder?.customer_po_id?await db.prepare('SELECT id,version FROM customer_pos WHERE id=?').get(currentOrder.customer_po_id):null;
+ if(!po)po=await db.prepare('SELECT id,version FROM customer_pos WHERE customer_party_id=? AND po_number_key=?').get(partyId,poKey);
+ if(po){
+  const linked=await db.prepare('SELECT id FROM sales_orders WHERE customer_po_id=? AND id<>?').get(po.id,orderId);
+  if(linked)fail(409,'This customer PO is already linked to another sales order.');
+  const nextVersion=po.version+1;
+  await db.prepare("UPDATE customer_pos SET po_number=?,po_date=?,source_total=?,calculated_total=?,place_of_supply=?,version=?,status='ACTIVE',updated_by=?,updated_at=now() WHERE id=?").run(s.poNumber,s.poDate,s.poTotal,s.total,s.placeOfSupply,nextVersion,user.id,po.id);
+  po={...po,version:nextVersion};
+ }else{
+  po=await db.prepare('INSERT INTO customer_pos(customer_party_id,legacy_customer_id,po_number,po_number_key,po_date,source_total,calculated_total,place_of_supply,created_by,updated_by) VALUES(?,?,?,?,?,?,?,?,?,?) RETURNING id,version').get(partyId,s.customerId,s.poNumber,poKey,s.poDate,s.poTotal,s.total,s.placeOfSupply,user.id,user.id);
+ }
+ await db.prepare("UPDATE customer_po_lines SET status='ARCHIVED' WHERE customer_po_id=? AND status='ACTIVE'").run(po.id);
+ for(const [position,line] of lines.entries()){
+  const partId=await canonicalPart(db,line.itemId,user.id);
+  const poLine=(await db.prepare('INSERT INTO customer_po_lines(customer_po_id,part_id,line_number,original_part_number,description,quantity,uom,unit_price,discount_percent,tax_percent,created_by) VALUES(?,?,?,?,?,?,?,?,?,?,?) RETURNING id').get(po.id,partId,position+1,line.partCode,line.description,line.quantity,line.uom,line.unitPrice,line.discountPercent,line.taxPercent,user.id)).id;
+  await db.prepare('UPDATE sales_order_lines SET customer_po_line_id=? WHERE id=?').run(poLine,line.id);
+  await db.prepare('UPDATE customer_po_lines SET legacy_sales_order_line_id=? WHERE id=?').run(line.id,poLine);
+ }
+ await db.prepare('INSERT INTO customer_po_versions(customer_po_id,version,snapshot,reason,created_by) VALUES(?,?,?::text::jsonb,?,?)').run(po.id,po.version,JSON.stringify({poNumber:s.poNumber,poDate:s.poDate,sourceTotal:s.poTotal,calculatedTotal:s.total,placeOfSupply:s.placeOfSupply,lines}),user.reason,user.id);
+ await db.prepare('UPDATE sales_orders SET customer_po_id=? WHERE id=?').run(po.id,orderId);
+ return po.id;
+}
 export async function managedOrder(db,orderId){return !!await db.prepare('SELECT id FROM crm_order_workflows WHERE sales_order_id=?').get(id(orderId));}
 export async function legacyOrderDetail(db,orderId,user){const o=await orderDetail(db,orderId,user),base=await db.prepare('SELECT status FROM sales_orders WHERE id=?').get(o.id);
  return {...o,status:base.status,workflowStatus:o.status,customer_po_number:o.poNumber,customer_po_date:o.poDate,promised_date:o.promisedDate,quotation_id:o.quotationId,subtotal:o.subtotal,tax_total:money(cents(o.cgst)+cents(o.sgst)+cents(o.igst)),lines:o.lines.map(l=>({...l,part_code:l.partCode,ordered_quantity:l.quantity,fulfilled_quantity:l.fulfilledQuantity,unit_price:l.unitPrice,discount_percent:l.discountPercent,tax_percent:l.taxPercent}))};
@@ -67,7 +115,9 @@ export async function saveOrder(db,orderId,b,user){can(user,orderId?'orders.upda
  if(!oid){const number=`SO-${new Date().getUTCFullYear()}-${crypto.randomBytes(5).toString('hex').toUpperCase()}`;oid=(await db.prepare('INSERT INTO sales_orders(order_number,quotation_id,customer_id,customer_po_number,customer_po_date,promised_date,notes,created_by,updated_by) VALUES(?,?,?,?,?,?,?,?,?)').run(number,s.quotationId,s.customerId,s.poNumber,s.poDate,s.promisedDate,s.notes,user.id,user.id)).insertedId;s.order_number=number;}
  else {s.order_number=old.public_snapshot.order_number;await db.prepare("UPDATE sales_orders SET quotation_id=?,customer_po_date=?,promised_date=?,notes=?,updated_by=?,updated_at=now(),status='CONFIRMED' WHERE id=?").run(s.quotationId,s.poDate,s.promisedDate,s.notes,user.id,oid);}
  await db.prepare("UPDATE sales_order_lines SET status='ARCHIVED',is_deleted=true WHERE sales_order_id=? AND NOT is_deleted").run(oid);
- for(const [position,l]of s.lines.entries()){l.id=(await db.prepare('INSERT INTO sales_order_lines(sales_order_id,item_id,description,uom,ordered_quantity,unit_price,discount_percent,tax_percent,position) VALUES(?,?,?,?,?,?,?,?,?)').run(oid,l.itemId,l.description,l.uom,l.quantity,l.unitPrice,l.discountPercent,l.taxPercent,position)).insertedId;}
+ const savedLines=[];
+ for(const [position,l]of s.lines.entries()){l.id=(await db.prepare('INSERT INTO sales_order_lines(sales_order_id,item_id,description,uom,ordered_quantity,unit_price,discount_percent,tax_percent,position) VALUES(?,?,?,?,?,?,?,?,?)').run(oid,l.itemId,l.description,l.uom,l.quantity,l.unitPrice,l.discountPercent,l.taxPercent,position)).insertedId;savedLines.push(l);}
+ await saveNormalizedCustomerPo(db,s,oid,{...user,reason},savedLines);
  if(old)await db.prepare("UPDATE crm_order_workflows SET version=version+1,status='DRAFT',source_quote_version=?,source_quote_snapshot=?::text::jsonb,public_snapshot=?::text::jsonb,private_snapshot='{}',approval_fingerprint=NULL,approved_by=NULL,approved_version=NULL WHERE sales_order_id=?").run(source?.version??null,json(source),json(s),oid);
  else await db.prepare('INSERT INTO crm_order_workflows(sales_order_id,customer_id,po_key,source_quote_version,source_quote_snapshot,public_snapshot,private_snapshot,created_by) VALUES(?,?,?, ?,?::text::jsonb,?::text::jsonb,?::text::jsonb,?)').run(oid,s.customerId,s.poNumber.toUpperCase(),source?.version??null,json(source),json(s),'{}',user.id);
  const r=await row(db,oid),verification=await verifyOrder(db,r);
