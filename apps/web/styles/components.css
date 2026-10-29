@@ -395,3 +395,9 @@
   .ds-hero { padding: var(--space-2); }
   .ds-hero .ds-page-actions { width: 100%; }
 }
+
+.ds-record-avatar svg { width: var(--icon-md); height: var(--icon-md); transform: scale(1.4); }
+@media (max-width: 1024px) { .ds-desktop-only-split { display: none; } }
+
+.ds-table-shell[data-bare="true"] { border: 0; box-shadow: none; border-radius: 0; background: transparent; }
+.ds-record-meta a { display: inline-flex; align-items: center; gap: var(--space-0-5); }

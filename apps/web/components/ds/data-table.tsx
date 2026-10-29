@@ -45,13 +45,15 @@ interface DataTableProps<T> {
   bulkActions?: BulkAction<T>[];
   empty?: ReactNode;
   selectedKey?: string | number | null;
+  /** Embedded use (inside a card): no toolbar, border or shadow. */
+  bare?: boolean;
 }
 
 const VIRTUAL_THRESHOLD = 120;
 const ROW_ESTIMATE = 52;
 
 export function DataTable<T>(props: DataTableProps<T>) {
-  const { id, caption, columns, rows, rowKey, loading, error, onRetry, pagination, onPage, search, filters, sort, onSort, onRowClick, rowActions, bulkActions, empty, selectedKey } = props;
+  const { id, caption, columns, rows, rowKey, loading, error, onRetry, pagination, onPage, search, filters, sort, onSort, onRowClick, rowActions, bulkActions, empty, selectedKey, bare } = props;
   const { preferences, update } = usePreferences();
   const [visible, setVisible] = useState<Set<string>>(() => new Set(columns.filter((c) => !c.optional).map((c) => c.key)));
   const [selected, setSelected] = useState<Set<string | number>>(new Set());
@@ -87,8 +89,8 @@ export function DataTable<T>(props: DataTableProps<T>) {
   };
 
   return (
-    <div className="ds-table-shell">
-      <div className="ds-table-toolbar" role="search">
+    <div className="ds-table-shell" data-bare={bare || undefined}>
+      {!bare && <div className="ds-table-toolbar" role="search">
         {search && <TextField label={search.placeholder ?? 'Search'} type="search" value={term} onChange={(e) => setTerm(e.target.value)} />}
         {filters}
         <div className="ds-table-toolbar-end">
@@ -111,7 +113,7 @@ export function DataTable<T>(props: DataTableProps<T>) {
           </Menu>
           <IconButton icon="sliders" label={preferences.density === 'compact' ? 'Comfortable rows' : 'Compact rows'} onClick={() => update({ density: preferences.density === 'compact' ? 'comfortable' : 'compact' })} />
         </div>
-      </div>
+      </div>}
 
       <Modal open={naming !== null} title="Save this view" onClose={() => setNaming(null)} footer={<><Button variant="ghost" onClick={() => setNaming(null)}>Cancel</Button><Button disabled={!naming?.trim()} onClick={saveCurrent}>Save view</Button></>}>
         <TextField label="View name" autoFocus maxLength={40} value={naming ?? ''} onChange={(e) => setNaming(e.target.value)} hint="Saved to your account with the current search and filters." />

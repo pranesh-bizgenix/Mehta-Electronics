@@ -124,7 +124,7 @@
   --color-surface-raised: var(--ink-800);
   --color-surface-sunken: var(--ink-950);
   --color-hover: var(--ink-700);
-  --color-selected: var(--ink-600);
+  --color-selected: var(--ink-700);
   --color-border: var(--ink-600);
   --color-border-strong: var(--ink-500);
   --color-text: var(--ink-50);

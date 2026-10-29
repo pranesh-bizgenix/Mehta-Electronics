@@ -34,7 +34,7 @@ await fs.mkdir(output, { recursive: true });
 const OWNER = { email: 'owner@ui.test', password: 'Redesign#Check1' };
 const EXEC = { email: 'exec@ui.test', password: 'Redesign#Check1' };
 const SCREENS = [
-  ['dashboard', 'Good '], ['customers', 'Customers'], ['customers/1', 'Shree Ganesh'], ['work', 'My work'], ['tasks', 'Tasks'], ['exceptions', 'Exceptions'], ['messages', 'Outbound drafts'],
+  ['dashboard', 'Good '], ['customers', 'Customers'], ['customers/1', 'Shree Ganesh'], ['enquiries', 'Enquiries'], ['enquiries?open=1', 'Enquiries'], ['work', 'My work'], ['tasks', 'Tasks'], ['exceptions', 'Exceptions'], ['messages', 'Outbound drafts'],
   ['rules', 'Rules & switches'], ['users', 'Users & roles'], ['audit', 'Audit trail'], ['settings', 'Settings'], ['design-system', 'Design system']
 ];
 const WIDTHS = [1440, 1024, 390];
@@ -132,6 +132,20 @@ try {
   await page.getByRole('tabpanel').getByText('buyer@johnsonlifts.test').waitFor();
   check('create customer + 360');
 
+  // 3c. Create an enquiry (customer + item from server search) and open it in the split view
+  await page.goto(`${web}/enquiries?new=1`);
+  const enquiryForm = page.locator('#enquiry-form');
+  await enquiryForm.getByLabel('Customer').fill('Apex');
+  await page.getByRole('option', { name: /Apex Automation Systems/ }).click();
+  await enquiryForm.getByLabel('Subject').fill('Conveyor spares for line 2');
+  await enquiryForm.getByLabel('Item 1').fill('3RT');
+  await page.getByRole('option', { name: /3RT2026/ }).click();
+  await enquiryForm.getByLabel('Qty').fill('5');
+  await page.getByRole('button', { name: 'Create enquiry' }).click();
+  await page.getByRole('heading', { level: 2, name: 'Conveyor spares for line 2' }).waitFor();
+  assert.equal(Number((await db.prepare("SELECT count(*) AS n FROM enquiries WHERE subject='Conveyor spares for line 2'").get()).n), 1);
+  check('create enquiry + split view');
+
   // 4. Duplicate-submit protection: double-click creates one task
   await page.goto(`${web}/tasks?new=1`);
   await page.getByLabel('Title').fill('Chase Connectwell acceptance for PO 204');
@@ -158,7 +172,7 @@ try {
           const result = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze();
           for (const v of result.violations.filter((x) => ['serious', 'critical'].includes(x.impact))) report.axe.push({ screen: slug, width, theme, id: v.id, impact: v.impact, help: v.help, nodes: v.nodes.slice(0, 3).map((n) => n.target.join(' ')) });
         }
-        await page.screenshot({ path: path.join(output, `${slug}-${width}-${theme}.png`), fullPage: true });
+        await page.screenshot({ path: path.join(output, `${slug.replace(/[?=/]/g, '-')}-${width}-${theme}.png`), fullPage: true });
         report.captures++;
       }
     }

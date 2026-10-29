@@ -1,10 +1,11 @@
 {
-  "checkedAt": "2026-10-29T12:30:58.854Z",
+  "checkedAt": "2026-10-29T12:47:35.352Z",
   "checks": [
     "login + two-factor enrolment",
     "theme toggle persisted per user",
     "command palette search + navigation",
     "create customer + 360",
+    "create enquiry + split view",
     "duplicate submit creates one record",
     "captures + axe + overflow",
     "role-aware navigation + unauthorized state"
@@ -12,5 +13,5 @@
   "axe": [],
   "overflow": [],
   "consoleErrors": [],
-  "captures": 72
+  "captures": 84
 }
