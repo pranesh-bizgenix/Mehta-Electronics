@@ -124,6 +124,21 @@ try {
   await exec.screenshot({ path: path.join(output, 'unauthorized-phone.png') });
   assert.equal(await exec.getByRole('link', { name: 'Rules' }).count(), 0, 'navigation hides screens the role cannot use');
 
+  // Existing CRM UI (served by the API) asks the enrolled owner for a code before opening.
+  const legacyContext = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  const legacy = await legacyContext.newPage();
+  legacy.on('pageerror', (e) => errors.push(`legacy pageerror: ${e.message}`));
+  await legacy.goto(api);
+  await legacy.locator('#login-form [name=email]').fill(OWNER.email);
+  await legacy.locator('#login-form [name=password]').fill(OWNER.password);
+  await legacy.locator('#login-form button[type=submit]').click();
+  await legacy.locator('#mfa-form').waitFor();
+  await legacy.screenshot({ path: path.join(output, 'legacy-mfa.png') });
+  await legacy.locator('#mfa-form [name=code]').fill(totp.codeAt(secret, totp.stepAt(new Date()) + 1));
+  await legacy.locator('#mfa-form button[type=submit]').click();
+  await legacy.locator('#app:not(.hidden)').waitFor();
+  await legacy.locator('#open-workspace').waitFor();
+
   assert.deepEqual(errors, []);
   await fs.writeFile(path.join(output, 'verification.json'), JSON.stringify({ checkedAt: new Date().toISOString(), results, consoleErrors: errors, duplicateSubmitTasks: 1 }, null, 2));
   console.log(`Foundation UI verified: ${results.length} screen captures, no console errors, no horizontal overflow.`);

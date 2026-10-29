@@ -61,3 +61,5 @@ dialog.procurement-editor{width:min(1280px,96vw);max-width:96vw}
 .pur-document-grid section{min-width:0}
 @media(max-width:900px){.pur-document-grid{grid-template-columns:1fr}.pur-document-grid iframe{height:360px}}
 @media(max-width:640px){.procurement-editor #modal-body{padding:16px}.procurement-editor .form-grid{grid-template-columns:1fr}.ui-tabs{overflow-x:auto;white-space:nowrap}}
+
+.mfa-key{font-family:ui-monospace,Consolas,monospace;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--hover);overflow-wrap:anywhere;user-select:all}.mfa-codes{display:grid;grid-template-columns:repeat(2,1fr);gap:4px;font-family:ui-monospace,Consolas,monospace;padding-left:18px}#mfa-form .mfa-inline{display:flex;flex-direction:row;gap:10px;align-items:center;justify-content:flex-start;font-weight:500}#mfa-form .mfa-inline input{width:18px;height:18px;min-height:0;padding:0;margin:0;flex:0 0 18px}

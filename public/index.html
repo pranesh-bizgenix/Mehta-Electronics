@@ -25,6 +25,19 @@
         <button type="submit" class="primary">Sign in</button>
         <p id="login-error" class="error"></p>
       </form>
+      <form id="mfa-form" class="stack hidden" novalidate>
+        <p id="mfa-intro" class="muted"></p>
+        <p id="mfa-key" class="mfa-key hidden" aria-label="Authenticator key"></p>
+        <label><span id="mfa-code-label">6-digit code</span><input name="code" autocomplete="one-time-code" maxlength="20" required></label>
+        <label id="mfa-recovery-toggle" class="mfa-inline hidden"><input type="checkbox" name="useRecovery"> Use a recovery code instead</label>
+        <button type="submit" class="primary">Verify</button>
+        <p id="mfa-error" class="error"></p>
+      </form>
+      <div id="mfa-codes" class="stack hidden">
+        <p><strong>Save your recovery codes.</strong> Each works once if you lose your phone. They will not be shown again.</p>
+        <ul id="mfa-code-list" class="mfa-codes"></ul>
+        <button id="mfa-continue" type="button" class="primary">I have saved them</button>
+      </div>
     </section>
   </main>
 
@@ -43,6 +56,7 @@
         <button data-view="tally" data-permission="tally.read">Tally & reconciliation</button>
         <button data-view="tally-connector" data-permission="tally.connector.manage">Tally Connector</button>
         <button data-view="audit" data-permission="audit.read">Audit log</button>
+        <button id="open-workspace" type="button" data-permission="work.read">New workspace (tasks, rules, approvals)</button>
       </nav>
       <div class="profile"><div id="avatar" class="avatar"></div><div><strong id="profile-name"></strong><span id="profile-role"></span></div><button id="logout" title="Sign out" aria-label="Sign out">&#8599;</button></div>
     </aside>
