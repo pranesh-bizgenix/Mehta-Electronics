@@ -34,6 +34,8 @@ import { TaskService } from './tasks/task-service.js';
 import { TaskController } from './tasks/task-controller.js';
 import { AuditController, AuditQueryRepository, AuditService } from './admin/audit-service.js';
 import { UserAdminController, UserAdminRepository, UserAdminService } from './admin/user-admin-service.js';
+import { DashboardController, DashboardRepository, DashboardService } from './dashboard/dashboard.js';
+import { BadgeRepository, BadgeService, PreferencesController, PreferencesRepository, PreferencesService } from './preferences/preferences.js';
 
 export function createModules({ db, config, clock = new SystemClock(), outboundMailer, logger = console }) {
   const transactions = new TransactionRunner(db);
@@ -58,7 +60,9 @@ export function createModules({ db, config, clock = new SystemClock(), outboundM
   const controllers = [
     new AccessController({ access }), new MfaController({ mfa }), new RuleController({ rules }), new WorkController({ work }),
     new AutomationController({ automation }), new ExceptionController({ exceptions }), new OutboundController({ outbound }),
-    new TaskController({ tasks }), new AuditController({ auditQuery }), new UserAdminController({ userAdmin, notifications })
+    new TaskController({ tasks }), new AuditController({ auditQuery }), new UserAdminController({ userAdmin, notifications }),
+    new PreferencesController({ preferences: new PreferencesService({ repository: new PreferencesRepository(db) }), badges: new BadgeService({ repository: new BadgeRepository(db), access }) }),
+    new DashboardController({ dashboard: new DashboardService({ repository: new DashboardRepository(db), access }) })
   ];
 
   const scheduler = new Scheduler({ db, logger })
