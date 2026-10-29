@@ -4,15 +4,19 @@
   "private": true,
   "scripts": {
     "dev": "next dev --hostname 127.0.0.1 --port 3001",
-    "build": "next build",
+    "build": "node scripts/check-tokens.mjs && next build",
     "start": "next start --hostname 127.0.0.1 --port 3001",
     "typecheck": "tsc --noEmit",
-    "test": "node --test"
+    "test": "node --test",
+    "check:tokens": "node scripts/check-tokens.mjs"
   },
   "engines": {
     "node": ">=22.5"
   },
   "dependencies": {
+    "@fontsource-variable/inter": "^5.3.0",
+    "@fontsource-variable/noto-sans-devanagari": "^5.3.0",
+    "@fontsource-variable/plus-jakarta-sans": "^5.3.0",
     "next": "16.4.2",
     "react": "19.3.1",
     "react-dom": "19.3.1"

@@ -1,0 +1,169 @@
+/* ControlDesk design tokens.
+   This is the ONLY file allowed to contain literal colours or sizes
+   (enforced by scripts/check-tokens.mjs). Components use the semantic
+   tokens at the bottom, never the primitive scales directly. */
+
+:root {
+  /* ---- Primitive colour scales ------------------------------------- */
+  --emerald-50: #ecf8f2;  --emerald-100: #d2efdf; --emerald-200: #a7dfc2; --emerald-300: #72c89f;
+  --emerald-400: #3fab7b; --emerald-500: #218c61; --emerald-600: #16734f; --emerald-700: #125c40;
+  --emerald-800: #0f4a34; --emerald-900: #0b3828; --emerald-950: #062117;
+
+  --stone-0: #ffffff;   --stone-25: #fbfaf8;  --stone-50: #f6f5f2;  --stone-100: #eeece7;
+  --stone-200: #e2dfd8; --stone-300: #ccc8bf; --stone-400: #a39e94; --stone-500: #736e65;
+  --stone-600: #5e5a52; --stone-700: #45423c; --stone-800: #2e2c28; --stone-900: #1c1b19;
+
+  --ink-50: #eaf0ec;  --ink-100: #d3ddd7; --ink-200: #a9b8b0; --ink-300: #81938a;
+  --ink-400: #56685f; --ink-500: #34453d; --ink-600: #25342d; --ink-700: #1b2822;
+  --ink-800: #141f1a; --ink-900: #0e1713; --ink-950: #09100d;
+
+  --amber-50: #fff8eb;  --amber-100: #feecc7; --amber-200: #fdd68a; --amber-300: #fbbc4d;
+  --amber-400: #f59f24; --amber-500: #dd7f0b; --amber-600: #b86006; --amber-700: #934709;
+  --amber-800: #77390e; --amber-900: #62300f;
+
+  --red-50: #fef3f2;  --red-100: #fde4e1; --red-200: #fbcdc8; --red-300: #f7aaa1;
+  --red-400: #f0786b; --red-500: #e44f3f; --red-600: #cc3424; --red-700: #ab281b;
+  --red-800: #8d241a; --red-900: #75231b;
+
+  --blue-50: #eff6ff;  --blue-100: #dbeafe; --blue-200: #bfdbfe; --blue-300: #93c5fd;
+  --blue-400: #60a5fa; --blue-500: #3b82f6; --blue-600: #2563eb; --blue-700: #1d4ed8;
+  --blue-800: #1e40af; --blue-900: #1e3a8a;
+
+  /* ---- Brand panel (login): identical in light and dark --------------- */
+  --brand-panel-from: var(--emerald-700); --brand-panel-mid: var(--emerald-900); --brand-panel-to: var(--emerald-950);
+  --brand-panel-text: var(--emerald-50); --brand-panel-muted: var(--emerald-100); --brand-panel-accent: var(--emerald-300);
+
+  /* ---- Spacing: 8 px grid (half steps for tight UI) ------------------ */
+  --space-0: 0; --space-0-5: 4px; --space-1: 8px; --space-1-5: 12px; --space-2: 16px;
+  --space-2-5: 20px; --space-3: 24px; --space-4: 32px; --space-5: 40px; --space-6: 48px; --space-8: 64px;
+
+  /* ---- Radii ---------------------------------------------------------- */
+  --radius-xs: 4px; --radius-sm: 6px; --radius-md: 10px; --radius-lg: 14px; --radius-xl: 20px; --radius-full: 999px;
+
+  /* ---- Typography ----------------------------------------------------- */
+  --font-sans: "Inter Variable", "Noto Sans Devanagari Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Plus Jakarta Sans Variable", "Inter Variable", "Noto Sans Devanagari Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, "Cascadia Mono", "SF Mono", Consolas, monospace;
+  --text-2xs: 11px; --text-xs: 12px; --text-sm: 13px; --text-base: 14px; --text-md: 15px; --text-lg: 17px;
+  --text-xl: 20px; --text-2xl: 24px; --text-3xl: 30px; --text-4xl: 36px;
+  --leading-tight: 1.2; --leading-snug: 1.35; --leading-normal: 1.5;
+  --weight-regular: 400; --weight-medium: 500; --weight-semibold: 600; --weight-bold: 700;
+  --tracking-tight: -0.015em; --tracking-wide: 0.06em;
+
+  /* ---- Sizes ---------------------------------------------------------- */
+  --control-sm: 32px; --control-md: 40px; --control-lg: 48px; --touch-min: 44px;
+  --sidebar-width: 264px; --sidebar-collapsed: 72px; --topbar-height: 60px;
+  --content-max: 1440px; --drawer-width: 560px; --modal-width: 560px; --icon-sm: 16px; --icon-md: 20px;
+  --focus-ring-width: 3px; --border-width: 1px; --blur-glass: 10px;
+  --layout-card-min: 220px; --layout-kpi-min: 300px; --layout-aside-min: 280px; --layout-aside-max: 380px; --table-min-col: 96px;
+  --chart-height: 220px; --sparkline-height: 32px; --avatar-size: 32px; --illustration-size: 120px;
+
+  /* ---- Motion ----------------------------------------------------------- */
+  --duration-fast: 120ms; --duration-base: 160ms; --duration-slow: 200ms;
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1); --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* ---- Layers ----------------------------------------------------------- */
+  --z-base: 0; --z-sticky: 10; --z-sidebar: 20; --z-dropdown: 30; --z-drawer: 40; --z-modal: 50;
+  --z-palette: 60; --z-toast: 70; --z-tooltip: 80;
+}
+
+/* ---- Semantic tokens: light (default) ------------------------------------ */
+:root, :root[data-theme="light"] {
+  color-scheme: light;
+  --color-canvas: var(--stone-50);
+  --color-surface: var(--stone-0);
+  --color-surface-raised: var(--stone-0);
+  --color-surface-sunken: var(--stone-100);
+  --color-hover: var(--stone-100);
+  --color-selected: var(--emerald-50);
+  --color-border: var(--stone-200);
+  --color-border-strong: var(--stone-300);
+  --color-text: var(--stone-900);
+  --color-text-muted: var(--stone-600);
+  --color-text-subtle: var(--stone-500);
+  --color-text-inverse: var(--stone-0);
+
+  --color-primary: var(--emerald-700);
+  --color-primary-hover: var(--emerald-800);
+  --color-primary-text: var(--stone-0);
+  --color-primary-soft: var(--emerald-50);
+  --color-primary-soft-text: var(--emerald-800);
+  --color-focus: var(--emerald-500);
+
+  --color-success: var(--emerald-700);  --color-success-soft: var(--emerald-50);  --color-success-border: var(--emerald-200);
+  --color-warning: var(--amber-700);    --color-warning-soft: var(--amber-50);    --color-warning-border: var(--amber-200);
+  --color-danger: var(--red-700);       --color-danger-soft: var(--red-50);       --color-danger-border: var(--red-200);
+  --color-info: var(--blue-700);        --color-info-soft: var(--blue-50);        --color-info-border: var(--blue-200);
+  --color-neutral: var(--stone-600);    --color-neutral-soft: var(--stone-100);   --color-neutral-border: var(--stone-200);
+  --color-danger-solid: var(--red-600);
+
+  --color-sidebar: var(--emerald-900);
+  --color-sidebar-text: var(--emerald-50);
+  --color-sidebar-muted: var(--emerald-200);
+  --color-sidebar-hover: var(--emerald-800);
+  --color-sidebar-active: var(--emerald-700);
+  --color-overlay: rgb(9 16 13 / 0.45);
+
+  /* Charts: one accessible palette, used in this order. */
+  --chart-1: var(--emerald-600); --chart-2: var(--blue-600); --chart-3: var(--amber-500);
+  --chart-4: var(--emerald-300); --chart-5: var(--stone-400); --chart-grid: var(--stone-200);
+
+  --shadow-color: 28 27 25;
+  --elevation-1: 0 1px 2px rgb(var(--shadow-color) / 0.06), 0 1px 1px rgb(var(--shadow-color) / 0.04);
+  --elevation-2: 0 2px 4px rgb(var(--shadow-color) / 0.05), 0 6px 16px rgb(var(--shadow-color) / 0.06);
+  --elevation-3: 0 4px 8px rgb(var(--shadow-color) / 0.06), 0 16px 32px rgb(var(--shadow-color) / 0.10);
+  --elevation-4: 0 8px 16px rgb(var(--shadow-color) / 0.08), 0 24px 56px rgb(var(--shadow-color) / 0.16);
+  --skeleton-base: var(--stone-100); --skeleton-shine: var(--stone-50);
+}
+
+/* ---- Semantic tokens: dark ------------------------------------------------ */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --color-canvas: var(--ink-950);
+  --color-surface: var(--ink-900);
+  --color-surface-raised: var(--ink-800);
+  --color-surface-sunken: var(--ink-950);
+  --color-hover: var(--ink-700);
+  --color-selected: var(--ink-600);
+  --color-border: var(--ink-600);
+  --color-border-strong: var(--ink-500);
+  --color-text: var(--ink-50);
+  --color-text-muted: var(--ink-200);
+  --color-text-subtle: var(--ink-300);
+  --color-text-inverse: var(--ink-950);
+
+  --color-primary: var(--emerald-300);
+  --color-primary-hover: var(--emerald-200);
+  --color-primary-text: var(--emerald-950);
+  --color-primary-soft: var(--ink-600);
+  --color-primary-soft-text: var(--emerald-200);
+  --color-focus: var(--emerald-300);
+
+  --color-success: var(--emerald-300);  --color-success-soft: rgb(63 171 123 / 0.14);  --color-success-border: rgb(63 171 123 / 0.35);
+  --color-warning: var(--amber-300);    --color-warning-soft: rgb(245 159 36 / 0.14);  --color-warning-border: rgb(245 159 36 / 0.35);
+  --color-danger: var(--red-300);       --color-danger-soft: rgb(228 79 63 / 0.16);    --color-danger-border: rgb(228 79 63 / 0.40);
+  --color-info: var(--blue-300);        --color-info-soft: rgb(59 130 246 / 0.16);     --color-info-border: rgb(59 130 246 / 0.40);
+  --color-neutral: var(--ink-200);      --color-neutral-soft: var(--ink-700);          --color-neutral-border: var(--ink-500);
+  --color-danger-solid: var(--red-500);
+
+  --color-sidebar: var(--ink-900);
+  --color-sidebar-text: var(--ink-50);
+  --color-sidebar-muted: var(--ink-200);
+  --color-sidebar-hover: var(--ink-700);
+  --color-sidebar-active: var(--ink-600);
+  --color-overlay: rgb(0 0 0 / 0.6);
+
+  --chart-1: var(--emerald-300); --chart-2: var(--blue-300); --chart-3: var(--amber-300);
+  --chart-4: var(--emerald-600); --chart-5: var(--ink-300); --chart-grid: var(--ink-600);
+
+  --shadow-color: 0 0 0;
+  --elevation-1: 0 1px 2px rgb(var(--shadow-color) / 0.4);
+  --elevation-2: 0 2px 6px rgb(var(--shadow-color) / 0.35), 0 8px 20px rgb(var(--shadow-color) / 0.3);
+  --elevation-3: 0 6px 12px rgb(var(--shadow-color) / 0.4), 0 18px 40px rgb(var(--shadow-color) / 0.4);
+  --elevation-4: 0 10px 20px rgb(var(--shadow-color) / 0.45), 0 28px 64px rgb(var(--shadow-color) / 0.5);
+  --skeleton-base: var(--ink-700); --skeleton-shine: var(--ink-600);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --duration-fast: 0ms; --duration-base: 0ms; --duration-slow: 0ms; }
+}

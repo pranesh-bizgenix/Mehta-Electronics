@@ -1,0 +1,58 @@
+/* Reset, typography and accessibility primitives. Tokens only. */
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+html, body { margin: 0; }
+body {
+  background: var(--color-canvas);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
+  font-feature-settings: "cv11", "ss01";
+  -webkit-font-smoothing: antialiased;
+  transition: background-color var(--duration-base) var(--ease-out), color var(--duration-base) var(--ease-out);
+}
+h1, h2, h3, h4 { font-family: var(--font-display); line-height: var(--leading-tight); letter-spacing: var(--tracking-tight); margin: 0; font-weight: var(--weight-bold); }
+h1 { font-size: var(--text-3xl); }
+h2 { font-size: var(--text-xl); }
+h3 { font-size: var(--text-lg); }
+h4 { font-size: var(--text-md); }
+p { margin: 0; }
+a { color: var(--color-primary); text-underline-offset: 2px; }
+button, input, select, textarea { font: inherit; color: inherit; }
+img, svg { display: block; }
+table { border-collapse: collapse; }
+:focus-visible { outline: var(--focus-ring-width) solid var(--color-focus); outline-offset: 2px; border-radius: var(--radius-xs); }
+::selection { background: var(--color-primary-soft); color: var(--color-primary-soft-text); }
+
+.num, .money, .qty { font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; white-space: nowrap; }
+.align-end { text-align: end; }
+.muted { color: var(--color-text-muted); }
+.subtle { color: var(--color-text-subtle); }
+.mono { font-family: var(--font-mono); font-size: var(--text-sm); }
+.truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.wrap-anywhere { overflow-wrap: anywhere; }
+.sr-only { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.skip-link { position: absolute; left: var(--space-1); top: calc(-1 * var(--control-lg)); z-index: var(--z-tooltip); background: var(--color-primary); color: var(--color-primary-text); padding: var(--space-1) var(--space-2); border-radius: var(--radius-sm); text-decoration: none; transition: top var(--duration-fast) var(--ease-out); }
+.skip-link:focus { top: var(--space-1); }
+
+.stack { display: flex; flex-direction: column; gap: var(--space-2); }
+.stack-sm { display: flex; flex-direction: column; gap: var(--space-1); }
+.stack-lg { display: flex; flex-direction: column; gap: var(--space-3); }
+.cluster { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1); }
+.cluster-between { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2); }
+.grid-auto { display: grid; gap: var(--space-2); grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--layout-card-min)), 1fr)); }
+.grid-kpis { display: grid; gap: var(--space-2); grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--layout-kpi-min)), 1fr)); }
+.grid-2 { display: grid; gap: var(--space-3); grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.grid-main-aside { display: grid; gap: var(--space-3); grid-template-columns: minmax(0, 1fr) minmax(var(--layout-aside-min), var(--layout-aside-max)); align-items: start; }
+@media (max-width: 1024px) { .grid-main-aside { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 720px) { .grid-2 { grid-template-columns: minmax(0, 1fr); } h1 { font-size: var(--text-2xl); } }
+
+@keyframes ds-spin { to { transform: rotate(360deg); } }
+@keyframes ds-shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+@keyframes ds-fade-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@keyframes ds-slide-in { from { transform: translateX(var(--space-4)); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes ds-pop { 0% { transform: scale(0.6); opacity: 0; } 70% { transform: scale(1.08); opacity: 1; } 100% { transform: scale(1); } }
+@keyframes ds-draw { from { stroke-dashoffset: 24; } to { stroke-dashoffset: 0; } }
+.page-enter { animation: ds-fade-in var(--duration-slow) var(--ease-out); }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; } }
