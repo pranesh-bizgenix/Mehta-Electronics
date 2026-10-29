@@ -388,14 +388,19 @@ export function createApp({ db, config, fetchImpl = fetch, sendMailImpl = sendQu
     })
   ];
 
+  // Tally connector endpoints keep their original contract byte-for-byte:
+  // no access-matrix load and the original error body.
+  const connectorPath = (pathname) => pathname.startsWith('/api/connectors/') || pathname.startsWith('/api/ingest/');
   const handler = async function handler(req, res) {
+    let isConnector = false;
     try {
       const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`); const ip = req.socket.remoteAddress || '';
       if (!url.pathname.startsWith('/api/') && !url.pathname.startsWith('/tally/')) return serveStatic(req,res,url.pathname);
       res.setHeader('x-content-type-options','nosniff'); res.setHeader('x-frame-options','DENY'); res.setHeader('referrer-policy','no-referrer'); res.setHeader('content-security-policy',"default-src 'self'; style-src 'self'; script-src 'self'; connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'");
       const found = routes.map((r)=>({r,params:r.method===req.method?matchRoute(url.pathname,r.pattern):null})).find((x)=>x.params);
       if (!found) { const pathExists=routes.some((r)=>matchRoute(url.pathname,r.pattern)); throw new HttpError(pathExists?405:404,pathExists?'Method not allowed.':'Not found.'); }
-      await modules.ready();
+      isConnector = connectorPath(url.pathname);
+      if (!isConnector) await modules.ready();
       const user = (await sessionUser(db,req,config));
       if (user) await modules.services.access.refreshIfStale(user.access_version);
       if (found.r.permission) {
@@ -407,6 +412,7 @@ export function createApp({ db, config, fetchImpl = fetch, sendMailImpl = sendQu
       await found.r.handler({req,res,url,params:found.params,user,ip});
     } catch(error) {
       if (res.headersSent) return res.end();
+      if (isConnector) { const status=error.status||500; if(status===500) console.error(error); json(res,status,{error:error.message||'Internal server error.',...(error.details?{details:error.details}:{})}); return; }
       const correlationId=randomToken(8); const {status,body}=errorBody(error,correlationId); if(status>=500) console.error(correlationId,error); json(res,status,body);
     }
   };

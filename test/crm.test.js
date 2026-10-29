@@ -40,6 +40,7 @@ describe('Windows connector upload contract',()=>{
     for(const path of ['/api/connectors/pair','/api/connectors/refresh']){
       const result=await request(path,{method:'POST',body:{}});
       assert.equal(result.response.status,401,path);
+      assert.deepEqual(Object.keys(result.data),['error'],'connector error contract is unchanged');
     }
     const authenticated=await fetch(`${base}/api/connectors/heartbeat`,{method:'POST',headers:{authorization:'Bearer test'}});
     assert.equal(authenticated.status,401);
