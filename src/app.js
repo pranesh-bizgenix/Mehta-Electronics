@@ -3,7 +3,10 @@ import { gunzipSync } from 'node:zlib';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { customerView, detectCustomerDuplicates, enquiryRevisions, enquiryView, parseJsonArray, quotationRevisions, quotationView, recordEnquiryRevision, recordQuotationRevision, replaceContacts, salesOrderView, writeAudit } from './db.js';
-import { hasPermission, permissionsFor, ROLES } from './rbac.js';
+import { hasPermission, permissionsFor, roleRequiresMfa } from './rbac.js';
+import { createModules } from './modules/container.js';
+import { adaptRoutes } from './core/http.js';
+import { errorBody } from './core/errors.js';
 import { escapeLike, hashPassword, normalizeKey, normalizeText, parseCookies, randomToken, safeEqual, tokenDigest, validatePassword, verifyPassword } from './security.js';
 import { applyConnectorMasterSnapshot, reconcile, runTallySync } from './tally.js';
 import { createQuotationPdf } from './quotation-pdf.js';
@@ -80,8 +83,9 @@ async function readConnectorJson(req) {
 async function sessionUser(db, req, config) {
   const token = parseCookies(req.headers.cookie).crm_session;
   if (!token) return null;
-  const row = (await db.prepare(`SELECT s.id AS session_id,s.csrf_token,s.expires_at,u.id,u.name,u.email,u.phone,u.role,u.status,u.must_change_password
-    FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token_hash=? AND s.expires_at>CURRENT_TIMESTAMP`).get(tokenDigest(token)));
+  const row = (await db.prepare(`SELECT s.id AS session_id,s.csrf_token,s.expires_at,s.mfa_verified_at,u.id,u.name,u.email,u.phone,u.role,u.status,u.must_change_password,
+      (m.enabled_at IS NOT NULL) AS mfa_enabled,(SELECT COALESCE(max(id),0) FROM access_matrix_events) AS access_version
+    FROM sessions s JOIN users u ON u.id=s.user_id LEFT JOIN user_mfa m ON m.user_id=u.id WHERE s.token_hash=? AND s.expires_at>CURRENT_TIMESTAMP`).get(tokenDigest(token)));
   if (!row || row.status !== 'ACTIVE') return null;
   (await db.prepare(`UPDATE sessions SET last_seen_at=CURRENT_TIMESTAMP,expires_at=(CURRENT_TIMESTAMP + (?::integer * INTERVAL '1 minute')) WHERE id=?`).run(String(config.sessionTtlMinutes), row.session_id));
   return row;
@@ -153,9 +157,12 @@ function publicUser(row) {
   return { id: row.id, name: row.name, email: row.email, phone: row.phone, role: row.role, status: row.status, primaryPermissions: permissionsFor(row.role), mustChangePassword: Boolean(row.must_change_password), createdAt: row.created_at, updatedAt: row.updated_at };
 }
 
-export function createApp({ db, config, fetchImpl = fetch, sendMailImpl = sendQuotationEmail }) {
+export function createApp({ db, config, fetchImpl = fetch, sendMailImpl = sendQuotationEmail, clock, outboundMailer }) {
   const connectorStore = createConnectorStore(config);
+  const modules = createModules({ db, config, clock, outboundMailer });
+  const mfaState = (user) => ({ required: roleRequiresMfa(user.role) || Boolean(user.mfa_enabled), enrolled: Boolean(user.mfa_enabled), verified: Boolean(user.mfa_verified_at) });
   const routes = [
+    ...adaptRoutes(modules.routeDefinitions(), { route, json, readJson, transactions: modules.transactions, idempotency: modules.idempotency }),
     ...crmModuleRoutes({db,config,route,json,readJson}),
     ...quotationWorkflowRoutes({db,config,route,json,readJson}),
     ...salesOrderRoutes({db,route,json,readJson}),
@@ -212,14 +219,15 @@ export function createApp({ db, config, fetchImpl = fetch, sendMailImpl = sendQu
       (await db.prepare(`INSERT INTO sessions(user_id,token_hash,csrf_token,ip_address,user_agent,expires_at) VALUES(?,?,?,?,?,(CURRENT_TIMESTAMP + (?::integer * INTERVAL '1 minute')))`).run(user.id, tokenDigest(token), csrf, ip, String(req.headers['user-agent'] || '').slice(0, 500), String(config.sessionTtlMinutes)));
       (await writeAudit(db, { userId: user.id, entity: 'AUTH', recordId: user.id, action: 'LOGIN', ipAddress: ip }));
       const cookie = `crm_session=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${config.sessionTtlMinutes * 60}${config.isProduction ? '; Secure' : ''}`;
-      json(res, 200, { user: publicUser(user), permissions: permissionsFor(user.role), csrfToken: csrf }, { 'set-cookie': cookie });
+      const enrolled = Boolean((await db.prepare('SELECT enabled_at FROM user_mfa WHERE user_id=?').get(user.id))?.enabled_at);
+      json(res, 200, { user: publicUser(user), permissions: permissionsFor(user.role), csrfToken: csrf, mfa: { required: roleRequiresMfa(user.role) || enrolled, enrolled, verified: false } }, { 'set-cookie': cookie });
     }),
-    route('POST', '/api/auth/logout', 'authenticated', async ({ req, res, user, ip }) => {
+    Object.assign(route('POST', '/api/auth/logout', 'authenticated', async ({ req, res, user, ip }) => {
       const token = parseCookies(req.headers.cookie).crm_session; (await db.prepare('DELETE FROM sessions WHERE token_hash=?').run(tokenDigest(token)));
       (await writeAudit(db, { userId: user.id, entity: 'AUTH', recordId: user.id, action: 'LOGOUT', ipAddress: ip }));
       json(res, 200, { ok: true }, { 'set-cookie': `crm_session=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0${config.isProduction ? '; Secure' : ''}` });
-    }),
-    route('GET', '/api/auth/me', 'authenticated', async ({ res, user }) => json(res, 200, { user: publicUser(user), permissions: permissionsFor(user.role), csrfToken: user.csrf_token })),
+    }), { mfaExempt: true }),
+    Object.assign(route('GET', '/api/auth/me', 'authenticated', async ({ res, user }) => json(res, 200, { user: publicUser(user), permissions: permissionsFor(user.role), csrfToken: user.csrf_token, mfa: mfaState(user) })), { mfaExempt: true }),
     route('POST', '/api/auth/change-password', 'authenticated', async ({ req, res, user, ip }) => {
       const body = await readJson(req); const stored = (await db.prepare('SELECT password_hash FROM users WHERE id=?').get(user.id));
       if (!verifyPassword(String(body.currentPassword || ''), stored.password_hash)) throw new HttpError(422, 'Current password is incorrect.');
@@ -232,7 +240,7 @@ export function createApp({ db, config, fetchImpl = fetch, sendMailImpl = sendQu
     route('GET', '/api/users', 'users.read', async ({ res }) => json(res, 200, { data: (await db.prepare('SELECT id,name,email,phone,role,status,created_at,updated_at FROM users ORDER BY name').all()).map(publicUser) })),
     route('POST', '/api/users', 'users.create', async ({ req, res, user, ip }) => {
       const body = await readJson(req); const name = normalizeText(body.name); const userEmail = email(body.email); const roleName = String(body.role || '').toUpperCase();
-      if (!name || !userEmail || !ROLES.includes(roleName)) throw new HttpError(422, 'Valid name, email, and role are required.');
+      if (!name || !userEmail || !modules.services.access.roleExists(roleName)) throw new HttpError(422, 'Valid name, email, and role are required.');
       const passwordError = validatePassword(body.password); if (passwordError) throw new HttpError(422, passwordError);
       try {
         const result = (await db.prepare(`INSERT INTO users(name,email,phone,role,status,password_hash,must_change_password) VALUES(?,?,?,?,?,?,1)`).run(name, userEmail, cleanNullable(body.phone), roleName, body.status || 'ACTIVE', hashPassword(body.password)));
@@ -244,7 +252,7 @@ export function createApp({ db, config, fetchImpl = fetch, sendMailImpl = sendQu
     route('PATCH', '/api/users/:id', 'users.update', async ({ req, res, params, user, ip }) => {
       const id = numberId(params.id); const old = (await db.prepare('SELECT id,name,email,phone,role,status,created_at,updated_at FROM users WHERE id=?').get(id)); if (!old) throw new HttpError(404, 'User not found.');
       const body = await readJson(req); const name = 'name' in body ? normalizeText(body.name) : old.name; const userEmail = 'email' in body ? email(body.email) : old.email; const roleName = 'role' in body ? String(body.role).toUpperCase() : old.role; const status = body.status || old.status;
-      if (!name || !userEmail || !ROLES.includes(roleName) || !['ACTIVE','INACTIVE','LOCKED'].includes(status)) throw new HttpError(422, 'Invalid user fields.');
+      if (!name || !userEmail || !modules.services.access.roleExists(roleName) || !['ACTIVE','INACTIVE','LOCKED'].includes(status)) throw new HttpError(422, 'Invalid user fields.');
       if (id === user.id && status !== 'ACTIVE') throw new HttpError(422, 'You cannot deactivate your own account.');
       (await db.prepare('UPDATE users SET name=?,email=?,phone=?,role=?,status=?,updated_at=CURRENT_TIMESTAMP WHERE id=?').run(name, userEmail, 'phone' in body ? cleanNullable(body.phone) : old.phone, roleName, status, id));
       if (status !== 'ACTIVE') (await db.prepare('DELETE FROM sessions WHERE user_id=?').run(id));
@@ -387,16 +395,19 @@ export function createApp({ db, config, fetchImpl = fetch, sendMailImpl = sendQu
       res.setHeader('x-content-type-options','nosniff'); res.setHeader('x-frame-options','DENY'); res.setHeader('referrer-policy','no-referrer'); res.setHeader('content-security-policy',"default-src 'self'; style-src 'self'; script-src 'self'; connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'");
       const found = routes.map((r)=>({r,params:r.method===req.method?matchRoute(url.pathname,r.pattern):null})).find((x)=>x.params);
       if (!found) { const pathExists=routes.some((r)=>matchRoute(url.pathname,r.pattern)); throw new HttpError(pathExists?405:404,pathExists?'Method not allowed.':'Not found.'); }
+      await modules.ready();
       const user = (await sessionUser(db,req,config));
+      if (user) await modules.services.access.refreshIfStale(user.access_version);
       if (found.r.permission) {
         if (!user) throw new HttpError(401,'Authentication required.');
+        if (!found.r.mfaExempt && mfaState(user).required && !user.mfa_verified_at) throw Object.assign(new HttpError(403, mfaState(user).enrolled ? 'Enter your two-factor code to continue.' : 'Set up two-factor authentication to continue.'), { code: 'MFA_REQUIRED', details: { enrolled: mfaState(user).enrolled } });
         if (found.r.permission!=='authenticated'&&!hasPermission(user,found.r.permission)) throw new HttpError(403,'You do not have permission for this action.');
         if (!['GET','HEAD','OPTIONS'].includes(req.method) && !safeEqual(req.headers['x-csrf-token'] || '',user.csrf_token)) throw new HttpError(403,'Invalid CSRF token.');
       }
       await found.r.handler({req,res,url,params:found.params,user,ip});
     } catch(error) {
       if (res.headersSent) return res.end();
-      const status=error.status||500; if(status===500) console.error(error); json(res,status,{error:error.message||'Internal server error.',...(error.details?{details:error.details}:{})});
+      const correlationId=randomToken(8); const {status,body}=errorBody(error,correlationId); if(status>=500) console.error(correlationId,error); json(res,status,body);
     }
   };
   const handle = (req, res) => db.withConnection(() => handler(req, res)).catch(error => {
@@ -404,7 +415,8 @@ export function createApp({ db, config, fetchImpl = fetch, sendMailImpl = sendQu
     if (!res.headersSent) json(res, 503, { error: 'Database is unavailable.' });
     else res.end();
   });
-  handle.close = () => connectorStore.close();
+  handle.close = () => { modules.scheduler.stop(); return connectorStore.close(); };
+  handle.modules = modules;
   return handle;
 }
 

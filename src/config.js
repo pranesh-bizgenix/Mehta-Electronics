@@ -48,6 +48,8 @@ export function getConfig(overrides = {}) {
     smtpUser: process.env.SMTP_USER || '',
     smtpPassword: process.env.SMTP_PASSWORD || '',
     smtpFrom: process.env.SMTP_FROM || '',
+    appEncryptionKey: process.env.APP_ENCRYPTION_KEY || '',
+    schedulerEnabled: String(process.env.SCHEDULER_ENABLED ?? 'true').toLowerCase() !== 'false',
     isProduction: process.env.NODE_ENV === 'production',
     ...overrides
   };
