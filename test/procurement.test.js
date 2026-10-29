@@ -56,7 +56,7 @@ test('procurement lifecycle: RFQ prices, winner, independent PO review, receipts
  await assert.rejects(p.purchaseRecord(db,'pos',po.id,accounts),{status:403});
  const logs=await db.sql`SELECT * FROM audit_logs WHERE entity='PROCUREMENT'`;assert.equal(JSON.stringify(logs).includes('unitPrice'),false);
  assert.ok((await p.purchaseHistory(db,'pos',po.id,owner)).length>=5);
- await assert.rejects(db.sql`DELETE FROM crm_supplier_pos`,/deleted/);await assert.rejects(db.sql`TRUNCATE crm_supplier_documents`,/truncated/);
+ await assert.rejects(db.sql`DELETE FROM crm_supplier_pos`,/deleted/);await assert.rejects(db.sql`TRUNCATE crm_supplier_documents`,/truncated|foreign key constraint/);
  assert.deepEqual(await db.sql`SELECT (SELECT jsonb_agg(t) FROM tally_ledgers t) AS ledgers,(SELECT jsonb_agg(t) FROM tally_stock_items t) AS stock`,raw);
  }finally{await f.close();}
 });

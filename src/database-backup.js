@@ -35,14 +35,15 @@ export async function runPostgresTool(name, databaseUrl, args) {
   }
 }
 
-export async function createDatabaseBackup(databaseUrl, destinationPath) {
+/** options.schema limits the archive to one schema (used by tests; the CLI backs up the whole database). */
+export async function createDatabaseBackup(databaseUrl, destinationPath, { schema } = {}) {
   if (!databaseUrl) throw new Error('DATABASE_URL is required.');
   const destination = path.resolve(destinationPath);
   if (fs.existsSync(destination)) throw new Error(`Backup destination already exists: ${destination}`);
   fs.mkdirSync(path.dirname(destination), { recursive: true });
   const temporary = `${destination}.${crypto.randomBytes(8).toString('hex')}.partial`;
   try {
-    await runPostgresTool('pg_dump', databaseUrl, ['--format=custom', '--no-owner', '--no-acl', '--file', temporary]);
+    await runPostgresTool('pg_dump', databaseUrl, ['--format=custom', '--no-owner', '--no-acl', ...(schema ? [`--schema=${schema}`] : []), '--file', temporary]);
     await runPostgresTool('pg_restore', databaseUrl, ['--list', temporary]);
     // A hard link publishes the completed archive without overwriting any existing file.
     fs.linkSync(temporary, destination);

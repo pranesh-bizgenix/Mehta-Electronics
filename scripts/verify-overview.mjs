@@ -13,7 +13,7 @@ let browser,app,server;
 try{
   const owner=await db.prepare("SELECT id FROM users WHERE role='OWNER' AND status='ACTIVE' ORDER BY id LIMIT 1").get();
   if(!owner)throw new Error('An active owner is required for local browser verification.');
-  await db.prepare("INSERT INTO sessions(user_id,token_hash,csrf_token,user_agent,expires_at) VALUES(?,?,?,?,now()+interval '10 minutes')").run(owner.id,tokenDigest(token),randomToken(24),'Local Overview browser verification');
+  await db.prepare("INSERT INTO sessions(user_id,token_hash,csrf_token,user_agent,expires_at,mfa_verified_at) VALUES(?,?,?,?,now()+interval '10 minutes',now())").run(owner.id,tokenDigest(token),randomToken(24),'Local Overview browser verification');
   await writeAudit(db,{userId:owner.id,entity:'TALLY_VERIFICATION',recordId:'overview',action:'BROWSER_CHECK_STARTED'});
   app=createApp({db,config});server=http.createServer(app);
   await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));

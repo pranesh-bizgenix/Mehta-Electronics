@@ -14,7 +14,7 @@ const output=path.resolve('output/crm-modules');await fs.mkdir(output,{recursive
 let browser,server,app,externalCalls=0;const errors=[];
 try{
   const token=crypto.randomBytes(24).toString('hex'),csrf=crypto.randomBytes(24).toString('hex'),accountToken=crypto.randomBytes(24).toString('hex');
-  await db.sql`INSERT INTO sessions(user_id,token_hash,csrf_token,expires_at) VALUES(${owner},${tokenDigest(token)},${csrf},now()+interval '1 hour'),(${accounts},${tokenDigest(accountToken)},'accounts-csrf',now()+interval '1 hour')`;
+  await db.sql`INSERT INTO sessions(user_id,token_hash,csrf_token,expires_at,mfa_verified_at) VALUES(${owner},${tokenDigest(token)},${csrf},now()+interval '1 hour',now()),(${accounts},${tokenDigest(accountToken)},'accounts-csrf',now()+interval '1 hour',now())`;
   app=createApp({db,config,fetchImpl:async()=>{externalCalls++;throw new Error('Live Tally access is forbidden in CRM review');}});
   server=http.createServer(app);await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
   const base=`http://127.0.0.1:${server.address().port}`;

@@ -3,7 +3,8 @@ import {test} from 'node:test';
 import fs from 'node:fs/promises';
 import crypto from 'node:crypto';
 import {getConfig} from '../src/config.js';
-import {connectPostgres,createDatabase} from '../src/postgres.js';
+import {createDatabase} from '../src/postgres.js';
+import { temporarySchema,shadowPublicRelations } from '../test-support/postgres.js';
 import {decimal,validateTax,validDate,saveCustomer,customerDetail,saveItem,itemDetail,savePartMapping,savePriceList,saveEnquiry,changeEnquiryStatus,listRecords,customerHistory,enquiryTransitions} from '../src/crm-modules.js';
 import {crmModuleRoutes} from '../src/crm-module-routes.js';
 import {readReconciliation} from '../src/tally-read-service.js';
@@ -27,16 +28,17 @@ test('all module routes declare existing role permissions',()=>{
   assert.equal(routes.find(r=>r.method==='PATCH'&&r.pattern.endsWith('/status')).permission,'enquiries.update');
 });
 test('PostgreSQL modules: CRM CRUD, read-only Tally facts, soft archives, pricing, history, audit and transitions',{skip:!process.env.RUN_CRM_MODULE_DB_TEST},async()=>{
-  const url=new URL(process.env.TEST_DATABASE_URL||getConfig().databaseUrl),admin=connectPostgres(url.toString());
-  const name=`mehta_crm_review_${crypto.randomBytes(6).toString('hex')}`;let db;
+  const temporary=await temporarySchema('crmmod'),name=temporary.schema;
+  let db;
   try{
-    await admin.unsafe(`CREATE DATABASE "${name}"`);url.pathname=`/${name}`;db=createDatabase({databaseUrl:url.toString()});
+    db=createDatabase({databaseUrl:temporary.databaseUrl});
     // Existing CRM migration unchanged, plus synthetic imported-source contracts only.
     await db.sql.unsafe(await fs.readFile(new URL('../database/postgres/migrations/0004_crm_core.sql',import.meta.url),'utf8'));
     await db.sql.unsafe(`CREATE TABLE tally_companies(id uuid PRIMARY KEY,name text);CREATE TABLE tally_groups(id text,company_id uuid,name text,parent_name text);CREATE TABLE tally_ledgers(id text,company_id uuid,name text,parent_name text,phone text,gstin text,closing_balance numeric(18,2),dr_cr text,fetched_at timestamptz);CREATE TABLE tally_stock_items(id text,company_id uuid,name text,parent_name text,base_unit text,closing_quantity_text text,closing_rate_text text,closing_value numeric(18,2),fetched_at timestamptz);`);
     for(const file of ['0006_stored_tally_read_layer.sql','0007_stored_tally_audit_guards.sql','0008_crm_master_extensions.sql','0009_crm_child_archival.sql','0010_crm_quotation_line_archival.sql','0011_crm_hard_delete_guards.sql'])await db.sql.unsafe(await fs.readFile(new URL(`../database/postgres/migrations/${file}`,import.meta.url),'utf8'));
     await db.sql.unsafe('CREATE TABLE tally_sync_jobs(id uuid,company_name text,status text,started_at timestamptz,completed_at timestamptz,last_progress_at timestamptz,message text)');
     const userId=(await db.sql`INSERT INTO users(name,email,role,password_hash) VALUES('Review Owner','review@example.test','OWNER','not-a-login') RETURNING id`)[0].id,user={id:userId};
+    await shadowPublicRelations(db.sql,name);
     const company=crypto.randomUUID();
     await db.sql`INSERT INTO tally_companies VALUES(${company},'Synthetic company')`;
     await db.sql`INSERT INTO tally_groups VALUES('g1',${company},'Retail','Sundry Debtors')`;
@@ -76,6 +78,5 @@ test('PostgreSQL modules: CRM CRUD, read-only Tally facts, soft archives, pricin
     assert.ok((await db.sql`SELECT count(*) AS n FROM audit_logs`)[0].n>=15);
     const after=await db.sql`SELECT (SELECT jsonb_agg(t) FROM tally_ledgers t) AS ledgers,(SELECT jsonb_agg(t) FROM tally_stock_items t) AS stock`;
     assert.deepEqual(after,before);
-    console.log(`Retained synthetic CRM test database: ${name}`);
-  }finally{await db?.close();await admin.end();}
+  }finally{await db?.close();await temporary.close();}
 });

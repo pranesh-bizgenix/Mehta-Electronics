@@ -11,7 +11,7 @@ import {tokenDigest} from '../src/security.js';
 const f=await salesOrderFixture(),{db,config,owner,manager,executive,accounts,quote}=f;
 const output=path.resolve('output/sales-orders');await fs.mkdir(output,{recursive:true});let server,app,browser,externalCalls=0;const errors=[];
 try{
- const sessions={};for(const [role,user]of Object.entries({owner,manager,executive,accounts})){const token=crypto.randomBytes(24).toString('hex'),csrf=crypto.randomBytes(24).toString('hex');sessions[role]={token,csrf};await db.sql`INSERT INTO sessions(user_id,token_hash,csrf_token,expires_at) VALUES(${user.id},${tokenDigest(token)},${csrf},now()+interval '1 hour')`;}
+ const sessions={};for(const [role,user]of Object.entries({owner,manager,executive,accounts})){const token=crypto.randomBytes(24).toString('hex'),csrf=crypto.randomBytes(24).toString('hex');sessions[role]={token,csrf};await db.sql`INSERT INTO sessions(user_id,token_hash,csrf_token,expires_at,mfa_verified_at) VALUES(${user.id},${tokenDigest(token)},${csrf},now()+interval '1 hour',now())`;}
  app=createApp({db,config,fetchImpl:async()=>{externalCalls++;throw new Error('Live Tally access forbidden');}});server=http.createServer(app);await new Promise(r=>server.listen(0,'127.0.0.1',r));const base=`http://127.0.0.1:${server.address().port}`;
  browser=await chromium.launch({channel:'chrome',headless:true});const context=await browser.newContext({viewport:{width:1440,height:1050},reducedMotion:'reduce'});
  const login=async role=>{await context.clearCookies();await context.addCookies([{name:'crm_session',value:sessions[role].token,url:base,httpOnly:true,sameSite:'Strict'}]);};await login('executive');

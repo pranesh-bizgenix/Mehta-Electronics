@@ -11,7 +11,7 @@ let browser;
 try {
   const owner=await db.prepare("SELECT id FROM users WHERE role='OWNER' AND status='ACTIVE' ORDER BY id LIMIT 1").get();
   if(!owner)throw new Error('An active owner is required for browser verification.');
-  await db.prepare("INSERT INTO sessions(user_id,token_hash,csrf_token,user_agent,expires_at) VALUES(?,?,?,?,CURRENT_TIMESTAMP + INTERVAL '10 minutes')").run(owner.id,tokenDigest(token),randomToken(24),'Checkpoint A local browser verification');
+  await db.prepare("INSERT INTO sessions(user_id,token_hash,csrf_token,user_agent,expires_at,mfa_verified_at) VALUES(?,?,?,?,CURRENT_TIMESTAMP + INTERVAL '10 minutes',CURRENT_TIMESTAMP)").run(owner.id,tokenDigest(token),randomToken(24),'Checkpoint A local browser verification');
   await writeAudit(db,{userId:owner.id,entity:'TALLY_VERIFICATION',recordId:'checkpoint-a',action:'BROWSER_CHECK_STARTED'});
   browser=await chromium.launch({channel:'chrome',headless:true});
   const root=path.resolve('output/checkpoint-a');fs.mkdirSync(root,{recursive:true});

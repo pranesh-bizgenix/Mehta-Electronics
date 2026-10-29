@@ -15,7 +15,7 @@ let browser,server,app,externalCalls=0;const errors=[];
 try{
  const sessions={};for(const [key,user]of Object.entries({owner,manager,executive,accounts})){
  const token=crypto.randomBytes(24).toString('hex'),csrf=crypto.randomBytes(24).toString('hex');sessions[key]={token,csrf};
- await db.sql`INSERT INTO sessions(user_id,token_hash,csrf_token,expires_at) VALUES(${user.id},${tokenDigest(token)},${csrf},now()+interval '1 hour')`;
+ await db.sql`INSERT INTO sessions(user_id,token_hash,csrf_token,expires_at,mfa_verified_at) VALUES(${user.id},${tokenDigest(token)},${csrf},now()+interval '1 hour',now())`;
  }
  app=createApp({db,config,fetchImpl:async()=>{externalCalls++;throw new Error('External Tally access forbidden');}});server=http.createServer(app);await new Promise(r=>server.listen(0,'127.0.0.1',r));const base=`http://127.0.0.1:${server.address().port}`;
  browser=await chromium.launch({channel:'chrome',headless:true});const context=await browser.newContext({viewport:{width:1440,height:1000},reducedMotion:'reduce'});
