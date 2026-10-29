@@ -59,10 +59,10 @@ export default function LoginPage() {
       <section className="card" aria-labelledby="login-title">
         <div className="brand"><div className="brand-mark" aria-hidden="true">M</div><div><small>MEHTA SIEMENS</small><strong>ControlDesk</strong></div></div>
         {step === 'password' && (
-          <form className="stack" onSubmit={submitPassword} noValidate>
+          <form className="stack" method="post" action="/login" onSubmit={submitPassword} noValidate>
             <h1 id="login-title">Sign in</h1>
-            <TextInput label="Email" type="email" autoComplete="username" required value={email} onChange={(e) => setEmail(e.target.value)} />
-            <TextInput label="Password" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+            <TextInput label="Email" name="email" type="email" autoComplete="username" required value={email} onChange={(e) => setEmail(e.target.value)} />
+            <TextInput label="Password" name="password" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
             {error && <p className="notice notice-bad" role="alert">{error}</p>}
             <Button type="submit" busy={busy} disabled={!email || !password}>Sign in</Button>
           </form>

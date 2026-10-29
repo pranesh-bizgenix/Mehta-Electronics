@@ -90,7 +90,7 @@ const step = () => mfa.clock.advance(31_000);
 
 before(async () => {
   temporary = await temporaryDatabase();
-  const config = getConfig({ databaseUrl: temporary.databaseUrl, seedOwnerEmail: owner.email, seedOwnerPassword: PASSWORD, appEncryptionKey: TEST_ENCRYPTION_KEY });
+  const config = getConfig({ databaseUrl: temporary.databaseUrl, seedOwnerEmail: owner.email, seedOwnerPassword: PASSWORD, appEncryptionKey: TEST_ENCRYPTION_KEY, mfaEnabled: true });
   db = await openDatabase(config);
   app = createApp({ db, config, clock: mfa.clock, outboundMailer: fakeMailer });
   server = http.createServer(app);

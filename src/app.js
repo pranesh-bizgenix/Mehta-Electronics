@@ -160,7 +160,8 @@ function publicUser(row) {
 export function createApp({ db, config, fetchImpl = fetch, sendMailImpl = sendQuotationEmail, clock, outboundMailer }) {
   const connectorStore = createConnectorStore(config);
   const modules = createModules({ db, config, clock, outboundMailer });
-  const mfaState = (user) => ({ required: roleRequiresMfa(user.role) || Boolean(user.mfa_enabled), enrolled: Boolean(user.mfa_enabled), verified: Boolean(user.mfa_verified_at) });
+  // Two-factor is off unless MFA_ENABLED=true; then roles flagged requires_mfa and enrolled users must verify.
+  const mfaState = (user) => ({ required: config.mfaEnabled && (roleRequiresMfa(user.role) || Boolean(user.mfa_enabled)), enrolled: Boolean(user.mfa_enabled), verified: Boolean(user.mfa_verified_at) });
   const routes = [
     ...adaptRoutes(modules.routeDefinitions(), { route, json, readJson, transactions: modules.transactions, idempotency: modules.idempotency }),
     ...crmModuleRoutes({db,config,route,json,readJson}),
@@ -220,7 +221,7 @@ export function createApp({ db, config, fetchImpl = fetch, sendMailImpl = sendQu
       (await writeAudit(db, { userId: user.id, entity: 'AUTH', recordId: user.id, action: 'LOGIN', ipAddress: ip }));
       const cookie = `crm_session=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${config.sessionTtlMinutes * 60}${config.isProduction ? '; Secure' : ''}`;
       const enrolled = Boolean((await db.prepare('SELECT enabled_at FROM user_mfa WHERE user_id=?').get(user.id))?.enabled_at);
-      json(res, 200, { user: publicUser(user), permissions: permissionsFor(user.role), csrfToken: csrf, mfa: { required: roleRequiresMfa(user.role) || enrolled, enrolled, verified: false } }, { 'set-cookie': cookie });
+      json(res, 200, { user: publicUser(user), permissions: permissionsFor(user.role), csrfToken: csrf, mfa: { required: config.mfaEnabled && (roleRequiresMfa(user.role) || enrolled), enrolled, verified: false } }, { 'set-cookie': cookie });
     }),
     Object.assign(route('POST', '/api/auth/logout', 'authenticated', async ({ req, res, user, ip }) => {
       const token = parseCookies(req.headers.cookie).crm_session; (await db.prepare('DELETE FROM sessions WHERE token_hash=?').run(tokenDigest(token)));

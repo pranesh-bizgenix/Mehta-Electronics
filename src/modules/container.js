@@ -39,7 +39,7 @@ export function createModules({ db, config, clock = new SystemClock(), outboundM
   const transactions = new TransactionRunner(db);
   const audit = new AuditRepository(db);
 
-  const access = new AccessService({ repository: new AccessRepository(db), transactions, audit });
+  const access = new AccessService({ repository: new AccessRepository(db), transactions, audit, mfaEnabled: Boolean(config.mfaEnabled) });
   const registry = new RuleRegistry(F1_RULES).register(marginFloorDefinition(new QuotationPolicyFloorSource({ db })));
   const rules = new RuleService({ registry, repository: new RuleRepository(db), transactions, audit, access });
   const automation = new AutomationService({ repository: new AutomationRepository(db), transactions, audit, access });

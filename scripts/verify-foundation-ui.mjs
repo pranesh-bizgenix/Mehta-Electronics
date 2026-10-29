@@ -21,7 +21,7 @@ await fs.mkdir(output, { recursive: true });
 const OWNER = { email: 'owner@ui.test', password: 'Foundation#Ui1' };
 const EXEC = { email: 'exec@ui.test', password: 'Foundation#Ui1' };
 const temporary = await temporaryDatabase();
-const config = getConfig({ databaseUrl: temporary.databaseUrl, seedOwnerEmail: OWNER.email, seedOwnerPassword: OWNER.password, appEncryptionKey: TEST_ENCRYPTION_KEY });
+const config = getConfig({ databaseUrl: temporary.databaseUrl, seedOwnerEmail: OWNER.email, seedOwnerPassword: OWNER.password, appEncryptionKey: TEST_ENCRYPTION_KEY, mfaEnabled: true });
 const db = await openDatabase(config);
 await db.prepare('UPDATE users SET must_change_password=0').run();
 await db.prepare("INSERT INTO users(name,email,role,password_hash,must_change_password) VALUES('Sales Executive',?,'EXECUTIVE',?,0)").run(EXEC.email, hashPassword(EXEC.password));

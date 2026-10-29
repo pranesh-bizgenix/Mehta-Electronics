@@ -7,7 +7,8 @@ import { installPermissionProvider } from '../../rbac.js';
  * permission provider for every hasPermission() call in the codebase.
  */
 export class AccessService {
-  constructor({ repository, transactions, audit }) {
+  constructor({ repository, transactions, audit, mfaEnabled = false }) {
+    this.mfaEnabled = mfaEnabled;
     this.repository = repository;
     this.transactions = transactions;
     this.audit = audit;
@@ -36,14 +37,14 @@ export class AccessService {
         if (!entry || !entry.active) return [];
         return entry.allPermissions ? ['*'] : [...entry.permissions];
       },
-      requiresMfa: (role) => Boolean(this.matrix.get(role)?.requiresMfa)
+      requiresMfa: (role) => this.mfaEnabled && Boolean(this.matrix.get(role)?.requiresMfa)
     });
     return this;
   }
 
   roleExists(key) { return Boolean(this.matrix.get(key)?.active); }
 
-  requiresMfa(role) { return Boolean(this.matrix.get(role)?.requiresMfa); }
+  requiresMfa(role) { return this.mfaEnabled && Boolean(this.matrix.get(role)?.requiresMfa); }
 
   can(user, permission) {
     const entry = this.matrix.get(user?.role);
