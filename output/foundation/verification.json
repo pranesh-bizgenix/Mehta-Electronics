@@ -1,0 +1,87 @@
+{
+  "checkedAt": "2026-10-29T09:29:03.432Z",
+  "results": [
+    {
+      "screen": "work",
+      "viewport": "desktop",
+      "horizontalOverflowPx": 0
+    },
+    {
+      "screen": "work",
+      "viewport": "phone",
+      "horizontalOverflowPx": 0
+    },
+    {
+      "screen": "tasks",
+      "viewport": "desktop",
+      "horizontalOverflowPx": 0
+    },
+    {
+      "screen": "tasks",
+      "viewport": "phone",
+      "horizontalOverflowPx": 0
+    },
+    {
+      "screen": "exceptions",
+      "viewport": "desktop",
+      "horizontalOverflowPx": 0
+    },
+    {
+      "screen": "exceptions",
+      "viewport": "phone",
+      "horizontalOverflowPx": 0
+    },
+    {
+      "screen": "messages",
+      "viewport": "desktop",
+      "horizontalOverflowPx": 0
+    },
+    {
+      "screen": "messages",
+      "viewport": "phone",
+      "horizontalOverflowPx": 0
+    },
+    {
+      "screen": "rules",
+      "viewport": "desktop",
+      "horizontalOverflowPx": 0
+    },
+    {
+      "screen": "rules",
+      "viewport": "phone",
+      "horizontalOverflowPx": 0
+    },
+    {
+      "screen": "automation",
+      "viewport": "desktop",
+      "horizontalOverflowPx": 0
+    },
+    {
+      "screen": "automation",
+      "viewport": "phone",
+      "horizontalOverflowPx": 0
+    },
+    {
+      "screen": "users",
+      "viewport": "desktop",
+      "horizontalOverflowPx": 0
+    },
+    {
+      "screen": "users",
+      "viewport": "phone",
+      "horizontalOverflowPx": 0
+    },
+    {
+      "screen": "audit",
+      "viewport": "desktop",
+      "horizontalOverflowPx": 0
+    },
+    {
+      "screen": "audit",
+      "viewport": "phone",
+      "horizontalOverflowPx": 0
+    }
+  ],
+  "consoleErrors": [],
+  "duplicateSubmitTasks": 1
+}

@@ -10,6 +10,7 @@ const app = createApp({ db, config });
 const server = http.createServer(app);
 const stalledRunTimer=setInterval(()=>markStalledRuns(db.sql,config.tallyStalledRunMinutes).catch(error=>console.error('Stalled-run maintenance failed:',error.code||error.name)),30_000);
 stalledRunTimer.unref();
+if (config.schedulerEnabled) app.modules.scheduler.start();
 
 server.listen(config.port, config.host, () => {
   console.log(`Mehta CRM listening on http://${config.host}:${config.port}`);

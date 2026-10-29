@@ -7,6 +7,7 @@ if (!['http:', 'https:'].includes(parsedBackendUrl.protocol) || parsedBackendUrl
 }
 
 const nextConfig: NextConfig = {
+  agentRules: false,
   async rewrites() {
     return [{ source: '/api/:path*', destination: `${parsedBackendUrl.origin}/api/:path*` }];
   }
