@@ -7,3 +7,5 @@ node_modules/
 *.log
 *.tsbuildinfo
 coverage/
+.next-capture/
+apps/web/.next-capture/

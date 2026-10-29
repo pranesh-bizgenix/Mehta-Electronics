@@ -8,6 +8,9 @@ if (!['http:', 'https:'].includes(parsedBackendUrl.protocol) || parsedBackendUrl
 
 const nextConfig: NextConfig = {
   agentRules: false,
+  // Verification builds use a separate directory so they never disturb a running dev server.
+  distDir: process.env.NEXT_DIST_DIR || '.next',
+  poweredByHeader: false,
   async rewrites() {
     return [{ source: '/api/:path*', destination: `${parsedBackendUrl.origin}/api/:path*` }];
   }
