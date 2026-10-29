@@ -356,3 +356,42 @@
 .ds-swatch { border-radius: var(--radius-md); border: var(--border-width) solid var(--color-border); overflow: hidden; font-size: var(--text-xs); }
 .ds-swatch i { display: block; height: var(--space-5); }
 .ds-swatch span { display: block; padding: var(--space-0-5) var(--space-1); }
+
+/* ===== Record header (customer 360, quotations, orders) =================== */
+.ds-record { position: relative; overflow: hidden; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: var(--space-2-5); align-items: center; padding: var(--space-3); margin-bottom: var(--space-3); border-radius: var(--radius-xl); border: var(--border-width) solid var(--color-border); background: linear-gradient(135deg, var(--color-primary-soft) 0%, var(--color-surface) 55%); box-shadow: var(--elevation-2); }
+.ds-record::after { content: ""; position: absolute; inset: auto calc(-1 * var(--space-6)) calc(-1 * var(--space-8)) auto; width: calc(var(--illustration-size) * 2.4); height: calc(var(--illustration-size) * 2.4); border-radius: var(--radius-full); background: radial-gradient(circle, var(--color-primary-soft) 0%, transparent 70%); pointer-events: none; }
+.ds-record-avatar { width: calc(var(--avatar-size) * 2); height: calc(var(--avatar-size) * 2); border-radius: var(--radius-lg); display: grid; place-items: center; font-family: var(--font-display); font-size: var(--text-xl); font-weight: var(--weight-bold); background: var(--color-primary); color: var(--color-primary-text); box-shadow: var(--elevation-2); }
+.ds-record h1 { font-size: var(--text-2xl); }
+.ds-record-meta { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-2); margin-top: var(--space-0-5); color: var(--color-text-muted); font-size: var(--text-sm); }
+.ds-record-meta span { display: inline-flex; align-items: center; gap: var(--space-0-5); }
+.ds-record-meta svg, .ds-card a.cluster svg { width: var(--icon-sm); height: var(--icon-sm); }
+.ds-record-actions { position: relative; z-index: 1; display: flex; flex-wrap: wrap; gap: var(--space-1); }
+@media (max-width: 720px) { .ds-record { grid-template-columns: auto minmax(0, 1fr); padding: var(--space-2); } .ds-record-actions { grid-column: 1 / -1; } .ds-record-actions > .ds-button { flex: 1 1 auto; } }
+
+/* Clickable cards lift slightly on hover */
+.ds-card:has(> a:hover) { box-shadow: var(--elevation-3); transform: translateY(-1px); }
+.ds-card { transition: box-shadow var(--duration-base) var(--ease-out), transform var(--duration-base) var(--ease-out); }
+
+/* Hero band for the dashboard greeting */
+.ds-hero { position: relative; overflow: hidden; display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--space-2); padding: var(--space-3) var(--space-3) var(--space-2-5); margin-bottom: var(--space-3); border-radius: var(--radius-xl); background: radial-gradient(120% 140% at 0% 0%, var(--brand-panel-from) 0%, var(--brand-panel-mid) 60%, var(--brand-panel-to) 100%); color: var(--brand-panel-text); box-shadow: var(--elevation-3); }
+.ds-hero h1 { color: var(--brand-panel-text); }
+.ds-hero p { color: var(--brand-panel-muted); }
+.ds-hero::before { content: ""; position: absolute; right: calc(-1 * var(--space-6)); top: calc(-1 * var(--space-8)); width: calc(var(--illustration-size) * 3); height: calc(var(--illustration-size) * 3); border-radius: var(--radius-full); border: var(--space-2-5) solid var(--brand-panel-accent); opacity: 0.12; pointer-events: none; }
+.ds-hero .ds-button[data-variant="secondary"] { background: transparent; color: var(--brand-panel-text); border-color: var(--brand-panel-muted); }
+.ds-hero .ds-button[data-variant="secondary"]:hover:not(:disabled) { background: var(--brand-panel-mid); }
+.ds-hero .ds-button[data-variant="primary"] { background: var(--brand-panel-text); color: var(--brand-panel-mid); }
+.ds-hero > * { position: relative; }
+
+/* Neutral count badges (tabs, column counts) */
+.ds-nav-badge[data-tone="neutral"] { background: var(--color-neutral-soft); color: var(--color-neutral); }
+
+/* Phones: KPIs as a compact two-column grid */
+@media (max-width: 640px) {
+  .grid-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-1); }
+  .grid-kpis .ds-stat { padding: var(--space-1-5); gap: var(--space-0-5); }
+  .grid-kpis .ds-stat-value { font-size: var(--text-xl); }
+  .grid-kpis .ds-sparkline { display: none; }
+  .grid-kpis .ds-stat-foot { min-height: 0; }
+  .ds-hero { padding: var(--space-2); }
+  .ds-hero .ds-page-actions { width: 100%; }
+}

@@ -7,7 +7,7 @@ import { formatMoney, formatMoneyCompact, formatRelative, titleCase } from '@/li
 import { useDashboard } from '@/features/dashboard/use-dashboard';
 import type { Decision } from '@/features/dashboard/api';
 import {
-  BarChart, Button, Card, CardSkeleton, EmptyState, ErrorState, Funnel, Icon, Meter, Notice, PageHeader, StatCard, Timeline, type IconName
+  BarChart, Button, Card, CardSkeleton, EmptyState, ErrorState, Funnel, Icon, Meter, Notice, StatCard, Timeline, type IconName
 } from '@/components/ds';
 
 const DECISION_ICON: Record<Decision['kind'], IconName> = { exception: 'alert', quotation: 'quote', order: 'truck', draft: 'mail' };
@@ -21,11 +21,13 @@ export default function DashboardPage() {
 
   return (
     <>
-      <PageHeader title={`${greeting}${name ? `, ${name}` : ''}`} description={`Here’s what needs you today · ${period.label}`}
-        actions={<>
+      <section className="ds-hero page-enter" aria-labelledby="dash-title">
+        <div><p className="ds-menu-label" style={{ padding: 0, color: 'inherit', opacity: 0.8 }}>{period.label}</p><h1 id="dash-title">{`${greeting}${name ? `, ${name}` : ''}`}</h1><p>Here’s what needs you today.</p></div>
+        <div className="ds-page-actions">
           {can('enquiries.create') && <Button variant="secondary" icon="plus" onClick={() => { window.location.href = screenHref('/enquiries?new=1'); }}>New enquiry</Button>}
           {can('quotations.create') && <Button icon="plus" onClick={() => { window.location.href = screenHref('/quotations/new'); }}>New quotation</Button>}
-        </>} />
+        </div>
+      </section>
 
       {state.status === 'error' && !data && <ErrorState error={state.error} onRetry={reload} />}
 

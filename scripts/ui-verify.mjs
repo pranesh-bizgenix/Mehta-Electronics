@@ -34,7 +34,7 @@ await fs.mkdir(output, { recursive: true });
 const OWNER = { email: 'owner@ui.test', password: 'Redesign#Check1' };
 const EXEC = { email: 'exec@ui.test', password: 'Redesign#Check1' };
 const SCREENS = [
-  ['dashboard', 'Good '], ['work', 'My work'], ['tasks', 'Tasks'], ['exceptions', 'Exceptions'], ['messages', 'Outbound drafts'],
+  ['dashboard', 'Good '], ['customers', 'Customers'], ['customers/1', 'Shree Ganesh'], ['work', 'My work'], ['tasks', 'Tasks'], ['exceptions', 'Exceptions'], ['messages', 'Outbound drafts'],
   ['rules', 'Rules & switches'], ['users', 'Users & roles'], ['audit', 'Audit trail'], ['settings', 'Settings'], ['design-system', 'Design system']
 ];
 const WIDTHS = [1440, 1024, 390];
@@ -116,6 +116,21 @@ try {
   await page.getByRole('option', { name: /Rules & switches/ }).first().click();
   await page.getByRole('heading', { level: 1, name: 'Rules & switches' }).waitFor();
   check('command palette search + navigation');
+
+  // 3b. Create a customer through the redesigned drawer and land on its 360 page
+  await page.goto(`${web}/customers?new=1`);
+  const drawer = page.locator('#customer-form');
+  await drawer.getByLabel('Registered name').fill('Johnson Lifts Pvt Ltd');
+  await drawer.getByLabel('GSTIN').fill('33AAACJ1234F1Z5');
+  await drawer.getByLabel('Credit limit (₹)').fill('750000');
+  await drawer.getByLabel('Name', { exact: true }).fill('Purchase desk');
+  await drawer.getByLabel('Email').fill('buyer@johnsonlifts.test');
+  await page.getByRole('button', { name: 'Create customer' }).click();
+  await page.getByRole('heading', { level: 1, name: 'Johnson Lifts Pvt Ltd' }).waitFor();
+  assert.equal((await db.prepare("SELECT state_code FROM crm_customer_profiles p JOIN customers c ON c.id=p.customer_id WHERE c.name='Johnson Lifts Pvt Ltd'").get())?.state_code, '33', 'state code filled from GSTIN');
+  await page.getByRole('tab', { name: /Contacts/ }).click();
+  await page.getByRole('tabpanel').getByText('buyer@johnsonlifts.test').waitFor();
+  check('create customer + 360');
 
   // 4. Duplicate-submit protection: double-click creates one task
   await page.goto(`${web}/tasks?new=1`);

@@ -49,7 +49,7 @@ export const NAV: NavGroup[] = [
 ];
 
 /** Screens still served by the existing app (removed from this list as each one is rebuilt). */
-export const LEGACY_SCREENS = new Set<string>(['/customers', '/enquiries', '/quotations', '/orders', '/items', '/purchasing', '/tally', '/tally/connector']);
+export const LEGACY_SCREENS = new Set<string>(['/enquiries', '/quotations', '/orders', '/items', '/purchasing', '/tally', '/tally/connector']);
 
 export const legacyUrl = (): string => process.env.NEXT_PUBLIC_LEGACY_CRM_URL ?? 'http://127.0.0.1:3000/';
 
