@@ -1,0 +1,21 @@
+{
+  "capturedAt": "2026-10-29T11:03:19.756Z",
+  "views": [
+    "dashboard",
+    "customers",
+    "items",
+    "enquiries",
+    "quotations",
+    "orders",
+    "purchasing",
+    "users",
+    "tally",
+    "tally-connector",
+    "audit"
+  ],
+  "widths": [
+    1440,
+    390
+  ],
+  "issues": []
+}
