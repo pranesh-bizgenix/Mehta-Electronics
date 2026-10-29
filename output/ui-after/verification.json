@@ -1,0 +1,15 @@
+{
+  "checkedAt": "2026-10-29T12:02:45.090Z",
+  "checks": [
+    "login + two-factor enrolment",
+    "theme toggle persisted per user",
+    "command palette search + navigation",
+    "duplicate submit creates one record",
+    "captures + axe + overflow",
+    "role-aware navigation + unauthorized state"
+  ],
+  "axe": [],
+  "overflow": [],
+  "consoleErrors": [],
+  "captures": 60
+}
