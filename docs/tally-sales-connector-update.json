@@ -1,0 +1,14 @@
+{
+    "profiles":  [
+                     {
+                         "name":  "mehta-electronics"
+                     },
+                     {
+                         "name":  "mehta-electric-corporation-from"
+                     }
+                 ],
+    "sha256":  "5C9DB117329D3BCCDE20043CC6D670FCC96947EEF6B43BD7DE92BA1159F3238C",
+    "company":  "MEHTA ELECTRIC CORPORATION - (from 1-Apr-23) - (from 1-Apr-23)",
+    "release":  "output\\tally-sales-review\\connector-release\\TallyConnector.Service.exe",
+    "apiBaseUrl":  "http://127.0.0.1:3000"
+}

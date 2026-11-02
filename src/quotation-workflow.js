@@ -84,6 +84,7 @@ async function snapshot(db,b,number,enquiryId=null){
  for(const l of b.lines){const item=await db.prepare("SELECT *,pack_size::text AS pack_size FROM items WHERE id=? AND status='ACTIVE'").get(id(l.itemId));if(!item)fail(422,'Every line must reference an active CRM item.');
  const c=await db.prepare('SELECT unit_cost::text AS value FROM crm_quotation_costs WHERE item_id=?').get(item.id);costs[String(item.id)]=c?.value??null;
  lines.push({itemId:item.id,partCode:item.part_code,hsn:item.hsn||'',description:text(l.description??item.description,1000),uom:item.uom,quantity:String(l.quantity),unitPrice:String(l.unitPrice),discountPercent:String(l.discountPercent??'0'),taxPercent:String(l.taxPercent??'0')});
+ lines.at(-1).rateContractId=await contractForLine(db,customer.id,lines.at(-1),today());
  }
  let math;try{math=calculateQuotation(lines,policy.seller_state,pos,costs,policy.floor_percent,policy.margin_basis);}catch(e){fail(422,e.message);}
  if(scaled(math.total)>999999999999000000n)fail(422,'Quotation total exceeds the supported limit.');
@@ -100,6 +101,8 @@ async function baseLines(db,qid,snap){await db.prepare("UPDATE quotation_lines S
  for(const [position,l]of snap.lines.entries())await db.prepare('INSERT INTO quotation_lines(quotation_id,item_id,description,uom,quantity,unit_price,discount_percent,tax_percent,position) VALUES(?,?,?,?,?,?,?,?,?)').run(qid,l.itemId,l.description,l.uom,l.quantity,l.unitPrice,l.discountPercent,l.taxPercent,position);
 }
 export async function saveQuote(db,quoteId,b,user,duplicateOf=null){can(user,quoteId?'quotations.update':'quotations.create');const why=reason(b);
+ await requireQuotableCustomer(db,b.customerId);
+ await requireCustomerHandler(db,b.customerId,user);
  return work(db,user,why,async()=>{
  const old=quoteId?await rowFor(db,quoteId):null;
  if(old&&(!['DRAFT','APPROVED','PENDING_APPROVAL'].includes(old.status)||b.version!==old.version))fail(409,'Quotation changed or cannot be edited. Reload; sent quotations must be duplicated.');
@@ -115,7 +118,7 @@ export async function saveQuote(db,quoteId,b,user,duplicateOf=null){can(user,quo
  const row=await rowFor(db,qid);await persistVersion(db,row,user,why);await event(db,user,row,duplicateOf?'DUPLICATED':old?'REVISED':'CREATED',why,{status:'DRAFT',version:row.version,...(duplicateOf?{sourceId:duplicateOf}:{})});return visible(row,user);
  });
 }
-async function ensureCurrent(db,row){const p=await quotePolicy(db);if(!p||p.revision!==row.policy_revision)fail(409,'Policy changed. Revise and resubmit the quotation.');
+async function ensureCurrent(db,row){await requireQuotableCustomer(db,row.public_snapshot.customerId);for(const line of row.public_snapshot.lines)await contractForLine(db,row.public_snapshot.customerId,line,today());const p=await quotePolicy(db);if(!p||p.revision!==row.policy_revision)fail(409,'Policy changed. Revise and resubmit the quotation.');
  for(const l of row.private_snapshot.lines){const c=await db.prepare('SELECT unit_cost::text AS value FROM crm_quotation_costs WHERE item_id=?').get(l.itemId);if(c?.value==null||scaled(c.value)!==scaled(l.unitCost??'0'))fail(409,'Item costs changed or are missing. Revise and resubmit the quotation.');}
  if(row.private_snapshot.missingCost)fail(422,'The owner must enter costs for every item before submission.');
  if(row.public_snapshot.subtotal==='0.00')fail(422,'A quotation must have a positive net sales amount before submission.');
@@ -131,7 +134,7 @@ export async function quoteAction(db,quoteId,b,user){const why=reason(b),action=
   if(last.created_by===user.id||row.created_by===user.id)fail(403,'A different manager or owner must approve this quotation.');
   if(row.private_snapshot.belowFloor&&b.overrideFloor!==true)fail(422,'Explicitly confirm the below-floor exception and provide its reason.');next='APPROVED';
  }else if(action==='RETURN'&&row.status==='PENDING_APPROVAL')next='DRAFT';
- else if(action==='SEND'&&row.status==='APPROVED'){await ensureCurrent(db,row);next='SENT';}
+ else if(action==='SEND'&&row.status==='APPROVED'){await requireCustomerHandler(db,row.public_snapshot.customerId,user);await ensureCurrent(db,row);await bindFirstQuotationOwner(db,row.public_snapshot.customerId,row.created_by,user);next='SENT';}
  else if(['WON','LOST'].includes(action)&&row.status==='SENT')next=action;
  else if(action==='EXPIRE'&&['SENT','APPROVED','PENDING_APPROVAL','DRAFT'].includes(row.status)&&row.public_snapshot.validUntil<today())next='EXPIRED';
  else if(action==='CANCEL'&&!['WON','LOST','EXPIRED','CANCELLED'].includes(row.status))next='CANCELLED';
@@ -158,11 +161,15 @@ export async function emailWorkflowQuote(db,quoteId,b,user,config,sendMail){
  if(typeof b.to!=='string'||b.to.length>254||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(b.to))fail(422,'A valid recipient email is required.');
  let attempted=false;
  try{return await work(db,user,why,async()=>{const row=await rowFor(db,quoteId);
+ await requireQuotableCustomer(db,row.public_snapshot.customerId);
+ await requireCustomerHandler(db,row.public_snapshot.customerId,user);
  if(!['APPROVED','SENT'].includes(row.status))fail(409,'Only an approved or sent quotation can be emailed.');
+ if(!await db.prepare('SELECT id FROM customer_contacts WHERE customer_id=? AND lower(email)=lower(?) AND NOT is_deleted').get(row.public_snapshot.customerId,b.to))fail(422,'Recipient must be a registered contact email for this customer.');
  if(b.version!=null&&b.version!==row.version)fail(409,'Quotation changed. Reload before sending.');
  if(row.status==='APPROVED')await ensureCurrent(db,row);
  const quote=visible(row,{role:'EXECUTIVE'}),subject=text(b.subject||`Quotation ${quote.quotation_number}`,300),message=text(b.message||'Please find the approved quotation attached.',10000),pdf=await quotationPdf(quote);
  try{attempted=true;await sendMail(config,{quote,to:b.to,subject,message,pdf});}catch(err){fail(err.code==='SMTP_NOT_CONFIGURED'?503:502,err.code==='SMTP_NOT_CONFIGURED'?'Email delivery is not configured.':'Email delivery failed. Check delivery before retrying.');}
+ await bindFirstQuotationOwner(db,row.public_snapshot.customerId,row.created_by,user);
  // Serialize edits/policy changes with delivery so a different version cannot be sent.
  await db.prepare("UPDATE crm_quotation_workflows SET status='SENT' WHERE quotation_id=?").run(row.quotation_id);
  await db.prepare("UPDATE quotations SET status='SENT',updated_by=?,updated_at=now() WHERE id=?").run(user.id,row.quotation_id);
@@ -170,3 +177,4 @@ export async function emailWorkflowQuote(db,quoteId,b,user,config,sendMail){
  await event(db,user,row,'EMAIL_SENT',why,{to:b.to,subject,version:row.version});return {ok:true,status:'SENT'};
  });}catch(err){if(attempted)await work(db,user,'Email attempt failed or delivery is uncertain',async()=>{const row=await rowFor(db,quoteId);await event(db,user,row,'EMAIL_FAILED_OR_UNCERTAIN','Email attempt failed or delivery is uncertain',{to:b.to,version:row.version,statusCode:err.status||500});});throw err;}
 }
+import {requireQuotableCustomer,requireCustomerHandler,contractForLine,bindFirstQuotationOwner} from './modules/operations/customer-gates.js';

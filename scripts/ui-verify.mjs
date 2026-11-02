@@ -25,6 +25,7 @@ import { temporaryDatabase } from '../test-support/postgres.js';
 import { TEST_ENCRYPTION_KEY } from '../test-support/mfa.js';
 import { Totp } from '../src/modules/mfa/totp.js';
 import { seedDemoData } from './lib/demo-data.mjs';
+import { saveQuotePolicy, saveQuoteCost } from '../src/quotation-workflow.js';
 
 const API_PORT = 3999, WEB_PORT = 3105;
 const web = `http://127.0.0.1:${WEB_PORT}`;
@@ -33,8 +34,9 @@ const output = path.resolve('output/ui-after');
 await fs.mkdir(output, { recursive: true });
 const OWNER = { email: 'owner@ui.test', password: 'Redesign#Check1' };
 const EXEC = { email: 'exec@ui.test', password: 'Redesign#Check1' };
+const MANAGER = { email: 'manager@ui.test', password: 'Redesign#Check1' };
 const SCREENS = [
-  ['dashboard', 'Good '], ['customers', 'Customers'], ['customers/1', 'Shree Ganesh'], ['enquiries', 'Enquiries'], ['enquiries?open=1', 'Enquiries'], ['work', 'My work'], ['tasks', 'Tasks'], ['exceptions', 'Exceptions'], ['messages', 'Outbound drafts'],
+  ['dashboard', 'Good '], ['customers', 'Customers'], ['customers/1', 'Shree Ganesh'], ['enquiries', 'Enquiries'], ['enquiries?open=1', 'Enquiries'], ['quotations', 'Quotations'], ['quotations/new', 'New quotation'], ['work', 'My work'], ['tasks', 'Tasks'], ['exceptions', 'Exceptions'], ['messages', 'Outbound drafts'],
   ['rules', 'Rules & switches'], ['users', 'Users & roles'], ['audit', 'Audit trail'], ['settings', 'Settings'], ['design-system', 'Design system']
 ];
 const WIDTHS = [1440, 1024, 390];
@@ -54,6 +56,11 @@ try {
   await seedDemoData(db);
   await db.prepare('UPDATE users SET must_change_password=0').run();
   await db.prepare("INSERT INTO users(name,email,role,password_hash,must_change_password) VALUES('Sales Executive',?,'EXECUTIVE',?,0)").run(EXEC.email, hashPassword(EXEC.password));
+  await db.prepare("INSERT INTO users(name,email,role,password_hash,must_change_password) VALUES('Sales Manager',?,'MANAGER',?,0)").run(MANAGER.email, hashPassword(MANAGER.password));
+  const ownerRow = await db.prepare("SELECT id FROM users WHERE role='OWNER' LIMIT 1").get();
+  const ownerActor = { id: ownerRow.id, role: 'OWNER' };
+  await saveQuotePolicy(db, { floorPercent: '10', marginBasis: 'LINE_AND_TOTAL', sellerState: '27', letterhead: { name: 'Mehta Electric Corporation', address: 'Chennai' }, reason: 'UI verification policy' }, ownerActor);
+  for (const [itemId, cost] of [[1, '2900'], [2, '1900'], [3, '3800'], [4, '24000']]) await saveQuoteCost(db, itemId, { unitCost: cost, reason: 'UI verification cost' }, ownerActor);
   app = createApp({ db, config });
   server = http.createServer(app);
   await new Promise((resolve, reject) => { server.once('error', reject); server.listen(API_PORT, '127.0.0.1', resolve); });
@@ -145,6 +152,44 @@ try {
   await page.getByRole('heading', { level: 2, name: 'Conveyor spares for line 2' }).waitFor();
   assert.equal(Number((await db.prepare("SELECT count(*) AS n FROM enquiries WHERE subject='Conveyor spares for line 2'").get()).n), 1);
   check('create enquiry + split view');
+
+  // 3d. Quote from the enquiry → submit → independent approval → mark sent
+  const newEnquiry = (await db.prepare("SELECT id FROM enquiries WHERE subject='Conveyor spares for line 2'").get()).id;
+  await page.goto(`${web}/enquiries?open=${newEnquiry}`);
+  await page.getByRole('link', { name: 'Create quotation' }).click();
+  await page.getByRole('heading', { level: 1, name: 'New quotation' }).waitFor();
+  await page.waitForFunction(() => document.querySelector('input[role="combobox"][id]') && [...document.querySelectorAll('.ds-line-row input[role="combobox"]')].some((i) => i.value.includes('3RT2026')));
+  assert.equal(await page.locator('.ds-line-row:not(.ds-line-head)').count(), 1, 'lines pre-filled from the enquiry');
+  await page.getByLabel('Rate').fill('3650');
+  await page.screenshot({ path: path.join(output, 'quotation-editor-new-1440-light.png'), fullPage: true });
+  await page.getByRole('button', { name: 'Save draft' }).click();
+  await page.waitForURL(/\/quotations\/\d+$/);
+  const quoteUrl = page.url();
+  await page.getByRole('button', { name: 'Submit for approval' }).click();
+  await page.getByLabel('Reason').fill('Ready for review');
+  await page.getByRole('dialog').getByRole('button', { name: 'Submit for approval' }).click();
+  await page.locator('.ds-record .ds-badge', { hasText: 'Pending approval' }).waitFor();
+  assert.equal(await page.getByRole('button', { name: 'Approve' }).count(), 0, 'the author cannot approve');
+  const managerContext = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
+  const manager = await managerContext.newPage();
+  await manager.goto(`${web}/login`);
+  await manager.getByLabel('Email').fill(MANAGER.email);
+  await manager.getByLabel('Password').fill(MANAGER.password);
+  await manager.getByRole('button', { name: 'Sign in' }).click();
+  await manager.getByRole('heading', { level: 1, name: /^Good / }).waitFor();
+  await manager.goto(quoteUrl);
+  await manager.getByRole('button', { name: 'Approve' }).click();
+  await manager.getByLabel('Reason').fill('Prices and margin checked');
+  await manager.getByRole('dialog').getByRole('button', { name: 'Approve' }).click();
+  await manager.locator('.ds-record .ds-badge', { hasText: 'Approved' }).waitFor();
+  await manager.getByRole('button', { name: 'Mark as sent' }).click();
+  await manager.getByLabel('Reason').fill('Sent to the buyer by email');
+  await manager.getByRole('dialog').getByRole('button', { name: 'Mark as sent' }).click();
+  await manager.locator('.ds-record .ds-badge', { hasText: 'Sent' }).waitFor();
+  await manager.screenshot({ path: path.join(output, 'quotation-editor-sent-1440-light.png'), fullPage: true });
+  assert.equal((await db.prepare('SELECT status FROM enquiries WHERE id=?').get(newEnquiry)).status, 'QUOTED');
+  await managerContext.close();
+  check('enquiry → quote → independent approval → sent');
 
   // 4. Duplicate-submit protection: double-click creates one task
   await page.goto(`${web}/tasks?new=1`);

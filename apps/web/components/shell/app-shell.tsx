@@ -4,13 +4,13 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState, type ReactNode } from 'react';
 import { Avatar, ErrorState, Icon, IconButton, Kbd, Menu, Spinner, useAsync, useHotkey } from '@/components/ds';
-import { formatRelative } from '@/lib/format';
+import { formatRelative, initials } from '@/lib/format';
 import { useApi } from '@/lib/api/provider';
 import { useSession } from '@/lib/session';
 import { usePreferences, type ThemeChoice } from '@/lib/preferences';
 import { useScope, type PeriodKey } from '@/lib/scope';
 import { CommandPalette } from './command-palette';
-import { NAV, LEGACY_SCREENS, legacyUrl, type BadgeKey } from './nav-config';
+import { NAV, type BadgeKey } from './nav-config';
 
 type Badges = Partial<Record<BadgeKey | 'unreadNotifications', number>>;
 interface Notification { id: string; type: string; title: string; message: string; read: boolean; createdAt: string }
@@ -23,11 +23,13 @@ export function AppShell({ children }: { children: ReactNode }) {
   const router = useRouter();
   const { preferences, update } = usePreferences();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [adminOpen, setAdminOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [badges, reloadBadges] = useAsync(() => state.kind === 'ready' ? api.data<Badges>('GET', '/api/v1/me/badges') : Promise.resolve({} as Badges), [state.kind, pathname]);
 
   useHotkey('k', () => setPaletteOpen(true));
   useEffect(() => { setDrawerOpen(false); }, [pathname]);
+  useEffect(() => {if(NAV.find(group=>group.label==='Admin')?.items.some(item=>pathname===item.href))setAdminOpen(true);},[pathname]);
   useEffect(() => {
     if (state.kind === 'anonymous') router.replace(`/login?next=${encodeURIComponent(pathname)}`);
     if (state.kind === 'ready' && state.mfa.required && !state.mfa.verified) router.replace('/login');
@@ -39,15 +41,16 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   const counts: Badges = badges.status === 'ready' ? badges.data : badges.data ?? {};
   const collapsed = preferences.sidebarCollapsed;
+  const activeScreen = NAV.flatMap(group=>group.items).filter(item=>pathname===item.href||pathname.startsWith(`${item.href}/`)).sort((a,b)=>b.href.length-a.href.length)[0]?.label ?? 'Workspace';
 
   return (
     <div className="ds-app" data-collapsed={collapsed}>
       <a className="skip-link" href="#main">Skip to content</a>
       {drawerOpen && <div className="ds-scrim" onClick={() => setDrawerOpen(false)} aria-hidden="true" />}
       <nav className="ds-sidebar" data-open={drawerOpen} id="app-sidebar" aria-label="Main">
-        <Link href="/dashboard" className="ds-brand" aria-label="ControlDesk home">
-          <span className="ds-brand-mark" aria-hidden="true">M</span>
-          <span className="ds-brand-text"><small>Mehta Siemens</small><strong>ControlDesk</strong></span>
+        <Link href="/dashboard" className="ds-brand">
+          <span className="ds-brand-mark" aria-hidden="true">ME</span>
+          <span className="ds-brand-text"><strong>ControlDesk</strong><small>Mehta Electronics</small></span>
         </Link>
         <div className="ds-nav">
           {NAV.map((group) => {
@@ -55,39 +58,37 @@ export function AppShell({ children }: { children: ReactNode }) {
             if (!items.length) return null;
             return (
               <div key={group.label} className="ds-nav">
-                <p className="ds-nav-group">{group.label}</p>
-                {items.map((item) => {
+                {group.label==='Admin'?<button type="button" className="ds-nav-group ds-nav-group-toggle" aria-expanded={adminOpen||collapsed} onClick={()=>setAdminOpen(value=>!value)}>Administration<Icon name={adminOpen?'chevronDown':'chevronRight'}/></button>:<p className="ds-nav-group">{group.label}</p>}
+                {(group.label!=='Admin'||adminOpen||collapsed)&&items.map((item) => {
                   const count = item.badge ? counts[item.badge] : undefined;
                   const current = pathname === item.href || (item.href !== '/tally' && pathname.startsWith(`${item.href}/`));
-                  const legacy = LEGACY_SCREENS.has(item.href);
                   const content = <><Icon name={item.icon} /><span className="ds-nav-label">{item.label}</span>{!!count && <span className="ds-nav-badge" data-tone={item.badgeTone} aria-label={`${count} pending`}>{count > 99 ? '99+' : count}</span>}</>;
-                  return legacy
-                    ? <a key={item.href} className="ds-nav-link" href={legacyUrl()} title={collapsed ? item.label : 'Opens the existing screen until its redesign ships'}>{content}</a>
-                    : <Link key={item.href} className="ds-nav-link" href={item.href} aria-current={current ? 'page' : undefined} title={collapsed ? item.label : undefined}>{content}</Link>;
+                  return <Link key={item.href} className="ds-nav-link" href={item.href} aria-current={current ? 'page' : undefined} title={collapsed ? item.label : undefined}>{content}</Link>;
                 })}
               </div>
             );
           })}
         </div>
         <div className="ds-sidebar-footer ds-desktop-only">
-          <IconButton icon="sidebar" label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'} onClick={() => update({ sidebarCollapsed: !collapsed })} />
+          <div className="ds-workspace-id"><span aria-hidden="true">ME</span><div><strong>Mehta Electronics</strong><small>Business workspace</small></div></div>
         </div>
       </nav>
 
       <div className="ds-main-column">
         <header className="ds-topbar">
           <IconButton className="ds-mobile-only" icon="menu" label="Open navigation" aria-expanded={drawerOpen} aria-controls="app-sidebar" onClick={() => setDrawerOpen(true)} />
-          <button type="button" className="ds-topbar-search" onClick={() => setPaletteOpen(true)} aria-label="Search or jump to (Ctrl+K)">
+          <IconButton className="ds-desktop-only" icon="sidebar" label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'} onClick={() => update({ sidebarCollapsed: !collapsed })} />
+          <div className="ds-topbar-context"><span className="subtle">Workspace</span><Icon name="chevronRight"/><strong>{activeScreen}</strong></div>
+          <button type="button" className="ds-topbar-search" onClick={() => setPaletteOpen(true)} aria-keyshortcuts="Control+K">
             <Icon name="search" /><span className="truncate">Search customers, quotes, items…</span><span className="ds-desktop-only"><Kbd>Ctrl</Kbd> <Kbd>K</Kbd></span>
           </button>
           <div className="ds-topbar-actions">
             <ScopePicker />
             <Notifications unread={counts.unreadNotifications ?? 0} onRead={reloadBadges} />
             <ThemeMenu value={preferences.theme} onChange={(theme) => update({ theme })} />
-            <Menu label="Account" trigger={(t) => <button type="button" className="ds-icon-button" aria-label={`Account: ${state.user.name}`} {...t}><Avatar name={state.user.name} /></button>}>
+            <Menu label="Account" trigger={(t) => <button type="button" className="ds-icon-button" aria-label={`Account: ${initials(state.user.name)} — ${state.user.name}`} {...t}><span aria-hidden="true"><Avatar name={state.user.name} /></span></button>}>
               <div className="ds-menu-label">{state.user.name}<br /><span style={{ textTransform: 'none', letterSpacing: 0 }}>{state.user.email} · {state.user.role.toLowerCase()}</span></div>
               <Link className="ds-menu-item" role="menuitem" href="/settings"><Icon name="settings" />Settings</Link>
-              <a className="ds-menu-item" role="menuitem" href={legacyUrl()}><Icon name="arrowRight" />Open existing screens</a>
               <div className="ds-menu-sep" />
               <button type="button" className="ds-menu-item" role="menuitem" onClick={() => void logout().then(() => router.replace('/login'))}><Icon name="logout" />Sign out</button>
             </Menu>

@@ -1,0 +1,7 @@
+.tally-raw-view {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-inline-size: 100%;
+  overflow: auto;
+  font-family: var(--font-mono);
+}

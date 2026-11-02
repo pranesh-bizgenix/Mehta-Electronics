@@ -1,0 +1,27 @@
+{
+  "checkedAt": "2026-10-30T11:24:43.654Z",
+  "tallyReadOnly": true,
+  "collections": [
+    {
+      "entity": "Group",
+      "status": "exported",
+      "records": 78,
+      "topLevelFields": 68,
+      "responseBytes": 328132
+    },
+    {
+      "entity": "Unit",
+      "status": "exported",
+      "records": 12,
+      "topLevelFields": 32,
+      "responseBytes": 14609
+    },
+    {
+      "entity": "Godown",
+      "status": "exported",
+      "records": 5,
+      "topLevelFields": 79,
+      "responseBytes": 15538
+    }
+  ]
+}

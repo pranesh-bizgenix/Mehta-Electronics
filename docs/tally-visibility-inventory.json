@@ -1,0 +1,1172 @@
+{
+  "checkedAt": "2026-10-30T10:39:55.883Z",
+  "counts": {
+    "tally_companies": 1,
+    "tally_conflicts": 0,
+    "tally_connector_heartbeats": 2,
+    "tally_connectors": 7,
+    "tally_customers": 0,
+    "tally_groups": 78,
+    "tally_import_quarantine": 0,
+    "tally_import_warnings": 10,
+    "tally_items": 0,
+    "tally_ledgers": 4152,
+    "tally_raw_payloads": 16,
+    "tally_reconciliations": 0,
+    "tally_run_datasets": 16,
+    "tally_stock_items": 10988,
+    "tally_sync_job_items": 0,
+    "tally_sync_jobs": 3,
+    "tally_upload_chunks": 642,
+    "tally_upload_sessions": 8
+  },
+  "jobs": [
+    {
+      "status": "stalled",
+      "count": 1,
+      "latest": "2026-10-29T10:35:21.181Z"
+    },
+    {
+      "status": "stored",
+      "count": 2,
+      "latest": "2026-10-29T10:34:21.161Z"
+    }
+  ],
+  "datasets": [
+    {
+      "dataset": "balanceSheetXml",
+      "status": "retained",
+      "count": 2,
+      "imported": 0,
+      "quarantined": 0
+    },
+    {
+      "dataset": "billsPayableXml",
+      "status": "retained",
+      "count": 2,
+      "imported": 0,
+      "quarantined": 0
+    },
+    {
+      "dataset": "billsReceivableXml",
+      "status": "retained",
+      "count": 2,
+      "imported": 0,
+      "quarantined": 0
+    },
+    {
+      "dataset": "groupsXml",
+      "status": "imported",
+      "count": 2,
+      "imported": 156,
+      "quarantined": 0
+    },
+    {
+      "dataset": "ledgersXml",
+      "status": "imported",
+      "count": 2,
+      "imported": 8304,
+      "quarantined": 0
+    },
+    {
+      "dataset": "profitAndLossXml",
+      "status": "retained",
+      "count": 2,
+      "imported": 0,
+      "quarantined": 0
+    },
+    {
+      "dataset": "stockXml",
+      "status": "imported",
+      "count": 2,
+      "imported": 21976,
+      "quarantined": 0
+    },
+    {
+      "dataset": "vouchersXml",
+      "status": "awaiting_data",
+      "count": 2,
+      "imported": 0,
+      "quarantined": 0
+    }
+  ],
+  "connectors": [
+    {
+      "profile_name": "MEHTA ELECTRIC CORPORATION - (from 1-Apr-23) - (from 1-Apr-23)",
+      "status": "active",
+      "last_seen_at": "2026-10-30T10:37:27.621Z",
+      "last_sync_at": "2026-10-29T10:34:38.362Z"
+    },
+    {
+      "profile_name": "Mehta Electronics - Tally PC",
+      "status": "active",
+      "last_seen_at": null,
+      "last_sync_at": null
+    },
+    {
+      "profile_name": "MEHTA ELECTRIC CORPORATION - (from 1-Apr-23) - (from 1-Apr-23)",
+      "status": "revoked",
+      "last_seen_at": "2026-10-30T04:44:24.965Z",
+      "last_sync_at": "2026-10-29T10:34:38.362Z"
+    },
+    {
+      "profile_name": "MEHTA ELECTRIC CORPORATION - (from 1-Apr-23) - (from 1-Apr-23)",
+      "status": "revoked",
+      "last_seen_at": "2026-10-29T10:30:11.241Z",
+      "last_sync_at": null
+    },
+    {
+      "profile_name": "MEHTA ELECTRIC CORPORATION - (from 1-Apr-23) - (from 1-Apr-23)",
+      "status": "revoked",
+      "last_seen_at": "2026-10-29T10:26:23.999Z",
+      "last_sync_at": null
+    },
+    {
+      "profile_name": "Mehta Electronics",
+      "status": "active",
+      "last_seen_at": "2026-10-30T10:35:06.365Z",
+      "last_sync_at": null
+    },
+    {
+      "profile_name": "Mehta Electronics",
+      "status": "revoked",
+      "last_seen_at": "2026-10-29T10:07:37.509Z",
+      "last_sync_at": null
+    }
+  ],
+  "legacy": {
+    "crm_tally_sync_jobs": []
+  },
+  "coverage": [
+    {
+      "total": 10988,
+      "valued": 5191,
+      "unvalued": 5797
+    }
+  ],
+  "fields": {
+    "tally_companies": {
+      "columns": [
+        {
+          "column_name": "id",
+          "data_type": "uuid"
+        },
+        {
+          "column_name": "name",
+          "data_type": "text"
+        },
+        {
+          "column_name": "tally_guid",
+          "data_type": "text"
+        },
+        {
+          "column_name": "created_at",
+          "data_type": "timestamp with time zone"
+        }
+      ],
+      "rawPaths": []
+    },
+    "tally_conflicts": {
+      "columns": [
+        {
+          "column_name": "id",
+          "data_type": "uuid"
+        },
+        {
+          "column_name": "company_id",
+          "data_type": "uuid"
+        },
+        {
+          "column_name": "job_item_id",
+          "data_type": "uuid"
+        },
+        {
+          "column_name": "party_mapping_id",
+          "data_type": "uuid"
+        },
+        {
+          "column_name": "part_mapping_id",
+          "data_type": "uuid"
+        },
+        {
+          "column_name": "entity_kind",
+          "data_type": "text"
+        },
+        {
+          "column_name": "external_id",
+          "data_type": "text"
+        },
+        {
+          "column_name": "conflict_type",
+          "data_type": "text"
+        },
+        {
+          "column_name": "source_snapshot",
+          "data_type": "jsonb"
+        },
+        {
+          "column_name": "crm_snapshot",
+          "data_type": "jsonb"
+        },
+        {
+          "column_name": "status",
+          "data_type": "text"
+        },
+        {
+          "column_name": "resolution",
+          "data_type": "text"
+        },
+        {
+          "column_name": "resolution_reason",
+          "data_type": "text"
+        },
+        {
+          "column_name": "resolved_by",
+          "data_type": "integer"
+        },
+        {
+          "column_name": "resolved_at",
+          "data_type": "timestamp with time zone"
+        },
+        {
+          "column_name": "created_at",
+          "data_type": "timestamp with time zone"
+        },
+        {
+          "column_name": "created_by",
+          "data_type": "integer"
+        }
+      ],
+      "rawPaths": []
+    },
+    "tally_connector_heartbeats": {
+      "columns": [
+        {
+          "column_name": "connector_id",
+          "data_type": "uuid"
+        },
+        {
+          "column_name": "tally_available",
+          "data_type": "boolean"
+        },
+        {
+          "column_name": "selected_company",
+          "data_type": "text"
+        },
+        {
+          "column_name": "open_companies",
+          "data_type": "jsonb"
+        },
+        {
+          "column_name": "last_sync_at",
+          "data_type": "timestamp with time zone"
+        },
+        {
+          "column_name": "updated_at",
+          "data_type": "timestamp with time zone"
+        }
+      ],
+      "rawPaths": []
+    },
+    "tally_connectors": {
+      "columns": [
+        {
+          "column_name": "id",
+          "data_type": "uuid"
+        },
+        {
+          "column_name": "profile_name",
+          "data_type": "text"
+        },
+        {
+          "column_name": "expected_company_name",
+          "data_type": "text"
+        },
+        {
+          "column_name": "expected_company_guid",
+          "data_type": "text"
+        },
+        {
+          "column_name": "machine_name",
+          "data_type": "text"
+        },
+        {
+          "column_name": "status",
+          "data_type": "text"
+        },
+        {
+          "column_name": "token_hash",
+          "data_type": "text"
+        },
+        {
+          "column_name": "created_at",
+          "data_type": "timestamp with time zone"
+        },
+        {
+          "column_name": "last_seen_at",
+          "data_type": "timestamp with time zone"
+        },
+        {
+          "column_name": "last_sync_at",
+          "data_type": "timestamp with time zone"
+        },
+        {
+          "column_name": "revoked_at",
+          "data_type": "timestamp with time zone"
+        },
+        {
+          "column_name": "pairing_code_hash",
+          "data_type": "text"
+        },
+        {
+          "column_name": "pairing_expires_at",
+          "data_type": "timestamp with time zone"
+        },
+        {
+          "column_name": "api_base_url",
+          "data_type": "text"
+        },
+        {
+          "column_name": "installation_id",
+          "data_type": "text"
+        },
+        {
+          "column_name": "agent_version",
+          "data_type": "text"
+        },
+        {
+          "column_name": "access_token_hash",
+          "data_type": "text"
+        },
+        {
+          "column_name": "access_token_expires_at",
+          "data_type": "timestamp with time zone"
+        },
+        {
+          "column_name": "refresh_token_hash",
+          "data_type": "text"
+        },
+        {
+          "column_name": "refresh_token_expires_at",
+          "data_type": "timestamp with time zone"
+        }
+      ],
+      "rawPaths": []
+    },
+    "tally_customers": {
+      "columns": [
+        {
+          "column_name": "guid",
+          "data_type": "text"
+        },
+        {
+          "column_name": "name",
+          "data_type": "text"
+        },
+        {
+          "column_name": "gstin",
+          "data_type": "text"
+        },
+        {
+          "column_name": "pan",
+          "data_type": "text"
+        },
+        {
+          "column_name": "phone",
+          "data_type": "text"
+        },
+        {
+          "column_name": "email",
+          "data_type": "text"
+        },
+        {
+          "column_name": "address",
+          "data_type": "text"
+        },
+        {
+          "column_name": "fetched_at",
+          "data_type": "timestamp with time zone"
+        },
+        {
+          "column_name": "raw_json",
+          "data_type": "text"
+        }
+      ],
+      "rawPaths": []
+    },
+    "tally_groups": {
+      "columns": [
+        {
+          "column_name": "id",
+          "data_type": "text"
+        },
+        {
+          "column_name": "company_id",
+          "data_type": "uuid"
+        },
+        {
+          "column_name": "source_key",
+          "data_type": "text"
+        },
+        {
+          "column_name": "name",
+          "data_type": "text"
+        },
+        {
+          "column_name": "parent_name",
+          "data_type": "text"
+        },
+        {
+          "column_name": "tally_guid",
+          "data_type": "text"
+        },
+        {
+          "column_name": "master_id",
+          "data_type": "text"
+        },
+        {
+          "column_name": "alter_id",
+          "data_type": "text"
+        },
+        {
+          "column_name": "opening_balance",
+          "data_type": "numeric"
+        },
+        {
+          "column_name": "closing_balance",
+          "data_type": "numeric"
+        },
+        {
+          "column_name": "dr_cr",
+          "data_type": "text"
+        },
+        {
+          "column_name": "raw_record",
+          "data_type": "jsonb"
+        },
+        {
+          "column_name": "session_id",
+          "data_type": "uuid"
+        },
+        {
+          "column_name": "fetched_at",
+          "data_type": "timestamp with time zone"
+        }
+      ],
+      "rawPaths": [
+        "#text",
+        "@_NAME",
+        "@_RESERVEDNAME",
+        "ALTERID",
+        "ALTERID.#text",
+        "ALTERID.@_TYPE",
+        "CLOSINGBALANCE",
+        "CLOSINGBALANCE.#text",
+        "CLOSINGBALANCE.@_TYPE",
+        "GUID",
+        "GUID.#text",
+        "GUID.@_TYPE",
+        "LANGUAGENAME.LIST",
+        "LANGUAGENAME.LIST.#text",
+        "LANGUAGENAME.LIST.LANGUAGEID",
+        "LANGUAGENAME.LIST.LANGUAGEID.#text",
+        "LANGUAGENAME.LIST.LANGUAGEID.@_TYPE",
+        "LANGUAGENAME.LIST.NAME.LIST",
+        "LANGUAGENAME.LIST.NAME.LIST.#text",
+        "LANGUAGENAME.LIST.NAME.LIST.@_TYPE",
+        "LANGUAGENAME.LIST.NAME.LIST.NAME",
+        "LANGUAGENAME.LIST.NAME.LIST.NAME.#text",
+        "LANGUAGENAME.LIST.NAME.LIST.NAME[].#text",
+        "MASTERID",
+        "MASTERID.#text",
+        "MASTERID.@_TYPE",
+        "OPENINGBALANCE",
+        "OPENINGBALANCE.#text",
+        "OPENINGBALANCE.@_TYPE",
+        "PARENT",
+        "PARENT.#text",
+        "PARENT.@_TYPE"
+      ]
+    },
+    "tally_import_quarantine": {
+      "columns": [
+        {
+          "column_name": "id",
+          "data_type": "uuid"
+        },
+        {
+          "column_name": "company_id",
+          "data_type": "uuid"
+        },
+        {
+          "column_name": "session_id",
+          "data_type": "uuid"
+        },
+        {
+          "column_name": "dataset",
+          "data_type": "text"
+        },
+        {
+          "column_name": "record_index",
+          "data_type": "integer"
+        },
+        {
+          "column_name": "reason",
+          "data_type": "text"
+        },
+        {
+          "column_name": "raw_record",
+          "data_type": "jsonb"
+        }
+      ],
+      "rawPaths": []
+    },
+    "tally_import_warnings": {
+      "columns": [
+        {
+          "column_name": "id",
+          "data_type": "uuid"
+        },
+        {
+          "column_name": "company_id",
+          "data_type": "uuid"
+        },
+        {
+          "column_name": "session_id",
+          "data_type": "uuid"
+        },
+        {
+          "column_name": "dataset",
+          "data_type": "text"
+        },
+        {
+          "column_name": "warning_key",
+          "data_type": "text"
+        },
+        {
+          "column_name": "message",
+          "data_type": "text"
+        },
+        {
+          "column_name": "details",
+          "data_type": "jsonb"
+        }
+      ],
+      "rawPaths": []
+    },
+    "tally_items": {
+      "columns": [
+        {
+          "column_name": "guid",
+          "data_type": "text"
+        },
+        {
+          "column_name": "part_code",
+          "data_type": "text"
+        },
+        {
+          "column_name": "description",
+          "data_type": "text"
+        },
+        {
+          "column_name": "brand",
+          "data_type": "text"
+        },
+        {
+          "column_name": "hsn",
+          "data_type": "text"
+        },
+        {
+          "column_name": "uom",
+          "data_type": "text"
+        },
+        {
+          "column_name": "fetched_at",
+          "data_type": "timestamp with time zone"
+        },
+        {
+          "column_name": "raw_json",
+          "data_type": "text"
+        }
+      ],
+      "rawPaths": []
+    },
+    "tally_ledgers": {
+      "columns": [
+        {
+          "column_name": "id",
+          "data_type": "text"
+        },
+        {
+          "column_name": "company_id",
+          "data_type": "uuid"
+        },
+        {
+          "column_name": "source_key",
+          "data_type": "text"
+        },
+        {
+          "column_name": "name",
+          "data_type": "text"
+        },
+        {
+          "column_name": "parent_name",
+          "data_type": "text"
+        },
+        {
+          "column_name": "tally_guid",
+          "data_type": "text"
+        },
+        {
+          "column_name": "master_id",
+          "data_type": "text"
+        },
+        {
+          "column_name": "alter_id",
+          "data_type": "text"
+        },
+        {
+          "column_name": "gstin",
+          "data_type": "text"
+        },
+        {
+          "column_name": "pan",
+          "data_type": "text"
+        },
+        {
+          "column_name": "phone",
+          "data_type": "text"
+        },
+        {
+          "column_name": "email",
+          "data_type": "text"
+        },
+        {
+          "column_name": "address",
+          "data_type": "text"
+        },
+        {
+          "column_name": "contact_person",
+          "data_type": "text"
+        },
+        {
+          "column_name": "opening_balance",
+          "data_type": "numeric"
+        },
+        {
+          "column_name": "closing_balance",
+          "data_type": "numeric"
+        },
+        {
+          "column_name": "dr_cr",
+          "data_type": "text"
+        },
+        {
+          "column_name": "raw_record",
+          "data_type": "jsonb"
+        },
+        {
+          "column_name": "session_id",
+          "data_type": "uuid"
+        },
+        {
+          "column_name": "fetched_at",
+          "data_type": "timestamp with time zone"
+        }
+      ],
+      "rawPaths": [
+        "#text",
+        "@_NAME",
+        "@_RESERVEDNAME",
+        "ADDRESS.LIST",
+        "ADDRESS.LIST.#text",
+        "ADDRESS.LIST.@_TYPE",
+        "ADDRESS.LIST.ADDRESS",
+        "ADDRESS.LIST.ADDRESS.#text",
+        "ADDRESS.LIST.ADDRESS.@_TYPE",
+        "ADDRESS.LIST.ADDRESS[].#text",
+        "ADDRESS.LIST.ADDRESS[].@_TYPE",
+        "ALTERID",
+        "ALTERID.#text",
+        "ALTERID.@_TYPE",
+        "CLOSINGBALANCE",
+        "CLOSINGBALANCE.#text",
+        "CLOSINGBALANCE.@_TYPE",
+        "CONTACTDETAILS.LIST",
+        "CONTACTDETAILS.LIST.#text",
+        "CONTACTDETAILS.LIST.ISDEFAULTWHATSAPPNUM",
+        "CONTACTDETAILS.LIST.ISDEFAULTWHATSAPPNUM.#text",
+        "CONTACTDETAILS.LIST.ISDEFAULTWHATSAPPNUM.@_TYPE",
+        "CONTACTDETAILS.LIST.NAME",
+        "CONTACTDETAILS.LIST.NAME.#text",
+        "CONTACTDETAILS.LIST.NAME.@_TYPE",
+        "CREATEDDATE",
+        "CREATEDDATE.#text",
+        "CREATEDDATE.@_TYPE",
+        "CURRENCYNAME",
+        "CURRENCYNAME.#text",
+        "CURRENCYNAME.@_TYPE",
+        "EMAIL",
+        "EMAIL.#text",
+        "EMAIL.@_TYPE",
+        "GUID",
+        "GUID.#text",
+        "GUID.@_TYPE",
+        "ISBILLWISEON",
+        "ISBILLWISEON.#text",
+        "ISBILLWISEON.@_TYPE",
+        "LANGUAGENAME.LIST",
+        "LANGUAGENAME.LIST.#text",
+        "LANGUAGENAME.LIST.LANGUAGEID",
+        "LANGUAGENAME.LIST.LANGUAGEID.#text",
+        "LANGUAGENAME.LIST.LANGUAGEID.@_TYPE",
+        "LANGUAGENAME.LIST.NAME.LIST",
+        "LANGUAGENAME.LIST.NAME.LIST.#text",
+        "LANGUAGENAME.LIST.NAME.LIST.@_TYPE",
+        "LANGUAGENAME.LIST.NAME.LIST.NAME",
+        "LANGUAGENAME.LIST.NAME.LIST.NAME.#text",
+        "LANGUAGENAME.LIST.NAME.LIST.NAME[].#text",
+        "LEDGERCONTACT",
+        "LEDGERCONTACT.#text",
+        "LEDGERCONTACT.@_TYPE",
+        "LEDGERMOBILE",
+        "LEDGERMOBILE.#text",
+        "LEDGERMOBILE.@_TYPE",
+        "LEDGERPHONE",
+        "LEDGERPHONE.#text",
+        "LEDGERPHONE.@_TYPE",
+        "MASTERID",
+        "MASTERID.#text",
+        "MASTERID.@_TYPE",
+        "OPENINGBALANCE",
+        "OPENINGBALANCE.#text",
+        "OPENINGBALANCE.@_TYPE",
+        "PARENT",
+        "PARENT.#text",
+        "PARENT.@_TYPE"
+      ]
+    },
+    "tally_raw_payloads": {
+      "columns": [
+        {
+          "column_name": "id",
+          "data_type": "uuid"
+        },
+        {
+          "column_name": "company_id",
+          "data_type": "uuid"
+        },
+        {
+          "column_name": "session_id",
+          "data_type": "uuid"
+        },
+        {
+          "column_name": "run_id",
+          "data_type": "uuid"
+        },
+        {
+          "column_name": "dataset",
+          "data_type": "text"
+        },
+        {
+          "column_name": "content_hash",
+          "data_type": "text"
+        },
+        {
+          "column_name": "content",
+          "data_type": "text"
+        },
+        {
+          "column_name": "received_at",
+          "data_type": "timestamp with time zone"
+        }
+      ],
+      "rawPaths": []
+    },
+    "tally_reconciliations": {
+      "columns": [
+        {
+          "column_name": "id",
+          "data_type": "uuid"
+        },
+        {
+          "column_name": "company_id",
+          "data_type": "uuid"
+        },
+        {
+          "column_name": "job_id",
+          "data_type": "uuid"
+        },
+        {
+          "column_name": "entity_kind",
+          "data_type": "text"
+        },
+        {
+          "column_name": "period_start",
+          "data_type": "date"
+        },
+        {
+          "column_name": "period_end",
+          "data_type": "date"
+        },
+        {
+          "column_name": "source_snapshot",
+          "data_type": "jsonb"
+        },
+        {
+          "column_name": "result_summary",
+          "data_type": "jsonb"
+        },
+        {
+          "column_name": "status",
+          "data_type": "text"
+        },
+        {
+          "column_name": "reviewed_by",
+          "data_type": "integer"
+        },
+        {
+          "column_name": "reviewed_at",
+          "data_type": "timestamp with time zone"
+        },
+        {
+          "column_name": "review_reason",
+          "data_type": "text"
+        },
+        {
+          "column_name": "created_at",
+          "data_type": "timestamp with time zone"
+        },
+        {
+          "column_name": "created_by",
+          "data_type": "integer"
+        }
+      ],
+      "rawPaths": []
+    },
+    "tally_run_datasets": {
+      "columns": [
+        {
+          "column_name": "company_id",
+          "data_type": "uuid"
+        },
+        {
+          "column_name": "session_id",
+          "data_type": "uuid"
+        },
+        {
+          "column_name": "dataset",
+          "data_type": "text"
+        },
+        {
+          "column_name": "status",
+          "data_type": "text"
+        },
+        {
+          "column_name": "payload_count",
+          "data_type": "integer"
+        },
+        {
+          "column_name": "imported_count",
+          "data_type": "integer"
+        },
+        {
+          "column_name": "quarantined_count",
+          "data_type": "integer"
+        },
+        {
+          "column_name": "error",
+          "data_type": "text"
+        },
+        {
+          "column_name": "processed_at",
+          "data_type": "timestamp with time zone"
+        }
+      ],
+      "rawPaths": []
+    },
+    "tally_stock_items": {
+      "columns": [
+        {
+          "column_name": "id",
+          "data_type": "text"
+        },
+        {
+          "column_name": "company_id",
+          "data_type": "uuid"
+        },
+        {
+          "column_name": "source_key",
+          "data_type": "text"
+        },
+        {
+          "column_name": "name",
+          "data_type": "text"
+        },
+        {
+          "column_name": "normalized_part_number",
+          "data_type": "text"
+        },
+        {
+          "column_name": "parent_name",
+          "data_type": "text"
+        },
+        {
+          "column_name": "base_unit",
+          "data_type": "text"
+        },
+        {
+          "column_name": "description",
+          "data_type": "text"
+        },
+        {
+          "column_name": "hsn",
+          "data_type": "text"
+        },
+        {
+          "column_name": "closing_quantity_text",
+          "data_type": "text"
+        },
+        {
+          "column_name": "closing_rate_text",
+          "data_type": "text"
+        },
+        {
+          "column_name": "closing_value",
+          "data_type": "numeric"
+        },
+        {
+          "column_name": "dr_cr",
+          "data_type": "text"
+        },
+        {
+          "column_name": "raw_record",
+          "data_type": "jsonb"
+        },
+        {
+          "column_name": "session_id",
+          "data_type": "uuid"
+        },
+        {
+          "column_name": "fetched_at",
+          "data_type": "timestamp with time zone"
+        }
+      ],
+      "rawPaths": [
+        "#text",
+        "@_NAME",
+        "@_RESERVEDNAME",
+        "BASEUNITS",
+        "BASEUNITS.#text",
+        "BASEUNITS.@_TYPE",
+        "CLOSINGBALANCE",
+        "CLOSINGBALANCE.#text",
+        "CLOSINGBALANCE.@_TYPE",
+        "CLOSINGRATE",
+        "CLOSINGRATE.#text",
+        "CLOSINGRATE.@_TYPE",
+        "CLOSINGVALUE",
+        "CLOSINGVALUE.#text",
+        "CLOSINGVALUE.@_TYPE",
+        "LANGUAGENAME.LIST",
+        "LANGUAGENAME.LIST.#text",
+        "LANGUAGENAME.LIST.LANGUAGEID",
+        "LANGUAGENAME.LIST.LANGUAGEID.#text",
+        "LANGUAGENAME.LIST.LANGUAGEID.@_TYPE",
+        "LANGUAGENAME.LIST.NAME.LIST",
+        "LANGUAGENAME.LIST.NAME.LIST.#text",
+        "LANGUAGENAME.LIST.NAME.LIST.@_TYPE",
+        "LANGUAGENAME.LIST.NAME.LIST.NAME",
+        "LANGUAGENAME.LIST.NAME.LIST.NAME.#text",
+        "LANGUAGENAME.LIST.NAME.LIST.NAME[].#text",
+        "PARENT",
+        "PARENT.#text",
+        "PARENT.@_TYPE"
+      ]
+    },
+    "tally_sync_job_items": {
+      "columns": [
+        {
+          "column_name": "id",
+          "data_type": "uuid"
+        },
+        {
+          "column_name": "job_id",
+          "data_type": "uuid"
+        },
+        {
+          "column_name": "company_id",
+          "data_type": "uuid"
+        },
+        {
+          "column_name": "entity_kind",
+          "data_type": "text"
+        },
+        {
+          "column_name": "external_id",
+          "data_type": "text"
+        },
+        {
+          "column_name": "source_version",
+          "data_type": "text"
+        },
+        {
+          "column_name": "idempotency_key",
+          "data_type": "text"
+        },
+        {
+          "column_name": "status",
+          "data_type": "text"
+        },
+        {
+          "column_name": "attempt_count",
+          "data_type": "integer"
+        },
+        {
+          "column_name": "error_detail",
+          "data_type": "jsonb"
+        },
+        {
+          "column_name": "source_snapshot",
+          "data_type": "jsonb"
+        },
+        {
+          "column_name": "started_at",
+          "data_type": "timestamp with time zone"
+        },
+        {
+          "column_name": "completed_at",
+          "data_type": "timestamp with time zone"
+        },
+        {
+          "column_name": "created_at",
+          "data_type": "timestamp with time zone"
+        }
+      ],
+      "rawPaths": []
+    },
+    "tally_sync_jobs": {
+      "columns": [
+        {
+          "column_name": "id",
+          "data_type": "uuid"
+        },
+        {
+          "column_name": "connector_id",
+          "data_type": "uuid"
+        },
+        {
+          "column_name": "company_name",
+          "data_type": "text"
+        },
+        {
+          "column_name": "company_guid",
+          "data_type": "text"
+        },
+        {
+          "column_name": "status",
+          "data_type": "text"
+        },
+        {
+          "column_name": "message",
+          "data_type": "text"
+        },
+        {
+          "column_name": "record_count",
+          "data_type": "integer"
+        },
+        {
+          "column_name": "started_at",
+          "data_type": "timestamp with time zone"
+        },
+        {
+          "column_name": "completed_at",
+          "data_type": "timestamp with time zone"
+        },
+        {
+          "column_name": "last_progress_at",
+          "data_type": "timestamp with time zone"
+        }
+      ],
+      "rawPaths": []
+    },
+    "tally_upload_chunks": {
+      "columns": [
+        {
+          "column_name": "session_id",
+          "data_type": "uuid"
+        },
+        {
+          "column_name": "field_name",
+          "data_type": "text"
+        },
+        {
+          "column_name": "sequence",
+          "data_type": "integer"
+        },
+        {
+          "column_name": "content",
+          "data_type": "text"
+        },
+        {
+          "column_name": "created_at",
+          "data_type": "timestamp with time zone"
+        }
+      ],
+      "rawPaths": []
+    },
+    "tally_upload_sessions": {
+      "columns": [
+        {
+          "column_name": "id",
+          "data_type": "uuid"
+        },
+        {
+          "column_name": "connector_id",
+          "data_type": "uuid"
+        },
+        {
+          "column_name": "company_name",
+          "data_type": "text"
+        },
+        {
+          "column_name": "company_guid",
+          "data_type": "text"
+        },
+        {
+          "column_name": "sync_from",
+          "data_type": "date"
+        },
+        {
+          "column_name": "sync_to",
+          "data_type": "date"
+        },
+        {
+          "column_name": "status",
+          "data_type": "text"
+        },
+        {
+          "column_name": "created_at",
+          "data_type": "timestamp with time zone"
+        },
+        {
+          "column_name": "completed_at",
+          "data_type": "timestamp with time zone"
+        },
+        {
+          "column_name": "sync_job_id",
+          "data_type": "uuid"
+        },
+        {
+          "column_name": "sync_id",
+          "data_type": "text"
+        },
+        {
+          "column_name": "import_summary",
+          "data_type": "jsonb"
+        }
+      ],
+      "rawPaths": []
+    }
+  }
+}

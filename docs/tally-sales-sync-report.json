@@ -1,0 +1,249 @@
+{
+  "completedAt": "2026-11-02T12:10:36.942Z",
+  "rootCauses": [
+    "The two original vouchersXml payloads were 323 bytes each and contained zero structured vouchers. There were no stored quotations for the UI to display.",
+    "Existing quotation and enquiry screens queried only CRM workflow tables; Tally source documents had no dedicated presentation.",
+    "The generic connector voucher request did not explicitly request optional/cancelled flags or all nested quotation methods, and its accounting history checkpoints were not a dedicated historical sales-document refresh.",
+    "Tally returned 570 Sales Quotation records: 123 non-optional and 447 optional, including one cancelled optional quotation. Treating 123 as the entire XML population would hide delivered optional documents."
+  ],
+  "findings": {
+    "originalVoucherTypeFilter": "No voucher-type exclusion in the original generic request; it filtered dates.",
+    "originalCancelledOptionalFilter": "No explicit exclusion in the inspected generic request. The original field list did not request these flags.",
+    "discardedStructuredVouchers": "Original audited payloads contained none; parser correctly ignored scalar counters.",
+    "wrongDatabaseTable": "Source imports belong in the existing append-only Tally visibility storage, not the independently approved editable CRM workflow.",
+    "pagination": "Server-side pagination remains enabled; no first-page-only import.",
+    "dateCoverage": "Actual returned quotation dates are 2023-04-06 through 2024-03-31; no later Sales Quotation records were returned by the date-window probes.",
+    "companyIsolation": "Source keys and all list/detail queries are company scoped."
+  },
+  "inspectedFiles": [
+    "src/tally-import.js",
+    "src/tally-display.js",
+    "src/db.js",
+    "src/server.js",
+    "src/crm-modules.js",
+    "src/sales-orders.js",
+    "src/sales-order-routes.js",
+    "src/quotation-workflow.js",
+    "src/quotation-workflow-routes.js",
+    "src/quotation-document.js",
+    "src/quotation-pdf.js",
+    "src/tally-visibility-replay.js",
+    "src/tally-visibility-repository.js",
+    "src/tally-visibility-service.js",
+    "src/tally-visibility-routes.js",
+    "src/connector-store.js",
+    "database/postgres/migrations/0004_crm_core.sql",
+    "database/postgres/migrations/0012_quotation_workflow.sql",
+    "database/postgres/migrations/0023_tally_visibility.sql",
+    "database/postgres/migrations/0026_tally_public_field_projection.sql",
+    "database/postgres/migrations/0027_tally_current_search.sql",
+    "../tally_connector-main/TallyConnector.Core/Services/TallyXmlRequests.cs",
+    "../tally_connector-main/TallyConnector.Core/Services/TallyService.cs",
+    "../tally_connector-main/TallyConnector.Core/Services/SyncService.cs",
+    "../tally_connector-main/TallyConnector.Core/Services/ApiService.cs",
+    "../tally_connector-main/TallyConnector.Core/Services/SyncStateService.cs"
+  ],
+  "modifiedFiles": [
+    "src/tally-import.js",
+    "src/tally-visibility-replay.js",
+    "src/tally-visibility-repository.js",
+    "src/tally-visibility-service.js",
+    "src/tally-visibility-routes.js",
+    "src/tally-visibility-contracts.d.ts",
+    "src/connector-store.js",
+    "public/tally-entity-descriptors.js",
+    "apps/web/features/workflows/tally-imports.tsx",
+    "apps/web/app/(app)/quotations/page.tsx",
+    "apps/web/app/(app)/enquiries/page.tsx",
+    "apps/web/app/(app)/dashboard/page.tsx",
+    "../tally_connector-main/TallyConnector.Core/Services/TallyXmlRequests.cs",
+    "../tally_connector-main/TallyConnector.Core/Services/TallyService.cs"
+  ],
+  "addedFiles": [
+    "src/tally-sales-documents.js",
+    "apps/web/features/workflows/tally-sales-documents.tsx",
+    "database/postgres/migrations/0032_tally_sales_documents.sql",
+    "test/tally-sales-documents.test.js",
+    "scripts/import-tally-sales-documents.mjs",
+    "scripts/verify-live-tally-sales.mjs",
+    "scripts/verify-tally-sales-ui.mjs",
+    "scripts/update-tally-sales-connector.ps1"
+  ],
+  "migration": {
+    "name": "0032_tally_sales_documents.sql",
+    "applied": true,
+    "newBusinessTables": 0,
+    "changes": "Safe source metadata projection and company/date/status indexes. Financial amounts retain existing Owner/Accounts restrictions. CRM-created quotations and enquiry records are untouched."
+  },
+  "apis": {
+    "list": [
+      "GET /api/v1/tally/visibility/quotations",
+      "GET /api/v1/tally/visibility/enquiries"
+    ],
+    "detail": "GET /api/v1/tally/visibility/:kind/:recordKey",
+    "sync": "GET /api/v1/tally/inspection/:kind/sync",
+    "filters": [
+      "search",
+      "companyId",
+      "fromDate",
+      "toDate",
+      "customer",
+      "group (source voucher type)",
+      "voucherStatus",
+      "optional (Yes/No)",
+      "page",
+      "pageSize"
+    ],
+    "existingAliasesRetained": true
+  },
+  "frontend": [
+    "Tally imports and CRM tabs on existing Quotations and Enquiries pages",
+    "Search, date/customer/type/status/optional filters, pagination",
+    "Original item, ledger, tax-rate and discount fields; explicit Not supplied labels",
+    "Detailed raw-field search with original source IDs, timestamps, source relationships and history",
+    "Dashboard quotation/enquiry synchronization summary",
+    "Source type breakdown showing optional/non-optional/cancelled populations"
+  ],
+  "synchronization": [
+    "Read-only Export requests only; no Tally write-back",
+    "Separate salesDocumentsXml collection refresh from company books-start date on each connector sync cycle",
+    "Wildcard quotation/enquiry field requests; existing accounting fetch remains bounded",
+    "GUID or Master ID required for sales-document identity; missing IDs are quarantined",
+    "Company-scoped stable keys, append-only snapshots, latest-record cache, idempotent retries",
+    "Modified content detected; cancelled/deleted source markers retained",
+    "Missing-from-snapshot records preserved and flagged, never silently deleted",
+    "Original XML and parsed source records retained",
+    "Unsafe or malformed responses are recorded as failed; row-level identity failures are quarantined",
+    "Customer/item source links use source IDs or explicitly labelled unique exact source-name matches; ambiguous matches remain unresolved"
+  ],
+  "verifiedCounts": {
+    "checkedAt": "2026-11-02T12:02:50.046Z",
+    "company": {
+      "id": "222bd4ab-7dd2-4278-b33b-bf2a8b77f0f3",
+      "name": "MEHTA ELECTRIC CORPORATION - (from 1-Apr-23) - (from 1-Apr-23)"
+    },
+    "readOnlyTally": true,
+    "sourceSummary": {
+      "imported": 575,
+      "cancelled": 2,
+      "last_observed": "2026-11-02T11:43:10.664Z",
+      "types": [
+        {
+          "type": "Sales Order",
+          "count": 5,
+          "optional": 5,
+          "non_optional": 0,
+          "cancelled": 1,
+          "earliest": "20230926",
+          "latest": "20240302"
+        },
+        {
+          "type": "Sales Quotation",
+          "count": 570,
+          "optional": 447,
+          "non_optional": 123,
+          "cancelled": 1,
+          "earliest": "20230406",
+          "latest": "20240331"
+        }
+      ],
+      "periods": [
+        {
+          "year": "2023",
+          "count": 413
+        },
+        {
+          "year": "2024",
+          "count": 162
+        }
+      ],
+      "updated": 0,
+      "sourceCount": 575,
+      "latestPersisted": 575,
+      "pending": 0,
+      "failed": 0,
+      "notSeenInLatest": 0,
+      "receipt": {
+        "status": "imported",
+        "error": null,
+        "sessionId": "4859a25a-8905-41ed-9738-77d79016c45e",
+        "processedAt": "2026-11-02T11:51:51.907Z",
+        "from": "2021-04-01T00:00:00.000Z",
+        "to": "2026-11-02T00:00:00.000Z"
+      },
+      "note": "Counts cover stored source documents across all imported dates. Updated counts distinct source IDs with changed content. Records missing from a later snapshot remain in history; absence alone does not prove deletion."
+    },
+    "enquiriesSummary": {
+      "imported": 0,
+      "cancelled": 0,
+      "last_observed": null,
+      "types": [],
+      "periods": [],
+      "updated": 0,
+      "sourceCount": 0,
+      "latestPersisted": 0,
+      "pending": 0,
+      "failed": 0,
+      "notSeenInLatest": 0,
+      "receipt": {
+        "status": "imported",
+        "error": null,
+        "sessionId": "4859a25a-8905-41ed-9738-77d79016c45e",
+        "processedAt": "2026-11-02T11:51:51.907Z",
+        "from": "2021-04-01T00:00:00.000Z",
+        "to": "2026-11-02T00:00:00.000Z"
+      },
+      "note": "Counts cover stored source documents across all imported dates. Updated counts distinct source IDs with changed content. Records missing from a later snapshot remain in history; absence alone does not prove deletion."
+    },
+    "comparableNonOptionalSalesQuotations": 123,
+    "apiTotal": 575,
+    "detail": {
+      "availableFields": 978,
+      "itemLines": 1,
+      "ledgerEntries": 2,
+      "sourceRelationships": 2
+    },
+    "sourceCountsReconciled": true,
+    "originalXmlRetained": true
+  },
+  "tests": {
+    "fullSuite": {
+      "tests": 98,
+      "passed": 93,
+      "failed": 0,
+      "skipped": 5
+    },
+    "focusedSalesIntegration": "Passed: source types, item/ledger/tax/discount extraction, exact decimals, retry dedupe, changes, cancellation, empty enquiry, filters, company isolation, financial permissions, quarantine, malformed XML, history preservation",
+    "browser": "Passed real imported-data preview with read-only API service bridge; 8 responsive light/dark screenshots, detail drawer, optional/non-optional reconciliation, cancelled filter, CRM separation, empty enquiries. No production authentication session created.",
+    "typecheck": "Passed",
+    "designTokens": "Passed",
+    "productionWebBuild": "Passed",
+    "windowsConnectorBuild": "Passed",
+    "windowsConnectorPublish": "Passed: self-contained win-x64 single file; ReadyToRun disabled because optimization package was unavailable. Non-fatal existing NuGet cache warning."
+  },
+  "deployment": {
+    "crm": "Restarted http://127.0.0.1:3000 successfully with new backend routes",
+    "oneTimeImport": "Actual Tally Export -> connector chunk store -> transactional importer -> database -> real-data UI verified",
+    "windowsServices": "Update attempted but Windows denied permission to stop services. Existing services were left running with original binaries.",
+    "userDecision": "User will run the administrator updater personally.",
+    "updater": "scripts/update-tally-sales-connector.ps1",
+    "manifest": "docs/tally-sales-connector-update.json",
+    "scope": "Only the two profiles whose company and API URL match this local CRM. Other companies are untouched.",
+    "safeguards": [
+      "SHA256 release check",
+      "Configuration/endpoint/company assertions",
+      "Original executable backup",
+      "Rollback on update failure",
+      "Credentials, checkpoints and queues preserved"
+    ]
+  },
+  "limitations": [
+    "Automatic future connector synchronization requires the prepared administrator update; installed services have not yet been replaced.",
+    "Actual source returned Enquiry=0 and Quotation1=0, so no records were invented.",
+    "Tax/discount totals not supplied explicitly remain unavailable; delivered ledger entries and all original fields remain inspectable. Monetary signs are preserved.",
+    "Physical absence does not establish deletion; missing records are flagged and history retained.",
+    "Five pre-existing optional suites were skipped; new sales-document PostgreSQL integration tests ran and passed.",
+    "No claim that screenshot count 123 includes a cancelled voucher: actual response has 123 non-optional quotations plus 447 optional quotations, one of which is cancelled."
+  ],
+  "officialReference": "https://help.tallysolutions.com/sales-order-tally/"
+}

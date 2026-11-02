@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import {RecordWorkspace} from '@/features/workflows/tally-imports';
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useApi } from '@/lib/api/provider';
@@ -56,6 +57,7 @@ function Inbox() {
         description="Every customer requirement with an owner and an SLA. NEW → QUOTED → WON or LOST."
         actions={can('enquiries.create') && <Button icon="plus" onClick={() => setCreating(true)}>New enquiry</Button>} />
 
+      <RecordWorkspace kind="enquiries">
       <div className="ds-split">
         <section className={`ds-card ${selectedId ? 'ds-desktop-only-split' : ''}`} aria-label="Enquiry list">
           <div className="ds-card-body stack-sm" style={{ paddingBottom: 'var(--space-1-5)' }}>
@@ -93,6 +95,7 @@ function Inbox() {
         </section>
       </div>
 
+      </RecordWorkspace>
       <EnquiryForm open={creating} onClose={() => setCreating(false)} onSaved={(e) => { setCreating(false); toast('success', `${e.enquiry_number} created.`); reload(); select(e.id); }} />
       {enquiry && <EnquiryForm open={revising} enquiry={enquiry} onClose={() => setRevising(false)} onSaved={() => { setRevising(false); toast('success', 'Revision saved.'); reload(); reloadDetail(); }} />}
       <ReasonDialog open={transition !== null} title={transition ? `Mark as ${titleCase(transition).toLowerCase()}` : ''} danger={transition === 'LOST' || transition === 'CANCELLED'} confirmLabel="Update status"

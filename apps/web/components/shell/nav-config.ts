@@ -10,8 +10,6 @@ export interface NavItem {
   permission: string;
   badge?: BadgeKey;
   badgeTone?: 'danger' | 'warning';
-  /** Not yet rebuilt: opens the existing screen until its replacement ships. */
-  legacy?: boolean;
   keywords?: string;
 }
 export interface NavGroup { label: string; items: NavItem[] }
@@ -23,6 +21,7 @@ export const NAV: NavGroup[] = [
   ] },
   { label: 'Sales', items: [
     { href: '/customers', label: 'Customers', icon: 'customers', permission: 'customers.read', keywords: 'crm 360 party' },
+    { href: '/contracts', label: 'Customer contracts', icon: 'quote', permission: 'customers.read', keywords: 'rate contract fixed price quantity validity' },
     { href: '/enquiries', label: 'Enquiries', icon: 'inbox', permission: 'enquiries.read', keywords: 'inbox leads' },
     { href: '/quotations', label: 'Quotations', icon: 'quote', permission: 'quotations.read', keywords: 'quotes pdf' },
     { href: '/orders', label: 'Sales orders', icon: 'truck', permission: 'orders.read', keywords: 'dispatch lr delivery po' },
@@ -33,6 +32,7 @@ export const NAV: NavGroup[] = [
     { href: '/purchasing', label: 'Purchasing', icon: 'cart', permission: 'purchasing.read', keywords: 'rfq supplier po grn vendor' }
   ] },
   { label: 'Work', items: [
+    { href: '/operations', label: 'Support & collections', icon: 'inbox', permission: 'operations.read', keywords: 'incoming email complaints warranty returns receipts payments invoices' },
     { href: '/tasks', label: 'Tasks', icon: 'tasks', permission: 'tasks.read', badge: 'openTasks', keywords: 'board todo' },
     { href: '/exceptions', label: 'Exceptions', icon: 'alert', permission: 'exceptions.read', badge: 'openExceptions', badgeTone: 'warning', keywords: 'approvals queue' }
   ] },
@@ -48,14 +48,5 @@ export const NAV: NavGroup[] = [
   ] }
 ];
 
-/** Screens still served by the existing app (removed from this list as each one is rebuilt). */
-export const LEGACY_SCREENS = new Set<string>(['/quotations', '/orders', '/items', '/purchasing', '/tally', '/tally/connector']);
-
-export const legacyUrl = (): string => process.env.NEXT_PUBLIC_LEGACY_CRM_URL ?? 'http://127.0.0.1:3000/';
-
-/** Where a link should go today: the rebuilt screen, or the existing app while a screen is still pending. */
-export function screenHref(href: string): string {
-  const path = href.split('?')[0];
-  const parent = path.slice(0, path.lastIndexOf('/')) || path;
-  return LEGACY_SCREENS.has(path) || LEGACY_SCREENS.has(parent) ? legacyUrl() : href;
-}
+/** All application links stay in this ControlDesk origin. */
+export function screenHref(href: string): string { return href; }

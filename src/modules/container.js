@@ -36,13 +36,18 @@ import { AuditController, AuditQueryRepository, AuditService } from './admin/aud
 import { UserAdminController, UserAdminRepository, UserAdminService } from './admin/user-admin-service.js';
 import { DashboardController, DashboardRepository, DashboardService } from './dashboard/dashboard.js';
 import { BadgeRepository, BadgeService, PreferencesController, PreferencesRepository, PreferencesService } from './preferences/preferences.js';
+import {OperationsRepository} from './operations/operations-repository.js';
+import {OperationsService} from './operations/operations-service.js';
+import {OperationsController} from './operations/operations-controller.js';
+import {OPERATIONS_RULES} from './operations/operations-rules.js';
+import {ContractsRepository,ContractsService,ContractsController} from './operations/contracts.js';
 
 export function createModules({ db, config, clock = new SystemClock(), outboundMailer, logger = console }) {
   const transactions = new TransactionRunner(db);
   const audit = new AuditRepository(db);
 
   const access = new AccessService({ repository: new AccessRepository(db), transactions, audit, mfaEnabled: Boolean(config.mfaEnabled) });
-  const registry = new RuleRegistry(F1_RULES).register(marginFloorDefinition(new QuotationPolicyFloorSource({ db })));
+  const registry = new RuleRegistry([...F1_RULES,...OPERATIONS_RULES]).register(marginFloorDefinition(new QuotationPolicyFloorSource({ db })));
   const rules = new RuleService({ registry, repository: new RuleRepository(db), transactions, audit, access });
   const automation = new AutomationService({ repository: new AutomationRepository(db), transactions, audit, access });
   const notifications = new NotificationService({ repository: new NotificationRepository(db) });
@@ -51,6 +56,8 @@ export function createModules({ db, config, clock = new SystemClock(), outboundM
   const exceptions = new ExceptionService({ repository: new ExceptionRepository(db), transactions, audit, access });
   exceptions.registerHandler('BACKDATE', { onApproved: (actor, c) => work.applyBackdate(actor, c) });
   const tasks = new TaskService({ repository: new TaskRepository(db), work, rules, automation, notifications, transactions, audit, access, clock });
+  const operations = new OperationsService({repository:new OperationsRepository(db),transactions,audit,access,work,rules,clock});
+  const contracts = new ContractsService({db,repository:new ContractsRepository(db),transactions,audit,access,clock});
   const outboundRepository = new OutboundRepository(db);
   const gates = [new VerifiedRecordGate(), new RegisteredEmailGate(), new ManualResponseGate(), new WorkflowSwitchGate({ automation }), new ChecklistGate(), new ApprovalGate()];
   const outbound = new OutboundService({ repository: outboundRepository, gates, emailDirectory: new ContactEmailDirectory(db), mailer: outboundMailer, transactions, audit, access });
@@ -58,6 +65,8 @@ export function createModules({ db, config, clock = new SystemClock(), outboundM
   const userAdmin = new UserAdminService({ repository: new UserAdminRepository(db), access, work, tasks, transactions, audit });
 
   const controllers = [
+    new OperationsController({operations}),
+    new ContractsController({contracts}),
     new AccessController({ access }), new MfaController({ mfa }), new RuleController({ rules }), new WorkController({ work }),
     new AutomationController({ automation }), new ExceptionController({ exceptions }), new OutboundController({ outbound }),
     new TaskController({ tasks }), new AuditController({ auditQuery }), new UserAdminController({ userAdmin, notifications }),
@@ -72,7 +81,7 @@ export function createModules({ db, config, clock = new SystemClock(), outboundM
 
   let loading = null;
   return {
-    services: { access, rules, automation, notifications, mfa, work, exceptions, tasks, outbound, auditQuery, userAdmin },
+    services: { access, rules, automation, notifications, mfa, work, exceptions, tasks, outbound, auditQuery, userAdmin, operations, contracts },
     transactions, audit, scheduler, clock,
     idempotency: new IdempotencyRepository(db),
     routeDefinitions: () => controllers.flatMap((c) => c.routes()),

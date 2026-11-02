@@ -1,5 +1,9 @@
 # Requirements traceability register
 
+## Current client plan
+
+The supplied 70-page **Mehta ControlDesk ? Client Requirements & Development Plan (1).pdf** is now available as the F1?F17 implementation source. See [client-plan-implementation.md](client-plan-implementation.md) for current behavior, verification and explicit blockers. Email and WhatsApp integrations remain inactive by user instruction. The historical inventory below describes the earlier baseline, not the current implementation; the original 164-row response matrix is still unavailable.
+
 ## Source status
 
 The supplied master prompt contains a proposal-derived scope summary and counts for 15 modules totaling 164 requirements. The referenced **Mehta-Siemens-ControlDesk-Complete-Programme-Proposal (Version 2.0, 26 August 2026)** PDF and its complete 164-row response matrix were not present in the repository or supplied attachment when this register was prepared. The summary is usable as a planning index; it is not a substitute for exact requirement IDs, wording, priority, or acceptance evidence.

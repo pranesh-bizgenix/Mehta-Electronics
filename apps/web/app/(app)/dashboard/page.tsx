@@ -1,6 +1,8 @@
 'use client';
 
 import Link from 'next/link';
+import {TallySalesSyncOverview} from '@/features/workflows/tally-sales-documents';
+import { TallyImportCoverage } from '@/features/workflows/tally-imports';
 import { screenHref } from '@/components/shell/nav-config';
 import { useSession } from '@/lib/session';
 import { formatMoney, formatMoneyCompact, formatRelative, titleCase } from '@/lib/format';
@@ -10,7 +12,7 @@ import {
   BarChart, Button, Card, CardSkeleton, EmptyState, ErrorState, Funnel, Icon, Meter, Notice, StatCard, Timeline, type IconName
 } from '@/components/ds';
 
-const DECISION_ICON: Record<Decision['kind'], IconName> = { exception: 'alert', quotation: 'quote', order: 'truck', draft: 'mail' };
+const DECISION_ICON: Record<Decision['kind'], IconName> = { exception: 'alert', quotation: 'quote', order: 'truck', draft: 'mail', operation: 'tasks' };
 
 export default function DashboardPage() {
   const { state: session, can } = useSession();
@@ -32,16 +34,22 @@ export default function DashboardPage() {
       {state.status === 'error' && !data && <ErrorState error={state.error} onRetry={reload} />}
 
       {/* First fold: the numbers an owner checks every morning */}
-      <section aria-label="Key numbers" className="grid-kpis" style={{ marginBottom: 'var(--space-3)' }}>
+      <section aria-label="Key numbers" className="grid-kpis ds-dashboard-metrics" style={{ marginBottom: 'var(--space-2)' }}>
         {!data ? Array.from({ length: 4 }, (_, i) => <CardSkeleton key={i} lines={2} />) : <>
           {data.kpis.pipeline && <StatCard label="Open pipeline" value={formatMoneyCompact(data.kpis.pipeline.value)} title={formatMoney(data.kpis.pipeline.value)} footnote={`${data.kpis.pipeline.count} open quotation${data.kpis.pipeline.count === 1 ? '' : 's'}`} trend={data.quoteTrend?.map((m) => m.created)} href={screenHref('/quotations')} />}
           {data.kpis.orderBook && <StatCard label="Order book" value={formatMoneyCompact(data.kpis.orderBook.value)} title={formatMoney(data.kpis.orderBook.value)} footnote={`${data.kpis.orderBook.count} open order${data.kpis.orderBook.count === 1 ? '' : 's'}`} href={screenHref('/orders')} />}
           {data.kpis.quotesAwaitingApproval !== undefined && <StatCard label="Quotes awaiting approval" value={data.kpis.quotesAwaitingApproval} footnote={data.kpis.quotesAwaitingApproval ? 'Waiting on a second person' : 'Nothing waiting'} href={screenHref('/quotations')} />}
           {data.kpis.openEnquiries !== undefined && <StatCard label="Open enquiries" value={data.kpis.openEnquiries} footnote={derived?.conversion !== null && derived?.conversion !== undefined ? `${derived.conversion}% quote-to-win this period` : undefined} trend={data.quoteTrend?.map((m) => m.won)} href={screenHref('/enquiries')} />}
-          {data.kpis.slaBreaches !== undefined && <StatCard label="SLA breaches" value={data.kpis.slaBreaches} delta={data.kpis.slaBreaches ? { text: 'Needs attention', tone: 'down' } : { text: 'All on time', tone: 'up' }} href="/work" />}
-          {data.kpis.openExceptions !== undefined && <StatCard label="Open exceptions" value={data.kpis.openExceptions} footnote="Stopped until reviewed" href="/exceptions" />}
         </>}
       </section>
+      {data&&<nav className="ds-dashboard-signals" aria-label="Operational attention">
+        {data.kpis.slaBreaches!==undefined&&<Link className="ds-signal" data-alert={data.kpis.slaBreaches>0} href="/work"><Icon name="clock"/><strong>{data.kpis.slaBreaches}</strong> SLA breaches</Link>}
+        {data.kpis.openExceptions!==undefined&&<Link className="ds-signal" data-alert={data.kpis.openExceptions>0} href="/exceptions"><Icon name="alert"/><strong>{data.kpis.openExceptions}</strong> open exceptions</Link>}
+        {data.kpis.operations&&Object.entries(data.kpis.operations).map(([kind,count])=><Link key={kind} className="ds-signal" href={`/operations?kind=${kind}`}><strong>{count}</strong> {titleCase(kind)}</Link>)}
+      </nav>}
+
+      <TallyImportCoverage />
+      {can('quotations.read')&&can('enquiries.read')&&<TallySalesSyncOverview/>}
 
       <div className="grid-main-aside" style={{ marginBottom: 'var(--space-3)' }}>
         <Card title="Needs your decision" actions={data && data.decisions.length > 0 ? <span className="ds-nav-badge" data-tone="warning">{data.decisions.length}</span> : undefined} padded={false}>
@@ -67,29 +75,11 @@ export default function DashboardPage() {
         </Card>
 
         <div className="stack">
-          {data?.sla && (
-            <Card title="SLA this period">
-              {derived?.onTime === null ? <Notice tone="warning" title="No closed records yet">{data.sla.notConfigured ? `${data.sla.notConfigured} record(s) have no SLA because the policy is not set in Rules.` : 'Met and breached counts appear once records close.'}</Notice> : (
-                <div className="stack">
-                  <Meter label="Closed on time" value={derived?.onTime ?? 0} />
-                  <p className="ds-cell-secondary">{data.sla.met} met · {data.sla.breached} breached · {data.sla.running} running</p>
-                </div>
-              )}
-            </Card>
-          )}
-          {data?.margin && (
-            <Card title="Margin protected">
-              {data.margin.approvals === 0 ? <p className="muted">No quotation approvals in this period.</p> : (
-                <div className="stack">
-                  <Meter label="Approved at or above the margin floor" value={derived?.protectedPct ?? 0} />
-                  <p className="ds-cell-secondary">{data.margin.belowFloor} of {data.margin.approvals} approvals needed a below-floor exception.</p>
-                </div>
-              )}
-            </Card>
-          )}
-          <Card title="Receivables ageing">
-            <Notice tone="info" title="Waiting for Tally voucher data">Ageing appears once the connector delivers bill-wise receivables. No figures are estimated.</Notice>
-          </Card>
+          {(data?.sla||data?.margin)&&<Card title="Operational health"><div className="stack">
+            {data.sla&&<div className="ds-health-item"><h3>SLA performance</h3>{derived?.onTime===null?<p>{data.sla.notConfigured?`${data.sla.notConfigured} records need an SLA policy in Rules.`:'Performance is available once records close.'}</p>:<Meter label="Closed on time" value={derived?.onTime??0}/>}</div>}
+            {data.margin&&<div className="ds-health-item"><h3>Margin protection</h3>{data.margin.approvals===0?<p>No quotation approvals in this period.</p>:<><Meter label="Approved at or above the margin floor" value={derived?.protectedPct??0}/><p>{data.margin.belowFloor} of {data.margin.approvals} approvals required an exception.</p></>}</div>}
+          </div></Card>}
+          <Card title="Receivables ageing"><div className="ds-health-item"><p>Awaiting bill-wise Tally voucher data. Ageing will appear when this source becomes available.</p></div></Card>
         </div>
       </div>
 

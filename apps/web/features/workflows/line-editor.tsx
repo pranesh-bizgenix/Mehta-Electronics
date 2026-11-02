@@ -1,0 +1,14 @@
+'use client';
+import {useEffect,useState} from 'react';
+import {useApi} from '@/lib/api/provider';
+import {Button,SelectField,TextField} from '@/components/ds';
+export interface CommercialLine {id?:number;itemId?:number;partCode:string;description:string;uom:string;quantity:string;unitPrice:string;discountPercent:string;taxPercent:string;lineKey?:string;fulfilledQuantity?:string}
+export const emptyLine=():CommercialLine=>({partCode:'',description:'',uom:'',quantity:'1',unitPrice:'0',discountPercent:'0',taxPercent:'0'});
+interface Item {id:number;part_code:string;description:string;uom:string}
+export function LineEditor({lines,onChange}: {lines:CommercialLine[];onChange:(lines:CommercialLine[])=>void}){
+ const api=useApi(),[search,setSearch]=useState(''),[items,setItems]=useState<Item[]>([]),[error,setError]=useState('');
+ useEffect(()=>{const abort=new AbortController(),timer=setTimeout(()=>{api.get<{data:Item[]}>('/api/crm/items',{query:{search,pageSize:100},signal:abort.signal}).then(r=>setItems(r.data)).catch(e=>{if(!abort.signal.aborted)setError(e instanceof Error?e.message:'Could not load items.');});},250);return()=>{clearTimeout(timer);abort.abort();};},[api,search]);
+ const update=(i:number,values:Partial<CommercialLine>)=>onChange(lines.map((l,j)=>j===i?{...l,...values}:l));
+ return <section className="stack"><h3>Product lines</h3><TextField label="Find a CRM product" value={search} onChange={e=>setSearch(e.target.value)}/>{error&&<p role="alert">{error}</p>}{lines.map((line,i)=><fieldset key={i} className="stack ds-card-body"><legend>Line {i+1}</legend><SelectField label={`Product ${i+1}`} value={line.itemId?String(line.itemId):''} placeholder="Select product or enter the original PO code below" options={items.map(item=>({value:String(item.id),label:`${item.part_code} · ${item.description}`}))} onChange={e=>{const item=items.find(item=>String(item.id)===e.target.value);update(i,item?{itemId:item.id,partCode:item.part_code,description:item.description,uom:item.uom}:{itemId:undefined});}}/>
+  <div className="cluster">{(['partCode','description','uom','quantity','unitPrice','discountPercent','taxPercent'] as const).map(key=><TextField key={key} label={`${({partCode:'Part code',description:'Description',uom:'Unit',quantity:'Quantity',unitPrice:'Unit price',discountPercent:'Discount %',taxPercent:'GST %'})[key]} · line ${i+1}`} required value={line[key]} inputMode={['quantity','unitPrice','discountPercent','taxPercent'].includes(key)?'decimal':undefined} onChange={e=>update(i,{[key]:e.target.value})}/>)}</div><Button type="button" disabled={lines.length===1} onClick={()=>onChange(lines.filter((_,j)=>j!==i))}>Remove line {i+1}</Button></fieldset>)}<Button type="button" onClick={()=>onChange([...lines,emptyLine()])}>Add product line</Button></section>;
+}

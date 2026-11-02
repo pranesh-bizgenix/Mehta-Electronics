@@ -3,7 +3,8 @@ import { markStalledRuns } from './tally-import.js';
 import { connectPostgres } from './postgres.js';
 
 const requiredFields = ['vouchersXml', 'stockXml', 'balanceSheetXml', 'profitAndLossXml', 'billsReceivableXml', 'billsPayableXml', 'ledgersXml', 'groupsXml'];
-const supportedFields = new Set([...requiredFields, 'salesRegisterXml', 'purchaseRegisterXml', 'dayBookReportXml', 'trialBalanceXml', 'cashBankControlXml', 'stockSummaryReportXml']);
+const supportedFields = new Set([...requiredFields, 'salesRegisterXml', 'purchaseRegisterXml', 'dayBookReportXml', 'trialBalanceXml', 'cashBankControlXml', 'stockSummaryReportXml',
+  'companiesXml','stockGroupsXml','stockCategoriesXml','unitsXml','godownsXml','priceLevelsXml','costCentresXml','voucherTypesXml','salesDocumentsXml']);
 
 export function connectorConnectionState(connector, now = Date.now()) {
   if (connector.status === 'revoked' || connector.revoked_at) return 'revoked';
@@ -19,6 +20,13 @@ export function connectorConnectionState(connector, now = Date.now()) {
 const hash = (value) => crypto.createHash('sha256').update(value).digest('hex');
 const clean = (value, max = 300) => String(value || '').replace(/\s+/g, ' ').trim().slice(0, max);
 const sameCompany = (left, right) => clean(left).toLowerCase() === clean(right).toLowerCase();
+async function observeSource(sql,body,jobId,sessionId=null) {
+  if(body.sourceSystem==null)return;
+  if(!['direct_xml','tally_engine','bizgenix'].includes(body.sourceSystem))throw Object.assign(new Error('Invalid source identifier.'),{status:422});
+  const retries=Number.isInteger(body.retryCount)&&body.retryCount>=0?body.retryCount:null;
+  const next=body.nextSyncAt&&!Number.isNaN(Date.parse(body.nextSyncAt))?new Date(body.nextSyncAt):null;
+  await sql`INSERT INTO tally_source_observations(job_id,session_id,source_system,retry_count,next_sync_at) VALUES(${jobId},${sessionId},${body.sourceSystem},${retries},${next})`;
+}
 const tokenPair = () => ({
   accessToken: crypto.randomBytes(32).toString('base64url'),
   refreshToken: crypto.randomBytes(48).toString('base64url')
@@ -174,9 +182,9 @@ export function createConnectorStore(config) {
         historyFinancialYears: 6
       };
     },
-    async status() {
+    async status({ readOnly = false } = {}) {
       const database = requireDb();
-      await markStalledRuns(database,config.tallyStalledRunMinutes || 30);
+      if (!readOnly) await markStalledRuns(database,config.tallyStalledRunMinutes || 30);
       const connectors = await database`SELECT c.id,c.profile_name,c.expected_company_name,c.machine_name,c.agent_version,c.status,c.created_at,c.last_seen_at,c.last_sync_at,c.revoked_at,c.pairing_expires_at,
         h.tally_available,h.selected_company,h.open_companies,h.updated_at AS heartbeat_at
         FROM tally_connectors c LEFT JOIN tally_connector_heartbeats h ON h.connector_id=c.id ORDER BY c.created_at DESC`;
@@ -245,6 +253,7 @@ export function createConnectorStore(config) {
         if (!body.syncJobId) await tx`INSERT INTO tally_sync_jobs(id,connector_id,company_name,company_guid,status) VALUES(${jobId},${connector.id},${company},${clean(body.companyGuid)||null},'running')`;
         await tx`INSERT INTO tally_upload_sessions(id,connector_id,sync_job_id,sync_id,company_name,company_guid,sync_from,sync_to,status)
           VALUES(${sessionId},${connector.id},${jobId},${clean(body.syncId, 200)||null},${company},${clean(body.companyGuid)||null},${from},${to},'receiving')`;
+        await observeSource(tx,body,jobId,sessionId);
       });
       return { sessionId, syncJobId: jobId };
     },
@@ -255,6 +264,7 @@ export function createConnectorStore(config) {
       const jobId = crypto.randomUUID();
       await database`INSERT INTO tally_sync_jobs(id,connector_id,company_name,company_guid,status)
         VALUES(${jobId},${connector.id},${company},${clean(body.companyGuid)||null},'running')`;
+      await observeSource(database,body,jobId);
       return { syncJobId: jobId };
     },
     async progress(connector, body) {
@@ -290,7 +300,9 @@ export function createConnectorStore(config) {
       }
       const session = await database`SELECT id FROM tally_upload_sessions WHERE id=${body.sessionId} AND connector_id=${connector.id} AND status='receiving'`;
       if (!session.length) { const error = new Error('Upload session is unavailable.'); error.status = 404; throw error; }
-      await database`INSERT INTO tally_upload_chunks(session_id,field_name,sequence,content) VALUES(${body.sessionId},${field},${sequence},${content}) ON CONFLICT(session_id,field_name,sequence) DO UPDATE SET content=EXCLUDED.content`;
+      await database`INSERT INTO tally_upload_chunks(session_id,field_name,sequence,content) VALUES(${body.sessionId},${field},${sequence},${content}) ON CONFLICT(session_id,field_name,sequence) DO NOTHING`;
+      const prior=await database`SELECT content FROM tally_upload_chunks WHERE session_id=${body.sessionId} AND field_name=${field} AND sequence=${sequence}`;
+      if(prior[0]?.content!==content)throw Object.assign(new Error('Chunk differs from retained data; create a new sync session.'),{status:409});
       await database`UPDATE tally_sync_jobs SET last_progress_at=now() WHERE id=(SELECT sync_job_id FROM tally_upload_sessions WHERE id=${body.sessionId}) AND status='running'`;
     },
   };

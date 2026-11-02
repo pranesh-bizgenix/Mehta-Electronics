@@ -1,0 +1,90 @@
+{
+  "checkedAt": "2026-11-02T12:02:50.046Z",
+  "company": {
+    "id": "222bd4ab-7dd2-4278-b33b-bf2a8b77f0f3",
+    "name": "MEHTA ELECTRIC CORPORATION - (from 1-Apr-23) - (from 1-Apr-23)"
+  },
+  "readOnlyTally": true,
+  "sourceSummary": {
+    "imported": 575,
+    "cancelled": 2,
+    "last_observed": "2026-11-02T11:43:10.664Z",
+    "types": [
+      {
+        "type": "Sales Order",
+        "count": 5,
+        "optional": 5,
+        "non_optional": 0,
+        "cancelled": 1,
+        "earliest": "20230926",
+        "latest": "20240302"
+      },
+      {
+        "type": "Sales Quotation",
+        "count": 570,
+        "optional": 447,
+        "non_optional": 123,
+        "cancelled": 1,
+        "earliest": "20230406",
+        "latest": "20240331"
+      }
+    ],
+    "periods": [
+      {
+        "year": "2023",
+        "count": 413
+      },
+      {
+        "year": "2024",
+        "count": 162
+      }
+    ],
+    "updated": 0,
+    "sourceCount": 575,
+    "latestPersisted": 575,
+    "pending": 0,
+    "failed": 0,
+    "notSeenInLatest": 0,
+    "receipt": {
+      "status": "imported",
+      "error": null,
+      "sessionId": "4859a25a-8905-41ed-9738-77d79016c45e",
+      "processedAt": "2026-11-02T11:51:51.907Z",
+      "from": "2021-04-01T00:00:00.000Z",
+      "to": "2026-11-02T00:00:00.000Z"
+    },
+    "note": "Counts cover stored source documents across all imported dates. Updated counts distinct source IDs with changed content. Records missing from a later snapshot remain in history; absence alone does not prove deletion."
+  },
+  "enquiriesSummary": {
+    "imported": 0,
+    "cancelled": 0,
+    "last_observed": null,
+    "types": [],
+    "periods": [],
+    "updated": 0,
+    "sourceCount": 0,
+    "latestPersisted": 0,
+    "pending": 0,
+    "failed": 0,
+    "notSeenInLatest": 0,
+    "receipt": {
+      "status": "imported",
+      "error": null,
+      "sessionId": "4859a25a-8905-41ed-9738-77d79016c45e",
+      "processedAt": "2026-11-02T11:51:51.907Z",
+      "from": "2021-04-01T00:00:00.000Z",
+      "to": "2026-11-02T00:00:00.000Z"
+    },
+    "note": "Counts cover stored source documents across all imported dates. Updated counts distinct source IDs with changed content. Records missing from a later snapshot remain in history; absence alone does not prove deletion."
+  },
+  "comparableNonOptionalSalesQuotations": 123,
+  "apiTotal": 575,
+  "detail": {
+    "availableFields": 978,
+    "itemLines": 1,
+    "ledgerEntries": 2,
+    "sourceRelationships": 2
+  },
+  "sourceCountsReconciled": true,
+  "originalXmlRetained": true
+}

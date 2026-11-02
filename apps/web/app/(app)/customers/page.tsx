@@ -6,6 +6,7 @@ import { useSession } from '@/lib/session';
 import { formatMoney, formatRelative } from '@/lib/format';
 import { Avatar, Badge, Button, CardSkeleton, DataTable, EmptyState, PageHeader, SelectField, StatusBadge, Truncate, useToast } from '@/components/ds';
 import { useCustomerList } from '@/features/customers/hooks';
+import { RecordWorkspace } from '@/features/workflows/tally-imports';
 import { CustomerForm } from '@/features/customers/customer-form';
 import type { CustomerRow } from '@/features/customers/api';
 
@@ -23,6 +24,7 @@ function CustomersList() {
       <PageHeader title="Customers" crumbs={[{ label: 'Sales' }, { label: 'Customers' }]}
         description="One record per customer: contacts, credit, Tally link and history. Tally balances stay read-only."
         actions={can('customers.create') && <Button icon="plus" onClick={() => setCreating(true)}>New customer</Button>} />
+      <RecordWorkspace kind="customers">
       <DataTable<CustomerRow> id="customers" caption="Customers" rows={data?.data} rowKey={(c) => c.id} loading={state.status === 'loading'} error={state.status === 'error' ? state.error : undefined} onRetry={reload}
         pagination={data?.pagination} onPage={setPage} onRowClick={(c) => router.push(`/customers/${c.id}`)}
         search={{ value: query.search, onChange: (search) => setQuery({ search }), placeholder: 'Search name, GSTIN or code' }}
@@ -40,6 +42,7 @@ function CustomersList() {
           { key: 'status', header: 'Status', render: (c) => <StatusBadge status={c.status} /> },
           { key: 'updated', header: 'Updated', optional: true, render: (c) => <span className="ds-cell-secondary">{formatRelative(c.updated_at)}</span> }
         ]} />
+      </RecordWorkspace>
       {can('customers.create') && <CustomerForm open={creating} onClose={() => setCreating(false)} onSaved={(c) => { setCreating(false); toast('success', `${c.name} created.`); router.push(`/customers/${c.id}`); }} />}
     </>
   );

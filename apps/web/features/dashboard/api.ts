@@ -1,9 +1,10 @@
 import type { ApiClient } from '@/lib/api/client';
 
-export interface Decision { kind: 'exception' | 'quotation' | 'order' | 'draft'; id: string; title: string; subtitle?: string | null; amount?: string | null; at: string; href: string }
+export interface Decision { kind: 'exception' | 'quotation' | 'order' | 'draft' | 'operation'; id: string; title: string; subtitle?: string | null; amount?: string | null; at: string; href: string }
 export interface DashboardSummary {
   period: { from: string; to: string };
   kpis: {
+    operations?: Record<string,number>;
     openEnquiries?: number; quotesAwaitingApproval?: number; slaBreaches?: number; openExceptions?: number;
     pipeline?: { value: string; count: number }; orderBook?: { value: string; count: number };
   };

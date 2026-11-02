@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="TallyConnector.Core/TallyConnector.Core.csproj" />
+  <Project Path="TallyConnector.Service/TallyConnector.Service.csproj" />
+  <Project Path="TallyConnector.Setup/TallyConnector.Setup.csproj" />
+</Solution>

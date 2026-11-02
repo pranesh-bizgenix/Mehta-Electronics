@@ -52,6 +52,8 @@ export function getConfig(overrides = {}) {
     mfaEnabled: String(process.env.MFA_ENABLED ?? 'false').toLowerCase() === 'true',
     schedulerEnabled: String(process.env.SCHEDULER_ENABLED ?? 'true').toLowerCase() !== 'false',
     isProduction: process.env.NODE_ENV === 'production',
-    ...overrides
+    ...overrides,
+    tallyFinancialRoles: (overrides.tallyFinancialRoles || (process.env.TALLY_FINANCIAL_ROLES || 'OWNER,ACCOUNTS').split(',').map(role=>role.trim().toUpperCase()))
+      .filter(role=>['OWNER','ACCOUNTS'].includes(role))
   };
 }

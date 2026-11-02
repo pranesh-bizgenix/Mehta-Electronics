@@ -9,3 +9,7 @@ node_modules/
 coverage/
 .next-capture/
 apps/web/.next-capture/
+apps/web/.next-tally-visibility/
+
+apps/web/.next-client-plan/
+apps/web/.next-dev/

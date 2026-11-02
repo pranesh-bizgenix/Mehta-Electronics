@@ -1,6 +1,7 @@
 import { writeAudit, enquiryView, recordEnquiryRevision } from './db.js';
 import { normalizeKey, escapeLike } from './security.js';
 import { pagination, classifyLedgers } from './tally-read-service.js';
+import {requireCustomerHandler} from './modules/operations/customer-gates.js';
 
 const error=(status,message)=>Object.assign(new Error(message),{status});
 export const id=value=>{if(!['string','number'].includes(typeof value)||typeof value==='string'&&!/^\d+$/.test(value))throw error(422,'Invalid record identifier.');const n=Number(value);if(!Number.isSafeInteger(n)||n<1)throw error(422,'Invalid record identifier.');return n;};
@@ -159,7 +160,7 @@ export async function itemDetail(db,itemId,{financial=false}={}) {
   const row=await db.prepare('SELECT *,pack_size::text AS pack_size FROM items WHERE id=?').get(id(itemId));if(!row)throw error(404,'Item not found.');
   const storedProfile=await db.prepare('SELECT *,moq::text AS moq,list_price::text AS list_price,discount_percent::text AS discount_percent FROM crm_item_profiles WHERE item_id=?').get(row.id);row.profile=storedProfile||{};
   if(!storedProfile){const links=await db.prepare("SELECT company_id,tally_name FROM crm_tally_item_links WHERE item_id=? AND status='ACTIVE' AND NOT is_deleted").all(row.id);if(links.length===1)row.profile={...row.profile,company_id:links[0].company_id,tally_stock_name:links[0].tally_name};}
-  const p=row.profile,rows=p.company_id?await db.prepare(`SELECT name,base_unit,closing_quantity_text,closing_rate_text,fetched_at${financial?',closing_value::text AS closing_value':''} FROM tally_stock_items WHERE company_id=? AND name=?`).all(p.company_id,p.tally_stock_name):[];
+  const p=row.profile,rows=p.company_id?await db.prepare(`SELECT name,base_unit,closing_quantity_text,fetched_at${financial?',closing_rate_text,closing_value::text AS closing_value':''} FROM tally_stock_items WHERE company_id=? AND name=?`).all(p.company_id,p.tally_stock_name):[];
   row.stock={linked:rows.length===1,matchCount:rows.length,note:'Read-only Tally stock; no reservation, adjustment or unit conversion is applied.',...(rows.length===1?rows[0]:{})};
   row.prices=await db.prepare(`SELECT e.*,e.min_quantity::text AS min_quantity,e.unit_price::text AS unit_price,e.discount_percent::text AS discount_percent,l.name AS list_name,l.currency,l.effective_from,l.effective_to,l.discount_percent AS list_discount FROM crm_price_list_items e JOIN crm_price_lists l ON l.id=e.price_list_id WHERE e.item_id=? AND NOT e.is_deleted AND NOT l.is_deleted ORDER BY l.effective_from DESC,e.min_quantity`).all(row.id);
   return row;
@@ -207,6 +208,7 @@ export async function savePriceList(db,listId,body,user) {
   });
 }
 export async function saveEnquiry(db,enquiryId,body,user) {
+  await requireCustomerHandler(db,body.customerId,user);
   const reason=editReason(body,!!enquiryId);
   return transaction(db,user,reason,async()=>{
     const old=enquiryId?await db.prepare('SELECT * FROM enquiries WHERE id=? FOR UPDATE').get(id(enquiryId)):null;

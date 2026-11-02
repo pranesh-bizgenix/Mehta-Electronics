@@ -19,7 +19,7 @@ try {
 
 const store = createConnectorStore(config);
 try {
-  const { connectors, jobs } = await store.status();
+  const { connectors, jobs } = await store.status({ readOnly: true });
   for (const connector of connectors) console.log(JSON.stringify({ profile: connector.profile_name, company: connector.expected_company_name, connection: connector.connection_state, machine: connector.machine_name, lastSeen: connector.last_seen_at, lastSync: connector.last_sync_at }));
   console.log(`Recent connector sync jobs: ${jobs.length}`);
   for (const job of jobs) console.log(JSON.stringify({ company: job.company_name, status: job.status, message: job.message }));

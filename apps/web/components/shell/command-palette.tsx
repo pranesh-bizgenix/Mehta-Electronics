@@ -7,7 +7,7 @@ import type { ApiClient, Paginated } from '@/lib/api/client';
 import { useApi } from '@/lib/api/provider';
 import { useSession } from '@/lib/session';
 import { usePreferences } from '@/lib/preferences';
-import { NAV, LEGACY_SCREENS, legacyUrl } from './nav-config';
+import { NAV } from './nav-config';
 
 interface Hit { id: string; group: string; label: string; hint?: string; icon: IconName; run: () => void }
 
@@ -40,8 +40,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
 
   const go = (href: string) => {
     onClose();
-    if (LEGACY_SCREENS.has(href.split('?')[0].replace(/\/\d+$/, ''))) window.location.href = legacyUrl();
-    else router.push(href);
+    router.push(href);
   };
 
   useEffect(() => {

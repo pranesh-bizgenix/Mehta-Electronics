@@ -1,0 +1,74 @@
+{
+  "checkedAt": "2026-10-30T11:50:45.260Z",
+  "source": "direct_xml",
+  "sessionId": "cd4826d6-b61c-4ecc-b13d-a0a1b916b1f0",
+  "status": "failed",
+  "quarantined": 0,
+  "datasets": {
+    "companiesXml": {
+      "status": "imported",
+      "payloadCount": 1,
+      "imported": 1,
+      "quarantined": 0,
+      "error": null
+    },
+    "godownsXml": {
+      "status": "imported",
+      "payloadCount": 5,
+      "imported": 5,
+      "quarantined": 0,
+      "error": null
+    },
+    "groupsXml": {
+      "status": "imported",
+      "payloadCount": 78,
+      "imported": 78,
+      "quarantined": 0,
+      "error": null
+    },
+    "ledgersXml": {
+      "status": "imported",
+      "payloadCount": 4152,
+      "imported": 4152,
+      "quarantined": 0,
+      "error": null
+    },
+    "stockCategoriesXml": {
+      "status": "imported",
+      "payloadCount": 1,
+      "imported": 1,
+      "quarantined": 0,
+      "error": null
+    },
+    "stockGroupsXml": {
+      "status": "imported",
+      "payloadCount": 167,
+      "imported": 167,
+      "quarantined": 0,
+      "error": null
+    },
+    "stockXml": {
+      "status": "imported",
+      "payloadCount": 10988,
+      "imported": 10988,
+      "quarantined": 0,
+      "error": null
+    },
+    "unitsXml": {
+      "status": "imported",
+      "payloadCount": 12,
+      "imported": 12,
+      "quarantined": 0,
+      "error": null
+    },
+    "priceLevelsXml": {
+      "status": "failed",
+      "error": "Required dataset has not arrived."
+    },
+    "costCentresXml": {
+      "status": "failed",
+      "error": "Required dataset has not arrived."
+    }
+  },
+  "note": "PriceLevel export timed out before CostCentre was attempted. Valid received collections are indexed; the incomplete run remains failed."
+}

@@ -1,0 +1,51 @@
+export interface TallyControllerDependencies {
+ db:unknown;
+ service?:TallyService;
+ route:(method:string,pattern:string,permission:string,handler:(context:any)=>Promise<unknown>)=>any;
+ json:(response:any,status:number,body:unknown)=>unknown;
+ readJson:(request:any)=>Promise<Record<string,any>>;
+}
+export interface TallyController {
+ (dependencies:TallyControllerDependencies):any[];
+}
+export interface TallyRepository {
+ salesSummary(companyId:string,kind:string):Promise<Record<string,any>>;
+ receipt(companyId:string,dataset:string):Promise<Record<string,any>|undefined>;
+ links(companyId:string,entity:string,key?:string):Promise<Record<string,any>[]>;
+ salesRelationships(companyId:string,document:Record<string,any>):Promise<Record<string,any>[]>;
+ crmRecord(kind:string,id:string|number):Promise<Record<string,any>|undefined>;
+ payloads(companyId:string,sessionId?:string):Promise<Record<string,any>[]>;
+ payload(companyId:string|null,id:string):Promise<Record<string,any>|undefined>;
+ quarantined(companyId:string|undefined,query:Record<string,any>,financial:boolean):Promise<Record<string,any>>;
+ replay(sessionId:string):Promise<Record<string,any>>;
+ audit(event:Record<string,any>):Promise<unknown>;
+ transaction<T>(callback:()=>Promise<T>,options?:{readOnly?:boolean}):Promise<T>;
+ groupCounts(scope:Record<string,any>):Promise<Record<string,any>[]>;
+ groupBalance(scope:Record<string,any>,parents:string[]):Promise<string|null>;
+ unlinkedCrm(kind:string,companyId:string,query:Record<string,any>):Promise<Record<string,any>[]>;
+ createLinkedCrm(input:Record<string,any>):Promise<Record<string,any>>;
+ company(id?:string|null):Promise<Record<string,any>|undefined>;
+ groups(companyId:string):Promise<Record<string,any>[]>;
+ parents(companyId:string):Promise<Record<string,any>[]>;
+ scope(companyId:string,entity:string,financial:boolean,parents?:string[],snapshots?:boolean):Record<string,any>;
+ catalogue(scope:Record<string,any>):Promise<string[]>;
+ metadata(scope:Record<string,any>):Promise<Record<string,any>>;
+ list(scope:Record<string,any>,query:Record<string,any>):Promise<Record<string,any>>;
+ history(companyId:string,entity:string,key:string,financial:boolean):Promise<Record<string,any>[]>;
+ overview(companyId:string,financial:boolean):Promise<Record<string,any>>;
+}
+export interface TallyService {
+ salesSummary(kind:string,url:URL,user:Record<string,any>):Promise<Record<string,any>>;
+ overview(url:URL,user:Record<string,any>):Promise<Record<string,any>>;
+ retainedPayloads(url:URL,user:Record<string,any>,id?:string):Promise<Record<string,any>>;
+ quarantine(url:URL,user:Record<string,any>):Promise<Record<string,any>>;
+ replay(sessionId:string,user:Record<string,any>,ip?:string):Promise<Record<string,any>>;
+ createCrm(kind:string,key:string,url:URL,user:Record<string,any>,ip?:string):Promise<Record<string,any>>;
+ list(kind:string,url:URL,user:Record<string,any>):Promise<Record<string,any>>;
+ detail(kind:string,key:string,url:URL,user:Record<string,any>):Promise<Record<string,any>>;
+ export(kind:string,url:URL,user:Record<string,any>,columns:string[],format?:string,ip?:string):Promise<Record<string,any>>;
+ context(kind:string,url:URL,user:Record<string,any>):Promise<Record<string,any>>;
+ quality(kind:string,url:URL,user:Record<string,any>):Promise<Record<string,any>>;
+ tree(url:URL,user:Record<string,any>):Promise<Record<string,any>>;
+ reconciliation(kind:string,url:URL,user:Record<string,any>):Promise<Record<string,any>>;
+}

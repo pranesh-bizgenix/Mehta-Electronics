@@ -29,7 +29,7 @@ export function TextField({ label, error, hint, required, ...rest }: FieldChrome
     <Chrome id={id} label={label} error={error} hint={hint} required={required}>
       {(describedBy) => (
         <div className="ds-float">
-          <input {...rest} id={id} placeholder=" " required={required} aria-invalid={Boolean(error) || undefined} aria-describedby={describedBy} />
+          <input {...rest} id={id} placeholder={rest.placeholder ?? ' '} required={required} aria-invalid={Boolean(error) || undefined} aria-describedby={describedBy} />
           <label htmlFor={id}>{label}{required && <span className="ds-required" aria-hidden="true"> *</span>}</label>
         </div>
       )}

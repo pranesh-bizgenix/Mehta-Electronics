@@ -1,0 +1,80 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {temporaryDatabase} from '../test-support/postgres.js';
+import {createDatabase} from '../src/postgres.js';
+import {createModules} from '../src/modules/container.js';
+import {FixedClock} from '../src/core/runtime.js';
+import {requireQuotableCustomer,contractForLine,requireCustomerHandler,bindFirstQuotationOwner} from '../src/modules/operations/customer-gates.js';
+import {saveQuote} from '../src/quotation-workflow.js';
+
+test('client plan: intake dedupe, bank suppression, customer blocks, receipt review and warranty policy',async()=>{
+ const temporary=await temporaryDatabase('clientplan'),db=createDatabase({databaseUrl:temporary.databaseUrl});let modules;
+ try{
+  await db.sql`INSERT INTO users(id,name,email,role,password_hash) VALUES
+   (801,'Owner','owner@clientplan.invalid','OWNER','unused'),(802,'Accounts','accounts@clientplan.invalid','ACCOUNTS','unused'),
+   (803,'Sales','sales@clientplan.invalid','EXECUTIVE','unused'),(804,'Reviewer','review@clientplan.invalid','OWNER','unused')`;
+  const customer=(await db.sql`INSERT INTO customers(name,normalized_name,created_by,updated_by) VALUES('Fixture customer','fixture customer',801,801) RETURNING id`)[0].id;
+  modules=createModules({db,config:{mfaEnabled:false},clock:new FixedClock('2026-11-02T08:00:00Z')});await modules.ready();
+  const service=modules.services.operations,owner={id:801,role:'OWNER'},accounts={id:802,role:'ACCOUNTS'},sales={id:803,role:'EXECUTIVE'},reviewer={id:804,role:'OWNER'};
+  const base={title:'Fixture case',customerId:customer,ownerId:801,backupId:802,reason:'Fixture business decision'};
+  const message={...base,payload:{channel:'EMAIL',externalId:'message-1',sender:'customer@example.invalid',category:'BANK',originalText:'Original bank message'}};
+  assert.equal((await service.create(owner,'INTAKE',message)).ignored,true);
+  assert.equal((await db.sql`SELECT count(*) AS n FROM crm_operations`)[0].n,0);
+  assert.equal((await db.sql`SELECT count(*) AS n FROM email_drafts`)[0].n,0);
+  message.payload.category='QUOTATION_REQUEST';const intake=await service.create(owner,'INTAKE',message);
+  assert.equal((await service.create(owner,'INTAKE',message)).duplicate,true);
+  await assert.rejects(service.create(owner,'INTAKE',{...message,payload:{...message.payload,originalText:'Changed original'}}),{status:409});
+  await assert.rejects(db.sql`UPDATE crm_intake_originals SET original_text='changed'`,/immutable/);
+  assert.equal((await service.detail(sales,intake.record.id)).record.payload.originalText,undefined);
+  await service.controls(owner,customer,{classification:'DO_NOT_QUOTE',creditExempt:false,version:0,reason:'Owner requests Admin review'});
+  await assert.rejects(requireQuotableCustomer(db,customer),{code:'DO_NOT_QUOTE'});
+  await assert.rejects(saveQuote(db,null,{customerId:customer,reason:'Attempt ordinary quotation'},owner),{code:'DO_NOT_QUOTE'});
+  await service.controls(owner,customer,{classification:'EXISTING',creditExempt:true,version:1,reason:'Owner cleared restriction and authorised exemption'});
+  await requireQuotableCustomer(db,customer);
+  const invoice=(await service.create(owner,'INVOICE',{...base,payload:{invoiceNumber:'FIXTURE-INV-1',invoiceDate:'2026-10-31',amount:'100.00',sourceReference:'Fixture existing invoice',sourceObservedAt:'2026-11-02T07:00:00Z'}})).record;
+  await assert.rejects(service.detail(sales,invoice.id),{status:403});
+  const collection=(await service.create(owner,'COLLECTION',{...base,payload:{invoiceId:invoice.id,amount:'100.00',dueDate:'2026-11-02'}})).record;
+  const pay=async(amount,ref)=>{
+   const receipt=(await service.create(owner,'RECEIPT',{...base,payload:{invoiceId:invoice.id,amount,paymentDate:'2026-11-02',transactionReference:ref}})).record;
+   const submitted=await service.act(owner,receipt.id,{action:'SUBMIT',version:1,reason:'Submit actual receipt for confirmation'});
+   await assert.rejects(service.act(owner,receipt.id,{action:'CONFIRM',version:submitted.record.version,reason:'Maker must not confirm'}),{status:403});
+   return service.act(accounts,receipt.id,{action:'CONFIRM',version:submitted.record.version,reason:'Accountant verified transaction evidence'});
+  };
+  await pay('40.00','BANK-REF-ONE');
+  await assert.rejects(service.act(accounts,collection.id,{action:'RESOLVE',version:1,reason:'Cannot close a partial payment'}),{status:409});
+  await pay('60.00','BANK-REF-TWO');
+  assert.equal((await service.act(accounts,collection.id,{action:'RESOLVE',version:1,reason:'Full amount received and confirmed'})).record.status,'RESOLVED');
+  const item=await service.create(owner,'WARRANTY',{...base,payload:{invoiceReference:'Fixture invoice',purchaseDate:'2026-01-01',faultType:'TECHNICAL_FAULT',serialNumber:'TEST-1',evidence:'Fixture technical inspection'}});
+  const submitted=await service.act(owner,item.record.id,{action:'SUBMIT',version:1,reason:'Request human warranty decision'});
+  await assert.rejects(service.act(reviewer,item.record.id,{action:'APPROVE',version:submitted.record.version,reason:'Policy is not confirmed yet'}),{code:'RULE_NOT_CONFIGURED'});
+  await modules.services.rules.set(owner,'warranty.policy',{periodMonths:12,firstResponseHours:48,technicalFaultsOnly:true},'Test-only confirmed policy');
+  assert.equal((await service.act(reviewer,item.record.id,{action:'APPROVE',version:submitted.record.version,reason:'Human review against confirmed test policy'})).record.status,'APPROVED');
+  await assert.rejects(service.act(owner,item.record.id,{action:'RESOLVE',version:1,reason:'Stale version cannot apply'}),{status:409});
+  assert.ok((await db.sql`SELECT count(*) AS n FROM crm_operation_events`)[0].n>10);
+  const product=(await db.sql`INSERT INTO items(part_code,description,uom,created_by,updated_by) VALUES('CONTRACT-TEST','Fixture product','NOS',801,801) RETURNING id`)[0].id;
+  const contracts=modules.services.contracts;
+  const contract=await contracts.create(owner,customer,{itemId:product,quantity:'10',unitPrice:'88.123456',validFrom:'2026-01-01',validTo:'2026-12-31',reason:'Fixed customer agreement, test only'});
+  await assert.rejects(contracts.decide(owner,contract.id,{decision:'APPROVED',reason:'Creator cannot approve own agreement'}),{status:403});
+  await contracts.decide(reviewer,contract.id,{decision:'APPROVED',reason:'Independent agreement review'});
+  const contractLine={itemId:product,quantity:'10',unitPrice:'88.123456',discountPercent:'0'};
+  assert.equal(await contractForLine(db,customer,contractLine,'2026-11-02'),contract.id);
+  await assert.rejects(contractForLine(db,customer,{...contractLine,unitPrice:'88.12'},'2026-11-02'),{code:'RATE_CONTRACT_PRICE'});
+  await assert.rejects(contractForLine(db,customer,{...contractLine,quantity:'9'},'2026-11-02'),{code:'RATE_CONTRACT_QUANTITY'});
+  const another=(await db.sql`INSERT INTO customers(name,normalized_name,created_by,updated_by) VALUES('Another fixture','another fixture',801,801) RETURNING id`)[0].id;
+  assert.equal(await contractForLine(db,another,contractLine,'2026-11-02'),null,'Contracts must not leak to another customer');
+  await service.controls(owner,customer,{classification:'EXISTING',creditExempt:false,pricingClass:'RATE_CONTRACT',version:2,reason:'Confirmed pricing class'});
+  await assert.rejects(contractForLine(db,customer,contractLine,'2027-01-01'),{code:'RATE_CONTRACT_MISSING'});
+  await assert.rejects(db.sql`UPDATE crm_customer_rate_contracts SET unit_price=1`,/immutable/);
+  await db.withConnection(async()=>{await db.exec('BEGIN');try{await bindFirstQuotationOwner(db,another,803,owner);await db.exec('COMMIT');}catch(error){await db.exec('ROLLBACK');throw error;}});
+  assert.equal((await db.sql`SELECT owner_id FROM customers WHERE id=${another}`)[0].owner_id,803,'First sent executive quote binds only an unassigned customer');
+  assert.equal((await service.list(owner,'SUPPORT',{customerId:another,page:1})).pagination.total,0);
+  await db.sql`UPDATE customers SET owner_id=801 WHERE id=${customer}`;
+  await assert.rejects(requireCustomerHandler(db,customer,sales),{code:'CUSTOMER_ASSIGNED_ELSEWHERE'});
+  const payment=(await service.create(owner,'PAYMENT',{...base,payload:{amount:'50.00',beneficiary:'Fixture vendor',sourceReference:'Fixture verified payable',notes:'Test payment request'}})).record;
+  await service.act(owner,payment.id,{action:'SUBMIT',version:1,reason:'Request review'});
+  await assert.rejects(service.act(accounts,payment.id,{action:'APPROVE',version:2,reason:'Policy missing'}),{code:'RULE_NOT_CONFIGURED'});
+  await modules.services.rules.set(owner,'payments.authorisation',{maximumAmount:'100.00',checks:['Invoice matched']},'Test-only payment control');
+  await assert.rejects(service.act(accounts,payment.id,{action:'APPROVE',version:2,reason:'Evidence missing'}),{status:422});
+  assert.equal((await service.act(accounts,payment.id,{action:'APPROVE',version:2,reason:'Checks completed',checks:{'Invoice matched':'Fixture source checked'}})).record.status,'APPROVED');
+ }finally{await modules?.scheduler.stop();await db.close();await temporary.close();}
+});

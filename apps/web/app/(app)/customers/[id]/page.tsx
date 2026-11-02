@@ -12,9 +12,10 @@ import {
 import { screenHref } from '@/components/shell/nav-config';
 import { useCustomer } from '@/features/customers/hooks';
 import { CustomerForm } from '@/features/customers/customer-form';
+import { CustomerOperations } from '@/features/workflows/customer-operations';
 import type { Customer, HistoryRow, PartMapping } from '@/features/customers/api';
 
-type Tab = 'overview' | 'contacts' | 'parts' | 'enquiries' | 'quotes' | 'orders' | 'invoices' | 'dues' | 'activity';
+type Tab = 'overview' | 'contacts' | 'parts' | 'enquiries' | 'quotes' | 'orders' | 'invoices' | 'dues' | 'activity' | 'operations';
 
 export default function Customer360({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -36,6 +37,7 @@ export default function Customer360({ params }: { params: Promise<{ id: string }
     ...(can('quotations.read') ? [{ id: 'quotes', label: 'Quotations' }] : []),
     ...(can('orders.read') ? [{ id: 'orders', label: 'Orders' }] : []),
     { id: 'invoices', label: 'Invoices' },
+    ...(can('operations.read') ? [{ id: 'operations', label: 'Support & collections' }] : []),
     ...(customer.dues.financialAccess ? [{ id: 'dues', label: 'Dues' }] : []),
     ...(can('audit.read') ? [{ id: 'activity', label: 'Activity' }] : [])
   ];
@@ -68,6 +70,7 @@ export default function Customer360({ params }: { params: Promise<{ id: string }
 
       <Tabs label="Customer sections" value={tab} onChange={(t) => setTab(t as Tab)} items={tabs} />
       <TabPanel id={tab}>
+        {tab === 'operations' && <CustomerOperations customerId={id} financial={customer.dues.financialAccess} />}
         {tab === 'overview' && <OverviewTab customer={customer} />}
         {tab === 'contacts' && <ContactsTab customer={customer} />}
         {tab === 'parts' && <PartsTab customer={customer} onChanged={reload} />}

@@ -1,0 +1,21 @@
+{
+  "source": "Anonymized real exported record structures; lists capped at two elements; no source values retained.",
+  "entities": [
+    "companies",
+    "groups",
+    "ledgers",
+    "items",
+    "stock_groups",
+    "categories",
+    "units",
+    "godowns"
+  ],
+  "unavailable": [
+    "price_levels",
+    "cost_centres",
+    "vouchers"
+  ],
+  "companyPricePaths": [
+    "/xml/USEPRICELEVELS/#text"
+  ]
+}

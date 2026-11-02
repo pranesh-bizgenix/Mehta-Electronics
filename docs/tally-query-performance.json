@@ -1,0 +1,1294 @@
+{
+  "checkedAt": "2026-10-30T12:30:34.048Z",
+  "readOnly": true,
+  "measurements": [
+    {
+      "entity": "ledgers",
+      "role": "OWNER",
+      "mode": "default",
+      "total": 4152,
+      "pageRows": 25,
+      "wallMsIncludingExplain": 141,
+      "queries": [
+        {
+          "executionMs": 7.674,
+          "planningMs": 6.411,
+          "nodes": [
+            {
+              "type": "Aggregate",
+              "index": null,
+              "rows": 1
+            },
+            {
+              "type": "Index Only Scan",
+              "index": "tally_current_state",
+              "rows": 4152
+            }
+          ]
+        },
+        {
+          "executionMs": 69.116,
+          "planningMs": 6.532,
+          "nodes": [
+            {
+              "type": "Nested Loop",
+              "index": null,
+              "rows": 25
+            },
+            {
+              "type": "Limit",
+              "index": null,
+              "rows": 25
+            },
+            {
+              "type": "Sort",
+              "index": null,
+              "rows": 25
+            },
+            {
+              "type": "WindowAgg",
+              "index": null,
+              "rows": 4152
+            },
+            {
+              "type": "Sort",
+              "index": null,
+              "rows": 4152
+            },
+            {
+              "type": "Seq Scan",
+              "index": null,
+              "rows": 4152
+            },
+            {
+              "type": "Index Scan",
+              "index": "tally_visibility_records_pkey",
+              "rows": 1
+            }
+          ]
+        }
+      ],
+      "eachQueryUnder300ms": true
+    },
+    {
+      "entity": "ledgers",
+      "role": "OWNER",
+      "mode": "search",
+      "total": 838,
+      "pageRows": 25,
+      "wallMsIncludingExplain": 308,
+      "queries": [
+        {
+          "executionMs": 70.023,
+          "planningMs": 4.254,
+          "nodes": [
+            {
+              "type": "Aggregate",
+              "index": null,
+              "rows": 1
+            },
+            {
+              "type": "Bitmap Heap Scan",
+              "index": null,
+              "rows": 838
+            },
+            {
+              "type": "BitmapAnd",
+              "index": null,
+              "rows": 0
+            },
+            {
+              "type": "Bitmap Index Scan",
+              "index": "tally_current_state",
+              "rows": 4152
+            },
+            {
+              "type": "Bitmap Index Scan",
+              "index": "tally_current_financial_search",
+              "rows": 923
+            }
+          ]
+        },
+        {
+          "executionMs": 84.865,
+          "planningMs": 1.966,
+          "nodes": [
+            {
+              "type": "Nested Loop",
+              "index": null,
+              "rows": 25
+            },
+            {
+              "type": "Limit",
+              "index": null,
+              "rows": 25
+            },
+            {
+              "type": "Sort",
+              "index": null,
+              "rows": 25
+            },
+            {
+              "type": "WindowAgg",
+              "index": null,
+              "rows": 838
+            },
+            {
+              "type": "Sort",
+              "index": null,
+              "rows": 838
+            },
+            {
+              "type": "Bitmap Heap Scan",
+              "index": null,
+              "rows": 838
+            },
+            {
+              "type": "BitmapAnd",
+              "index": null,
+              "rows": 0
+            },
+            {
+              "type": "Bitmap Index Scan",
+              "index": "tally_current_state",
+              "rows": 4152
+            },
+            {
+              "type": "Bitmap Index Scan",
+              "index": "tally_current_financial_search",
+              "rows": 923
+            },
+            {
+              "type": "Index Scan",
+              "index": "tally_visibility_records_pkey",
+              "rows": 1
+            }
+          ]
+        }
+      ],
+      "eachQueryUnder300ms": true
+    },
+    {
+      "entity": "ledgers",
+      "role": "OWNER",
+      "mode": "group",
+      "total": 1,
+      "pageRows": 1,
+      "wallMsIncludingExplain": 6,
+      "queries": [
+        {
+          "executionMs": 0.048,
+          "planningMs": 0.143,
+          "nodes": [
+            {
+              "type": "Aggregate",
+              "index": null,
+              "rows": 1
+            },
+            {
+              "type": "Index Only Scan",
+              "index": "tally_current_parent",
+              "rows": 1
+            }
+          ]
+        },
+        {
+          "executionMs": 0.863,
+          "planningMs": 0.339,
+          "nodes": [
+            {
+              "type": "Nested Loop",
+              "index": null,
+              "rows": 1
+            },
+            {
+              "type": "Limit",
+              "index": null,
+              "rows": 1
+            },
+            {
+              "type": "Sort",
+              "index": null,
+              "rows": 1
+            },
+            {
+              "type": "WindowAgg",
+              "index": null,
+              "rows": 1
+            },
+            {
+              "type": "Sort",
+              "index": null,
+              "rows": 1
+            },
+            {
+              "type": "Index Scan",
+              "index": "tally_current_parent",
+              "rows": 1
+            },
+            {
+              "type": "Index Scan",
+              "index": "tally_visibility_records_pkey",
+              "rows": 1
+            }
+          ]
+        }
+      ],
+      "eachQueryUnder300ms": true
+    },
+    {
+      "entity": "ledgers",
+      "role": "OWNER",
+      "mode": "filter",
+      "total": 3873,
+      "pageRows": 25,
+      "wallMsIncludingExplain": 135,
+      "queries": [
+        {
+          "executionMs": 16.315,
+          "planningMs": 0.13,
+          "nodes": [
+            {
+              "type": "Aggregate",
+              "index": null,
+              "rows": 1
+            },
+            {
+              "type": "Seq Scan",
+              "index": null,
+              "rows": 3873
+            }
+          ]
+        },
+        {
+          "executionMs": 47.371,
+          "planningMs": 0.36,
+          "nodes": [
+            {
+              "type": "Nested Loop",
+              "index": null,
+              "rows": 25
+            },
+            {
+              "type": "Limit",
+              "index": null,
+              "rows": 25
+            },
+            {
+              "type": "Sort",
+              "index": null,
+              "rows": 25
+            },
+            {
+              "type": "WindowAgg",
+              "index": null,
+              "rows": 3873
+            },
+            {
+              "type": "Sort",
+              "index": null,
+              "rows": 3873
+            },
+            {
+              "type": "Seq Scan",
+              "index": null,
+              "rows": 3873
+            },
+            {
+              "type": "Index Scan",
+              "index": "tally_visibility_records_pkey",
+              "rows": 1
+            }
+          ]
+        }
+      ],
+      "eachQueryUnder300ms": true
+    },
+    {
+      "entity": "ledgers",
+      "role": "MANAGER",
+      "mode": "default",
+      "total": 4152,
+      "pageRows": 25,
+      "wallMsIncludingExplain": 63,
+      "queries": [
+        {
+          "executionMs": 0.705,
+          "planningMs": 0.146,
+          "nodes": [
+            {
+              "type": "Aggregate",
+              "index": null,
+              "rows": 1
+            },
+            {
+              "type": "Index Only Scan",
+              "index": "tally_current_state",
+              "rows": 4152
+            }
+          ]
+        },
+        {
+          "executionMs": 25.675,
+          "planningMs": 1.045,
+          "nodes": [
+            {
+              "type": "Nested Loop",
+              "index": null,
+              "rows": 25
+            },
+            {
+              "type": "Nested Loop",
+              "index": null,
+              "rows": 25
+            },
+            {
+              "type": "Limit",
+              "index": null,
+              "rows": 25
+            },
+            {
+              "type": "Sort",
+              "index": null,
+              "rows": 25
+            },
+            {
+              "type": "WindowAgg",
+              "index": null,
+              "rows": 4152
+            },
+            {
+              "type": "Sort",
+              "index": null,
+              "rows": 4152
+            },
+            {
+              "type": "Seq Scan",
+              "index": null,
+              "rows": 4152
+            },
+            {
+              "type": "Index Scan",
+              "index": "tally_visibility_records_pkey",
+              "rows": 1
+            },
+            {
+              "type": "Index Scan",
+              "index": "tally_visibility_public_fields_pkey",
+              "rows": 1
+            }
+          ]
+        }
+      ],
+      "eachQueryUnder300ms": true
+    },
+    {
+      "entity": "ledgers",
+      "role": "MANAGER",
+      "mode": "search",
+      "total": 809,
+      "pageRows": 25,
+      "wallMsIncludingExplain": 66,
+      "queries": [
+        {
+          "executionMs": 10.018,
+          "planningMs": 1.273,
+          "nodes": [
+            {
+              "type": "Aggregate",
+              "index": null,
+              "rows": 1
+            },
+            {
+              "type": "Bitmap Heap Scan",
+              "index": null,
+              "rows": 809
+            },
+            {
+              "type": "BitmapAnd",
+              "index": null,
+              "rows": 0
+            },
+            {
+              "type": "Bitmap Index Scan",
+              "index": "tally_current_state",
+              "rows": 4152
+            },
+            {
+              "type": "Bitmap Index Scan",
+              "index": "tally_current_public_search",
+              "rows": 834
+            }
+          ]
+        },
+        {
+          "executionMs": 15.629,
+          "planningMs": 1.635,
+          "nodes": [
+            {
+              "type": "Nested Loop",
+              "index": null,
+              "rows": 25
+            },
+            {
+              "type": "Nested Loop",
+              "index": null,
+              "rows": 25
+            },
+            {
+              "type": "Limit",
+              "index": null,
+              "rows": 25
+            },
+            {
+              "type": "Sort",
+              "index": null,
+              "rows": 25
+            },
+            {
+              "type": "WindowAgg",
+              "index": null,
+              "rows": 809
+            },
+            {
+              "type": "Sort",
+              "index": null,
+              "rows": 809
+            },
+            {
+              "type": "Bitmap Heap Scan",
+              "index": null,
+              "rows": 809
+            },
+            {
+              "type": "BitmapAnd",
+              "index": null,
+              "rows": 0
+            },
+            {
+              "type": "Bitmap Index Scan",
+              "index": "tally_current_state",
+              "rows": 4152
+            },
+            {
+              "type": "Bitmap Index Scan",
+              "index": "tally_current_public_search",
+              "rows": 834
+            },
+            {
+              "type": "Index Scan",
+              "index": "tally_visibility_records_pkey",
+              "rows": 1
+            },
+            {
+              "type": "Index Scan",
+              "index": "tally_visibility_public_fields_pkey",
+              "rows": 1
+            }
+          ]
+        }
+      ],
+      "eachQueryUnder300ms": true
+    },
+    {
+      "entity": "ledgers",
+      "role": "MANAGER",
+      "mode": "group",
+      "total": 1,
+      "pageRows": 1,
+      "wallMsIncludingExplain": 9,
+      "queries": [
+        {
+          "executionMs": 0.074,
+          "planningMs": 0.244,
+          "nodes": [
+            {
+              "type": "Aggregate",
+              "index": null,
+              "rows": 1
+            },
+            {
+              "type": "Index Only Scan",
+              "index": "tally_current_parent",
+              "rows": 1
+            }
+          ]
+        },
+        {
+          "executionMs": 0.516,
+          "planningMs": 0.757,
+          "nodes": [
+            {
+              "type": "Nested Loop",
+              "index": null,
+              "rows": 1
+            },
+            {
+              "type": "Nested Loop",
+              "index": null,
+              "rows": 1
+            },
+            {
+              "type": "Limit",
+              "index": null,
+              "rows": 1
+            },
+            {
+              "type": "Sort",
+              "index": null,
+              "rows": 1
+            },
+            {
+              "type": "WindowAgg",
+              "index": null,
+              "rows": 1
+            },
+            {
+              "type": "Sort",
+              "index": null,
+              "rows": 1
+            },
+            {
+              "type": "Index Scan",
+              "index": "tally_current_parent",
+              "rows": 1
+            },
+            {
+              "type": "Index Scan",
+              "index": "tally_visibility_records_pkey",
+              "rows": 1
+            },
+            {
+              "type": "Index Scan",
+              "index": "tally_visibility_public_fields_pkey",
+              "rows": 1
+            }
+          ]
+        }
+      ],
+      "eachQueryUnder300ms": true
+    },
+    {
+      "entity": "ledgers",
+      "role": "MANAGER",
+      "mode": "filter",
+      "total": 3873,
+      "pageRows": 25,
+      "wallMsIncludingExplain": 113,
+      "queries": [
+        {
+          "executionMs": 12.323,
+          "planningMs": 0.229,
+          "nodes": [
+            {
+              "type": "Aggregate",
+              "index": null,
+              "rows": 1
+            },
+            {
+              "type": "Seq Scan",
+              "index": null,
+              "rows": 3873
+            }
+          ]
+        },
+        {
+          "executionMs": 37.616,
+          "planningMs": 0.894,
+          "nodes": [
+            {
+              "type": "Nested Loop",
+              "index": null,
+              "rows": 25
+            },
+            {
+              "type": "Nested Loop",
+              "index": null,
+              "rows": 25
+            },
+            {
+              "type": "Limit",
+              "index": null,
+              "rows": 25
+            },
+            {
+              "type": "Sort",
+              "index": null,
+              "rows": 25
+            },
+            {
+              "type": "WindowAgg",
+              "index": null,
+              "rows": 3873
+            },
+            {
+              "type": "Sort",
+              "index": null,
+              "rows": 3873
+            },
+            {
+              "type": "Seq Scan",
+              "index": null,
+              "rows": 3873
+            },
+            {
+              "type": "Index Scan",
+              "index": "tally_visibility_records_pkey",
+              "rows": 1
+            },
+            {
+              "type": "Index Scan",
+              "index": "tally_visibility_public_fields_pkey",
+              "rows": 1
+            }
+          ]
+        }
+      ],
+      "eachQueryUnder300ms": true
+    },
+    {
+      "entity": "items",
+      "role": "OWNER",
+      "mode": "default",
+      "total": 10988,
+      "pageRows": 25,
+      "wallMsIncludingExplain": 203,
+      "queries": [
+        {
+          "executionMs": 2.963,
+          "planningMs": 0.165,
+          "nodes": [
+            {
+              "type": "Aggregate",
+              "index": null,
+              "rows": 1
+            },
+            {
+              "type": "Index Only Scan",
+              "index": "tally_current_state",
+              "rows": 10988
+            }
+          ]
+        },
+        {
+          "executionMs": 90.987,
+          "planningMs": 0.449,
+          "nodes": [
+            {
+              "type": "Nested Loop",
+              "index": null,
+              "rows": 25
+            },
+            {
+              "type": "Limit",
+              "index": null,
+              "rows": 25
+            },
+            {
+              "type": "Sort",
+              "index": null,
+              "rows": 25
+            },
+            {
+              "type": "WindowAgg",
+              "index": null,
+              "rows": 10988
+            },
+            {
+              "type": "Sort",
+              "index": null,
+              "rows": 10988
+            },
+            {
+              "type": "Seq Scan",
+              "index": null,
+              "rows": 10988
+            },
+            {
+              "type": "Index Scan",
+              "index": "tally_visibility_records_pkey",
+              "rows": 1
+            }
+          ]
+        }
+      ],
+      "eachQueryUnder300ms": true
+    },
+    {
+      "entity": "items",
+      "role": "OWNER",
+      "mode": "search",
+      "total": 465,
+      "pageRows": 25,
+      "wallMsIncludingExplain": 148,
+      "queries": [
+        {
+          "executionMs": 28.478,
+          "planningMs": 3.01,
+          "nodes": [
+            {
+              "type": "Aggregate",
+              "index": null,
+              "rows": 1
+            },
+            {
+              "type": "Bitmap Heap Scan",
+              "index": null,
+              "rows": 465
+            },
+            {
+              "type": "BitmapAnd",
+              "index": null,
+              "rows": 0
+            },
+            {
+              "type": "Bitmap Index Scan",
+              "index": "tally_current_financial_search",
+              "rows": 533
+            },
+            {
+              "type": "Bitmap Index Scan",
+              "index": "tally_current_state",
+              "rows": 10988
+            }
+          ]
+        },
+        {
+          "executionMs": 39.489,
+          "planningMs": 4.285,
+          "nodes": [
+            {
+              "type": "Nested Loop",
+              "index": null,
+              "rows": 25
+            },
+            {
+              "type": "Limit",
+              "index": null,
+              "rows": 25
+            },
+            {
+              "type": "Sort",
+              "index": null,
+              "rows": 25
+            },
+            {
+              "type": "WindowAgg",
+              "index": null,
+              "rows": 465
+            },
+            {
+              "type": "Sort",
+              "index": null,
+              "rows": 465
+            },
+            {
+              "type": "Bitmap Heap Scan",
+              "index": null,
+              "rows": 465
+            },
+            {
+              "type": "BitmapAnd",
+              "index": null,
+              "rows": 0
+            },
+            {
+              "type": "Bitmap Index Scan",
+              "index": "tally_current_financial_search",
+              "rows": 533
+            },
+            {
+              "type": "Bitmap Index Scan",
+              "index": "tally_current_state",
+              "rows": 10988
+            },
+            {
+              "type": "Index Scan",
+              "index": "tally_visibility_records_pkey",
+              "rows": 1
+            }
+          ]
+        }
+      ],
+      "eachQueryUnder300ms": true
+    },
+    {
+      "entity": "items",
+      "role": "OWNER",
+      "mode": "group",
+      "total": 245,
+      "pageRows": 25,
+      "wallMsIncludingExplain": 43,
+      "queries": [
+        {
+          "executionMs": 0.102,
+          "planningMs": 0.173,
+          "nodes": [
+            {
+              "type": "Aggregate",
+              "index": null,
+              "rows": 1
+            },
+            {
+              "type": "Index Only Scan",
+              "index": "tally_current_parent",
+              "rows": 245
+            }
+          ]
+        },
+        {
+          "executionMs": 14.815,
+          "planningMs": 0.575,
+          "nodes": [
+            {
+              "type": "Nested Loop",
+              "index": null,
+              "rows": 25
+            },
+            {
+              "type": "Limit",
+              "index": null,
+              "rows": 25
+            },
+            {
+              "type": "Sort",
+              "index": null,
+              "rows": 25
+            },
+            {
+              "type": "WindowAgg",
+              "index": null,
+              "rows": 245
+            },
+            {
+              "type": "Sort",
+              "index": null,
+              "rows": 245
+            },
+            {
+              "type": "Index Scan",
+              "index": "tally_current_parent",
+              "rows": 245
+            },
+            {
+              "type": "Index Scan",
+              "index": "tally_visibility_records_pkey",
+              "rows": 1
+            }
+          ]
+        }
+      ],
+      "eachQueryUnder300ms": true
+    },
+    {
+      "entity": "items",
+      "role": "OWNER",
+      "mode": "filter",
+      "total": 199,
+      "pageRows": 25,
+      "wallMsIncludingExplain": 295,
+      "queries": [
+        {
+          "executionMs": 106.611,
+          "planningMs": 0.247,
+          "nodes": [
+            {
+              "type": "Aggregate",
+              "index": null,
+              "rows": 1
+            },
+            {
+              "type": "Seq Scan",
+              "index": null,
+              "rows": 199
+            }
+          ]
+        },
+        {
+          "executionMs": 59.294,
+          "planningMs": 0.798,
+          "nodes": [
+            {
+              "type": "Nested Loop",
+              "index": null,
+              "rows": 25
+            },
+            {
+              "type": "Limit",
+              "index": null,
+              "rows": 25
+            },
+            {
+              "type": "Sort",
+              "index": null,
+              "rows": 25
+            },
+            {
+              "type": "WindowAgg",
+              "index": null,
+              "rows": 199
+            },
+            {
+              "type": "Sort",
+              "index": null,
+              "rows": 199
+            },
+            {
+              "type": "Seq Scan",
+              "index": null,
+              "rows": 199
+            },
+            {
+              "type": "Index Scan",
+              "index": "tally_visibility_records_pkey",
+              "rows": 1
+            }
+          ]
+        }
+      ],
+      "eachQueryUnder300ms": true
+    },
+    {
+      "entity": "items",
+      "role": "MANAGER",
+      "mode": "default",
+      "total": 10988,
+      "pageRows": 25,
+      "wallMsIncludingExplain": 140,
+      "queries": [
+        {
+          "executionMs": 2.369,
+          "planningMs": 0.15,
+          "nodes": [
+            {
+              "type": "Aggregate",
+              "index": null,
+              "rows": 1
+            },
+            {
+              "type": "Index Only Scan",
+              "index": "tally_current_state",
+              "rows": 10988
+            }
+          ]
+        },
+        {
+          "executionMs": 69.846,
+          "planningMs": 0.526,
+          "nodes": [
+            {
+              "type": "Nested Loop",
+              "index": null,
+              "rows": 25
+            },
+            {
+              "type": "Nested Loop",
+              "index": null,
+              "rows": 25
+            },
+            {
+              "type": "Limit",
+              "index": null,
+              "rows": 25
+            },
+            {
+              "type": "Sort",
+              "index": null,
+              "rows": 25
+            },
+            {
+              "type": "WindowAgg",
+              "index": null,
+              "rows": 10988
+            },
+            {
+              "type": "Sort",
+              "index": null,
+              "rows": 10988
+            },
+            {
+              "type": "Seq Scan",
+              "index": null,
+              "rows": 10988
+            },
+            {
+              "type": "Index Scan",
+              "index": "tally_visibility_records_pkey",
+              "rows": 1
+            },
+            {
+              "type": "Index Scan",
+              "index": "tally_visibility_public_fields_pkey",
+              "rows": 1
+            }
+          ]
+        }
+      ],
+      "eachQueryUnder300ms": true
+    },
+    {
+      "entity": "items",
+      "role": "MANAGER",
+      "mode": "search",
+      "total": 465,
+      "pageRows": 25,
+      "wallMsIncludingExplain": 36,
+      "queries": [
+        {
+          "executionMs": 5.19,
+          "planningMs": 0.995,
+          "nodes": [
+            {
+              "type": "Aggregate",
+              "index": null,
+              "rows": 1
+            },
+            {
+              "type": "Bitmap Heap Scan",
+              "index": null,
+              "rows": 465
+            },
+            {
+              "type": "BitmapAnd",
+              "index": null,
+              "rows": 0
+            },
+            {
+              "type": "Bitmap Index Scan",
+              "index": "tally_current_public_search",
+              "rows": 529
+            },
+            {
+              "type": "Bitmap Index Scan",
+              "index": "tally_current_state",
+              "rows": 10988
+            }
+          ]
+        },
+        {
+          "executionMs": 8.449,
+          "planningMs": 1.298,
+          "nodes": [
+            {
+              "type": "Nested Loop",
+              "index": null,
+              "rows": 25
+            },
+            {
+              "type": "Nested Loop",
+              "index": null,
+              "rows": 25
+            },
+            {
+              "type": "Limit",
+              "index": null,
+              "rows": 25
+            },
+            {
+              "type": "Sort",
+              "index": null,
+              "rows": 25
+            },
+            {
+              "type": "WindowAgg",
+              "index": null,
+              "rows": 465
+            },
+            {
+              "type": "Sort",
+              "index": null,
+              "rows": 465
+            },
+            {
+              "type": "Bitmap Heap Scan",
+              "index": null,
+              "rows": 465
+            },
+            {
+              "type": "BitmapAnd",
+              "index": null,
+              "rows": 0
+            },
+            {
+              "type": "Bitmap Index Scan",
+              "index": "tally_current_public_search",
+              "rows": 529
+            },
+            {
+              "type": "Bitmap Index Scan",
+              "index": "tally_current_state",
+              "rows": 10988
+            },
+            {
+              "type": "Index Scan",
+              "index": "tally_visibility_records_pkey",
+              "rows": 1
+            },
+            {
+              "type": "Index Scan",
+              "index": "tally_visibility_public_fields_pkey",
+              "rows": 1
+            }
+          ]
+        }
+      ],
+      "eachQueryUnder300ms": true
+    },
+    {
+      "entity": "items",
+      "role": "MANAGER",
+      "mode": "group",
+      "total": 245,
+      "pageRows": 25,
+      "wallMsIncludingExplain": 11,
+      "queries": [
+        {
+          "executionMs": 0.089,
+          "planningMs": 0.144,
+          "nodes": [
+            {
+              "type": "Aggregate",
+              "index": null,
+              "rows": 1
+            },
+            {
+              "type": "Index Only Scan",
+              "index": "tally_current_parent",
+              "rows": 245
+            }
+          ]
+        },
+        {
+          "executionMs": 3.397,
+          "planningMs": 0.432,
+          "nodes": [
+            {
+              "type": "Nested Loop",
+              "index": null,
+              "rows": 25
+            },
+            {
+              "type": "Nested Loop",
+              "index": null,
+              "rows": 25
+            },
+            {
+              "type": "Limit",
+              "index": null,
+              "rows": 25
+            },
+            {
+              "type": "Sort",
+              "index": null,
+              "rows": 25
+            },
+            {
+              "type": "WindowAgg",
+              "index": null,
+              "rows": 245
+            },
+            {
+              "type": "Sort",
+              "index": null,
+              "rows": 245
+            },
+            {
+              "type": "Index Scan",
+              "index": "tally_current_parent",
+              "rows": 245
+            },
+            {
+              "type": "Index Scan",
+              "index": "tally_visibility_records_pkey",
+              "rows": 1
+            },
+            {
+              "type": "Index Scan",
+              "index": "tally_visibility_public_fields_pkey",
+              "rows": 1
+            }
+          ]
+        }
+      ],
+      "eachQueryUnder300ms": true
+    },
+    {
+      "entity": "items",
+      "role": "MANAGER",
+      "mode": "filter",
+      "total": 199,
+      "pageRows": 25,
+      "wallMsIncludingExplain": 154,
+      "queries": [
+        {
+          "executionMs": 35.035,
+          "planningMs": 0.137,
+          "nodes": [
+            {
+              "type": "Aggregate",
+              "index": null,
+              "rows": 1
+            },
+            {
+              "type": "Seq Scan",
+              "index": null,
+              "rows": 199
+            }
+          ]
+        },
+        {
+          "executionMs": 38.559,
+          "planningMs": 0.505,
+          "nodes": [
+            {
+              "type": "Nested Loop",
+              "index": null,
+              "rows": 25
+            },
+            {
+              "type": "Nested Loop",
+              "index": null,
+              "rows": 25
+            },
+            {
+              "type": "Limit",
+              "index": null,
+              "rows": 25
+            },
+            {
+              "type": "Sort",
+              "index": null,
+              "rows": 25
+            },
+            {
+              "type": "WindowAgg",
+              "index": null,
+              "rows": 199
+            },
+            {
+              "type": "Sort",
+              "index": null,
+              "rows": 199
+            },
+            {
+              "type": "Seq Scan",
+              "index": null,
+              "rows": 199
+            },
+            {
+              "type": "Index Scan",
+              "index": "tally_visibility_records_pkey",
+              "rows": 1
+            },
+            {
+              "type": "Index Scan",
+              "index": "tally_visibility_public_fields_pkey",
+              "rows": 1
+            }
+          ]
+        }
+      ],
+      "eachQueryUnder300ms": true
+    }
+  ]
+}

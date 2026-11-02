@@ -1,0 +1,36 @@
+{
+  "at": "2026-11-02T11:42:43.006Z",
+  "source": "direct_xml",
+  "tallyReadOnly": true,
+  "companyId": "222bd4ab-7dd2-4278-b33b-bf2a8b77f0f3",
+  "from": "2021-04-01",
+  "to": "2026-11-02",
+  "fetched": 575,
+  "types": {
+    "Sales Quotation": 570,
+    "Sales Order": 5
+  },
+  "cancelled": 2,
+  "identified": 575,
+  "status": "stored",
+  "sessionId": "4859a25a-8905-41ed-9738-77d79016c45e",
+  "datasets": {
+    "salesDocumentsXml": {
+      "status": "imported",
+      "payloadCount": 575,
+      "imported": 575,
+      "quarantined": 0,
+      "error": null
+    }
+  },
+  "persisted": [
+    {
+      "entity": "quotations",
+      "records": 575
+    },
+    {
+      "entity": "vouchers",
+      "records": 575
+    }
+  ]
+}

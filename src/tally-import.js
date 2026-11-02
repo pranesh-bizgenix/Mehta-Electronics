@@ -1,5 +1,7 @@
 import crypto from 'node:crypto';
 import { XMLParser, XMLValidator } from 'fast-xml-parser';
+import { replayVisibilityPayload, indexCompanyMetadata } from './tally-visibility-replay.js';
+import { tallySalesDocumentKind } from './tally-sales-documents.js';
 
 const digest = value => crypto.createHash('sha256').update(value).digest('hex');
 const parser = new XMLParser({ ignoreAttributes:false, parseTagValue:false, parseAttributeValue:false, trimValues:false, alwaysCreateTextNode:true });
@@ -9,7 +11,7 @@ const first = (record, names) => names.map(name=>field(record,name)).find(value=
 const exactName = record => scalar(record['@_NAME']) ?? first(record,['NAME','PARTNO']);
 const matching = value => value.toUpperCase().replace(/[^A-Z0-9]/g,'');
 const arrays = value => value==null?[]:Array.isArray(value)?value:[value];
-const cleanXml = xml => xml.replace(/&#(?:0*[0-8]|0*11|0*12|0*1[4-9]|0*2[0-9]|0*3[01]);/g,'').replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g,'');
+export const cleanXml = xml => xml.replace(/&#(?:0*[0-8]|0*11|0*12|0*1[4-9]|0*2[0-9]|0*3[01]);/g,'').replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g,'');
 
 export function parseCollection(xml, kind) {
   const cleaned=cleanXml(xml);
@@ -79,8 +81,9 @@ async function audit(tx, id, action, value) {
 async function upsertRecords(tx,table,records,quarantine) {
   const write=async rows=>{
     const columns=Object.keys(rows[0]);
-    const update=columns.filter(name=>!['id','company_id','source_key'].includes(name));
-    await tx`INSERT INTO ${tx(table)} ${tx(rows,columns)} ON CONFLICT(company_id,source_key) DO UPDATE SET ${tx.unsafe(update.map(name=>`"${name}"=EXCLUDED."${name}"`).join(','))},fetched_at=now()`;
+    // Historical imported rows are immutable. New snapshots live in the
+    // append-only visibility index, replayed from immutable payloads below.
+    await tx`INSERT INTO ${tx(table)} ${tx(rows,columns)} ON CONFLICT(company_id,source_key) DO NOTHING`;
   };
   let count=0;
   for(let start=0;start<records.length;start+=250){
@@ -100,18 +103,19 @@ async function upsertRecords(tx,table,records,quarantine) {
   return count;
 }
 
-export async function importTallySession(db,sessionId,{replay=false}={}) {
+export async function importTallySession(db,sessionId,{replay=false,requiredDatasets=['ledgersXml','stockXml','groupsXml','vouchersXml','balanceSheetXml','profitAndLossXml','billsReceivableXml','billsPayableXml']}={}) {
   try {
     return await db.sql.begin(async tx=>{
       await tx`SELECT pg_advisory_xact_lock(hashtext(${sessionId}))`;
       const [session]=await tx`SELECT * FROM tally_upload_sessions WHERE id=${sessionId} FOR UPDATE`;
       if(!session)throw new Error('Upload session not found.');
       if(session.status==='stored' && session.import_summary && !replay)return session.import_summary;
-      const [company]=await tx`INSERT INTO tally_companies(id,name,tally_guid) VALUES(${crypto.randomUUID()},${session.company_name},${session.company_guid})
-        ON CONFLICT(name) DO UPDATE SET tally_guid=COALESCE(EXCLUDED.tally_guid,tally_companies.tally_guid) RETURNING id`;
+      await tx`INSERT INTO tally_companies(id,name,tally_guid) VALUES(${crypto.randomUUID()},${session.company_name},${session.company_guid}) ON CONFLICT(name) DO NOTHING`;
+      const [company]=await tx`SELECT id FROM tally_companies WHERE name=${session.company_name}`;
       const datasets=await tx`SELECT field_name,string_agg(content,'' ORDER BY sequence) AS content,count(*)::integer AS chunks,min(sequence) AS first,max(sequence) AS last
         FROM tally_upload_chunks WHERE session_id=${sessionId} GROUP BY field_name`;
       const summary={companyId:company.id,sessionId,datasets:{},customers:0,items:0,groups:0,vouchers:0,warnings:0,quarantined:0};
+      await indexCompanyMetadata(tx,company.id,sessionId,session.created_at);
       for(const dataset of datasets){
         await tx`INSERT INTO tally_raw_payloads(id,company_id,session_id,run_id,dataset,content_hash,content)
           VALUES(${crypto.randomUUID()},${company.id},${sessionId},${session.sync_job_id},${dataset.field_name},${digest(dataset.content)},${dataset.content}) ON CONFLICT DO NOTHING`;
@@ -127,7 +131,7 @@ export async function importTallySession(db,sessionId,{replay=false}={}) {
               quarantined++;
               await tx`INSERT INTO tally_import_quarantine(id,company_id,session_id,dataset,record_index,reason,raw_record)
                 VALUES(${crypto.randomUUID()},${company.id},${sessionId},${dataset.field_name},${item.index},${item.reason},${tx.json(item.raw)})
-                ON CONFLICT(session_id,dataset,record_index) DO UPDATE SET reason=EXCLUDED.reason,raw_record=EXCLUDED.raw_record`;
+                ON CONFLICT(session_id,dataset,record_index) DO NOTHING`;
             };
             for(const item of prepared.bad)await quarantine(item);
             imported=await upsertRecords(tx,table,prepared.good,quarantine);
@@ -136,17 +140,29 @@ export async function importTallySession(db,sessionId,{replay=false}={}) {
             summary.warnings+=prepared.warnings.length;
             summary[kind==='ledgers'?'customers':kind]=imported;
             state=quarantined?'partial':'imported';
-          } else if(dataset.field_name==='vouchersXml') {
-            payloadCount=parseStructuredVouchers(dataset.content).length;summary.vouchers=payloadCount;
-            state=payloadCount?'retained':'awaiting_data';
+          } else if(['vouchersXml','salesDocumentsXml'].includes(dataset.field_name)) {
+            parseCollection(dataset.content,'VOUCHER'); // Validate envelope and LINEERROR before extracting structured records.
+            const records=parseStructuredVouchers(dataset.content);payloadCount=records.length;
+            if(dataset.field_name==='salesDocumentsXml')summary.salesDocuments={quotations:records.filter(r=>tallySalesDocumentKind(r)==='quotations').length,enquiries:records.filter(r=>tallySalesDocumentKind(r)==='enquiries').length};
+            summary.vouchers+=payloadCount;imported=payloadCount;
+            state=payloadCount?'imported':'received_empty';
           }
         }catch(failure){error=failure.message;state='failed';}
+        const payloads=await tx`SELECT * FROM tally_raw_payloads WHERE session_id=${sessionId} AND dataset=${dataset.field_name} ORDER BY received_at,id`;
+        for(const payload of payloads) {
+          const indexed=await replayVisibilityPayload(tx,payload);
+          if(indexed.error){state='failed';error=indexed.error;}
+          else if(indexed.quarantined) { quarantined+=indexed.quarantined;imported=Math.max(0,payloadCount-indexed.quarantined);state='partial'; }
+          else if(['companiesXml','stockGroupsXml','stockCategoriesXml','unitsXml','godownsXml','priceLevelsXml','costCentresXml'].includes(dataset.field_name)) {
+            payloadCount=indexed.entityRows||0;imported=payloadCount;state=payloadCount?'imported':'received_empty';
+          }
+        }
         await tx`INSERT INTO tally_run_datasets(company_id,session_id,dataset,status,payload_count,imported_count,quarantined_count,error,processed_at)
           VALUES(${company.id},${sessionId},${dataset.field_name},${state},${payloadCount},${imported},${quarantined},${error},now())
           ON CONFLICT(session_id,dataset) DO UPDATE SET status=EXCLUDED.status,payload_count=EXCLUDED.payload_count,imported_count=EXCLUDED.imported_count,quarantined_count=EXCLUDED.quarantined_count,error=EXCLUDED.error,processed_at=now()`;
         summary.datasets[dataset.field_name]={status:state,payloadCount,imported,quarantined,error};summary.quarantined+=quarantined;
       }
-      for(const required of ['ledgersXml','stockXml','groupsXml','vouchersXml','balanceSheetXml','profitAndLossXml','billsReceivableXml','billsPayableXml'])if(!summary.datasets[required])summary.datasets[required]={status:'failed',error:'Required dataset has not arrived.'};
+      for(const required of requiredDatasets)if(!summary.datasets[required])summary.datasets[required]={status:'failed',error:'Required dataset has not arrived.'};
       const failures=Object.values(summary.datasets).filter(item=>item.status==='failed');
       summary.status=failures.length?'failed':summary.quarantined?'partial':'stored';
       const message=failures.length?failures.map(item=>item.error).join('; ').slice(0,1000):`Imported ${summary.customers} ledgers, ${summary.items} items, ${summary.groups} groups; ${summary.vouchers} structured vouchers. ${summary.quarantined} quarantined.`;

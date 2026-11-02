@@ -128,7 +128,8 @@ describe('phase 2 sales pipeline',()=>{
     const submitted=await action(executive,'SUBMIT','Ready for review');assert.equal(submitted.response.status,200,JSON.stringify(submitted.data));
     assert.equal((await action(executive,'APPROVE','Self approval attempt')).response.status,403);
     const approved=await action(owner,'APPROVE','Independent review');assert.equal(approved.response.status,200,JSON.stringify(approved.data));
-    const sent=await request(`/api/quotations/${quotationId}/send-email`,{method:'POST',auth:owner,body:{to:'buyer@example.com',subject:'Test quotation',message:'Attached'}});assert.equal(sent.response.status,200,JSON.stringify(sent.data));assert.equal(sentMail.length,1);assert.match(sentMail[0].pdf.subarray(0,4).toString(),/%PDF/);
+    const wrongRecipient=await request(`/api/quotations/${quotationId}/send-email`,{method:'POST',auth:owner,body:{to:'buyer@example.com'}});assert.equal(wrongRecipient.response.status,422);assert.equal(sentMail.length,0);
+    const sent=await request(`/api/quotations/${quotationId}/send-email`,{method:'POST',auth:owner,body:{to:'buy@acme.test',subject:'Test quotation',message:'Attached'}});assert.equal(sent.response.status,200,JSON.stringify(sent.data));assert.equal(sentMail.length,1);assert.match(sentMail[0].pdf.subarray(0,4).toString(),/%PDF/);
     const enquiry=await request(`/api/enquiries/${enquiryId}`,{auth:owner});assert.equal(enquiry.data.data.status,'QUOTED');
     const accepted=await request(`/api/quotations/${quotationId}/status`,{method:'PATCH',auth:owner,body:{status:'ACCEPTED',reason:'Customer accepted'}});assert.equal(accepted.response.status,200,JSON.stringify(accepted.data));
   });

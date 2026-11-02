@@ -40,6 +40,8 @@ interface DataTableProps<T> {
   onApplySaved?: (query: Record<string, string>) => void;
   sort?: { key: string; direction: 'asc' | 'desc' };
   onSort?: (key: string) => void;
+  onVisibleColumnsChange?: (keys: string[]) => void;
+  visibleColumns?: string[];
   onRowClick?: (row: T) => void;
   rowActions?: (row: T) => ReactNode;
   bulkActions?: BulkAction<T>[];
@@ -56,8 +58,23 @@ export function DataTable<T>(props: DataTableProps<T>) {
   const { id, caption, columns, rows, rowKey, loading, error, onRetry, pagination, onPage, search, filters, sort, onSort, onRowClick, rowActions, bulkActions, empty, selectedKey, bare } = props;
   const { preferences, update } = usePreferences();
   const [visible, setVisible] = useState<Set<string>>(() => new Set(columns.filter((c) => !c.optional).map((c) => c.key)));
+  const previousColumns=useRef(new Set(columns.map(c=>c.key)));
+  const columnSignature=columns.map(c=>c.key).join('\u0000');
+  useEffect(()=>{
+    const previous=previousColumns.current,allowed=new Set(columns.map(c=>c.key));previousColumns.current=allowed;
+    setVisible(current=>{
+      const next=new Set([...current].filter(key=>allowed.has(key)));
+      for(const column of columns)if(!previous.has(column.key)&&!column.optional)next.add(column.key);
+      return next.size===current.size&&[...next].every(key=>current.has(key))?current:next;
+    });
+  },[columnSignature]);
+  const controlledColumns = props.visibleColumns?.join('\u0000');
+  useEffect(() => { if (controlledColumns !== undefined) setVisible(new Set(controlledColumns.split('\u0000'))); }, [controlledColumns]);
   const [selected, setSelected] = useState<Set<string | number>>(new Set());
   const [term, setTerm] = useState(search?.value ?? '');
+  const [columnTerm,setColumnTerm]=useState('');
+  const [columnPage,setColumnPage]=useState(1);
+  useEffect(()=>setColumnPage(1),[columnSignature]);
   const scroller = useRef<HTMLDivElement>(null);
   const [scrollTop, setScrollTop] = useState(0);
 
@@ -71,6 +88,9 @@ export function DataTable<T>(props: DataTableProps<T>) {
   useEffect(() => { setSelected(new Set()); }, [rows]);
 
   const shown = columns.filter((c) => visible.has(c.key));
+  const matchingColumns=columns.filter(c=>`${c.header} ${c.key}`.toLocaleLowerCase().includes(columnTerm.toLocaleLowerCase()));
+  const visibleSignature = shown.map((c) => c.key).join('\u0000');
+  useEffect(() => { props.onVisibleColumnsChange?.(visibleSignature ? visibleSignature.split('\u0000') : []); }, [visibleSignature, props.onVisibleColumnsChange]);
   const list = useMemo(() => rows ?? [], [rows]);
   const virtual = list.length > VIRTUAL_THRESHOLD;
   const start = virtual ? Math.max(0, Math.floor(scrollTop / ROW_ESTIMATE) - 10) : 0;
@@ -91,7 +111,7 @@ export function DataTable<T>(props: DataTableProps<T>) {
   return (
     <div className="ds-table-shell" data-bare={bare || undefined}>
       {!bare && <div className="ds-table-toolbar" role="search">
-        {search && <TextField label={search.placeholder ?? 'Search'} type="search" value={term} onChange={(e) => setTerm(e.target.value)} />}
+        {search && <div className="ds-table-search"><Icon name="search" /><TextField label={search.placeholder ?? 'Search'} placeholder={search.placeholder ?? 'Search records'} type="search" value={term} onChange={(e) => setTerm(e.target.value)} /></div>}
         {filters}
         <div className="ds-table-toolbar-end">
           {props.onApplySaved && (
@@ -105,11 +125,13 @@ export function DataTable<T>(props: DataTableProps<T>) {
           )}
           <Menu label="Columns" trigger={(t) => <IconButton icon="columns" label="Choose columns" {...t} />}>
             <p className="ds-menu-label">Columns</p>
-            {columns.map((c) => (
+            <div className="ds-menu-item" onClick={e=>e.stopPropagation()}><TextField label="Find column" type="search" value={columnTerm} onChange={e=>{setColumnTerm(e.target.value);setColumnPage(1);}}/></div>
+            {matchingColumns.slice((columnPage-1)*100,columnPage*100).map((c) => (
               <div key={c.key} className="ds-menu-item" onClick={(e) => e.stopPropagation()}>
                 <Checkbox label={c.header} checked={visible.has(c.key)} onChange={() => setVisible((v) => { const n = new Set(v); if (n.has(c.key) && n.size > 1) n.delete(c.key); else n.add(c.key); return n; })} />
               </div>
             ))}
+            {matchingColumns.length>100&&<div className="ds-menu-item" onClick={e=>e.stopPropagation()}><Button size="sm" disabled={columnPage<=1} onClick={()=>setColumnPage(p=>p-1)}>Previous columns</Button><span>{columnPage} / {Math.ceil(matchingColumns.length/100)}</span><Button size="sm" disabled={columnPage*100>=matchingColumns.length} onClick={()=>setColumnPage(p=>p+1)}>More columns</Button></div>}
           </Menu>
           <IconButton icon="sliders" label={preferences.density === 'compact' ? 'Comfortable rows' : 'Compact rows'} onClick={() => update({ density: preferences.density === 'compact' ? 'comfortable' : 'compact' })} />
         </div>

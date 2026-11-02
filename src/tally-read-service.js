@@ -121,11 +121,11 @@ export async function readStoredTally(db, kind, url, { financial = false } = {})
     if (search) { where.push("(name ILIKE ? ESCAPE '\\' OR parent_name ILIKE ? ESCAPE '\\')"); args.push(`%${escapeLike(search)}%`, `%${escapeLike(search)}%`); }
     if (groupFilter) { where.push('parent_name=?'); args.push(groupFilter); }
     const total = (await db.prepare(`SELECT COUNT(*) AS n FROM tally_stock_items WHERE ${where.join(' AND ')}`).get(...args)).n;
-    const sorts = ['name','parent_name','closing_quantity_text','closing_rate_text',...(financial ? ['closing_value'] : [])];
+    const sorts = ['name','parent_name','closing_quantity_text',...(financial ? ['closing_value','closing_rate_text'] : [])];
     const sort = sorts.includes(url.searchParams.get('sort')) ? url.searchParams.get('sort') : 'name';
     const direction = url.searchParams.get('direction') === 'desc' ? 'DESC' : 'ASC';
     rows = await db.prepare(`SELECT id,company_id,name,parent_name,description,hsn,base_unit,normalized_part_number,
-      closing_quantity_text,closing_rate_text,fetched_at${financial ? ',closing_value::text AS closing_value' : ''}
+      closing_quantity_text,fetched_at${financial ? ',closing_rate_text,closing_value::text AS closing_value' : ''}
       FROM tally_stock_items WHERE ${where.join(' AND ')} ORDER BY ${sort} ${direction},id LIMIT ? OFFSET ?`).all(...args, meta.pageSize, (meta.page - 1) * meta.pageSize);
     return { ...pageResult(rows.map(displayRow), total, meta), company, sync, financial, coverage: await stockCoverage(db, company, financial) };
   }

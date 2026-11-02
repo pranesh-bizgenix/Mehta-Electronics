@@ -1,3 +1,4 @@
+import path from 'node:path';
 import type { NextConfig } from 'next';
 
 const backendUrl = process.env.MEHTA_API_URL || 'http://127.0.0.1:3000';
@@ -11,8 +12,12 @@ const nextConfig: NextConfig = {
   // Verification builds use a separate directory so they never disturb a running dev server.
   distDir: process.env.NEXT_DIST_DIR || '.next',
   poweredByHeader: false,
+  // The repository root, so the shared quotation maths in /public can be imported (and the ambient pnpm-workspace is ignored).
+  turbopack: { root: path.resolve(process.cwd(), '../..') },
   async rewrites() {
-    return [{ source: '/api/:path*', destination: `${parsedBackendUrl.origin}/api/:path*` }];
+    // The combined server dispatches API requests directly. An explicit origin
+    // remains available for isolated UI verification builds only.
+    return process.env.MEHTA_API_URL ? [{ source: '/api/:path*', destination: `${parsedBackendUrl.origin}/api/:path*` }] : [];
   }
 };
 

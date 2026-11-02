@@ -100,7 +100,7 @@ export function Funnel({ stages, format = (n) => String(n) }: { stages: { label:
         <div className="ds-funnel-row" role="listitem" key={s.label}>
           <span className="truncate">{s.label}</span>
           <span><span className="ds-funnel-bar" style={{ display: 'block', width: `${(s.value / max) * 100}%`, background: SERIES[i % 2 === 0 ? 0 : 3] }} /></span>
-          <span className="num">{format(s.value)}{i > 0 && stages[i - 1].value > 0 && <span className="subtle"> · {Math.round((s.value / stages[i - 1].value) * 100)}%</span>}</span>
+          <span className="num">{format(s.value)}{i > 0 && stages[i - 1].value > 0 && s.value <= stages[i - 1].value && <span className="subtle"> · {Math.round((s.value / stages[i - 1].value) * 100)}%</span>}</span>
         </div>
       ))}
     </div>

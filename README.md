@@ -1,3 +1,34 @@
+# Mehta ControlDesk ? CRM and Tally
+
+One application, one login, one database and one address: **http://127.0.0.1:3000**. CRM, Tally data, reconciliation and connector configuration are served by one Node HTTP server. No separate frontend server is needed.
+
+## Start ControlDesk
+
+From the `Mehta-Electronics` folder, run:
+
+```powershell
+npm.cmd run dev
+```
+
+Open **http://127.0.0.1:3000**. Tally data is under **Tally & reconciliation**; connector configuration is under **Tally connector** in the same sidebar. Use the same ControlDesk address in the connector. On another PC, use a reachable deployed HTTPS address rather than that PC's localhost. Existing connector API paths on port 3000 are preserved.
+
+For a production build:
+
+```powershell
+npm.cmd run build
+npm.cmd start
+```
+
+First-time dependency installation only: `npm.cmd install` and `npm.cmd --prefix apps/web install`. Continue to use the existing `DATABASE_URL`; never create another database or overwrite an existing `.env`. Start applies forward migrations. Tally stays read-only and external email/WhatsApp integrations remain inactive.
+
+The Windows connector is an agent on the Tally PC, not a separate CRM. Choose the installed agent type in **Tally connector** and follow the pairing/setup steps there. Pairing does not mean an import has completed; the screen shows actual connection state and sync history.
+
+Current feature coverage and remaining decisions: [client plan implementation](docs/client-plan-implementation.md). Unified launch and verification: [combined ControlDesk](docs/combined-controldesk.md).
+
+## Historical implementation notes
+
+The material below describes earlier milestones. The launch instructions above supersede the older server/UI setup.
+
 # Mehta Siemens CRM - Phase 2 Sales Pipeline
 
 A dependency-light CRM implementing authentication, users, RBAC, customer and item masters, duplicate detection, read-only Tally synchronization, reconciliation, audit logs, and a central dashboard.

@@ -1,0 +1,68 @@
+{
+  "checkedAt": "2026-11-02T07:20:20.601Z",
+  "database": "mehta_electronics_local",
+  "migrations": {
+    "applied": 0,
+    "total": 31
+  },
+  "importedTablesUnchanged": true,
+  "integrityEvidence": {
+    "method": "Completed before/after full row fingerprints; upload chunks hashed directly from content to avoid JSON serialization",
+    "comparedTables": 25,
+    "matchingImportedTables": 23,
+    "operationalMetadataChanged": [
+      "tally_connector_heartbeats",
+      "tally_connectors"
+    ],
+    "note": "The completed scan initially failed an overbroad assertion because live connector heartbeat/profile metadata changed. All 23 remaining tables, including masters, raw payloads, chunks and history, matched exactly. No imported row was rewritten. The reusable script now separates operational health metadata from imported records."
+  },
+  "counts": {
+    "tally_companies": 1,
+    "tally_conflicts": 0,
+    "tally_connector_heartbeats": 3,
+    "tally_connectors": 8,
+    "tally_customers": 0,
+    "tally_groups": 78,
+    "tally_import_quarantine": 0,
+    "tally_import_warnings": 15,
+    "tally_items": 0,
+    "tally_ledgers": 4152,
+    "tally_raw_payloads": 24,
+    "tally_reconciliations": 0,
+    "tally_run_datasets": 24,
+    "tally_source_observations": 2,
+    "tally_stock_items": 10988,
+    "tally_sync_job_items": 0,
+    "tally_sync_jobs": 5,
+    "tally_upload_chunks": 1003,
+    "tally_upload_sessions": 10,
+    "tally_visibility_company_aliases": 2,
+    "tally_visibility_crm_links": 0,
+    "tally_visibility_current_cache": 15415,
+    "tally_visibility_field_catalogue": 45091,
+    "tally_visibility_public_fields": 45858,
+    "tally_visibility_records": 45858
+  },
+  "switches": [
+    {
+      "workflow_key": "delivery_follow_up",
+      "enabled": false
+    },
+    {
+      "workflow_key": "material_delivered",
+      "enabled": false
+    },
+    {
+      "workflow_key": "payment_reminders",
+      "enabled": false
+    },
+    {
+      "workflow_key": "supplier_reminders",
+      "enabled": false
+    },
+    {
+      "workflow_key": "warranty_follow_up",
+      "enabled": false
+    }
+  ]
+}

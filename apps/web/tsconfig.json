@@ -25,6 +25,9 @@
     "paths": {
       "@/*": [
         "./*"
+      ],
+      "@shared/*": [
+        "../../public/*"
       ]
     }
   },
@@ -35,7 +38,13 @@
     "**/*.tsx",
     ".next/dev/types/**/*.ts",
     ".next-capture/types/**/*.ts",
-    ".next-capture/dev/types/**/*.ts"
+    ".next-capture/dev/types/**/*.ts",
+    ".next-tally-visibility/types/**/*.ts",
+    ".next-tally-visibility/dev/types/**/*.ts",
+    ".next-client-plan/types/**/*.ts",
+    ".next-client-plan/dev/types/**/*.ts",
+    ".next-dev/types/**/*.ts",
+    ".next-dev/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules"

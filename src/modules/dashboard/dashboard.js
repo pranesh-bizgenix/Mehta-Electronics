@@ -18,6 +18,12 @@ export class DashboardRepository {
     return Number((await this.db.prepare(`SELECT count(*) AS n FROM work_items WHERE sla_state='BREACHED' AND status IN ('OPEN','IN_PROGRESS','WAITING') AND NOT is_deleted AND (?::integer IS NULL OR owner_user_id=? OR escalated_to_user_id=?)`).get(userId, userId, userId)).n);
   }
   async openExceptions() { return Number((await this.db.prepare("SELECT count(*) AS n FROM exception_cases WHERE status='OPEN'").get()).n); }
+  async operationCounts(kinds) {
+    return this.db.prepare("SELECT kind,count(*) AS n FROM crm_operations WHERE kind=ANY(?::text[]) AND closed_at IS NULL GROUP BY kind").all(kinds);
+  }
+  async operationDecisions(kinds,actorId) {
+    return this.db.prepare("SELECT id,kind,reference,title,updated_at FROM crm_operations WHERE kind=ANY(?::text[]) AND status='PENDING_APPROVAL' AND created_by<>? ORDER BY updated_at LIMIT 10").all(kinds,actorId);
+  }
 
   async decisionExceptions(limit) {
     return this.db.prepare("SELECT c.id,c.summary,c.exception_type,c.created_at,u.name AS raised_by,c.raised_by AS raised_by_id FROM exception_cases c JOIN users u ON u.id=c.raised_by WHERE c.status='OPEN' ORDER BY c.created_at LIMIT ?").all(limit);
@@ -79,8 +85,13 @@ export class DashboardService {
     if (can('orders.read')) { const o = await r.orderBook(); kpis.orderBook = { value: o.v, count: Number(o.n) }; }
     if (can('work.read')) kpis.slaBreaches = await r.slaBreaches(can('work.reassign') ? null : user.id);
     if (can('exceptions.read')) kpis.openExceptions = await r.openExceptions();
+    const financial=['OWNER','ACCOUNTS'].includes(user.role);
+    const readableKinds=[...(can('operations.read')?['SUPPORT','WARRANTY','RETURN','INTAKE']:[]),...(financial&&can('collections.read')?['COLLECTION','RECEIPT','PAYMENT']:[])];
+    if(readableKinds.length)kpis.operations=Object.fromEntries((await r.operationCounts(readableKinds)).map(row=>[row.kind,Number(row.n)]));
 
     const decisions = [];
+    const reviewKinds=[...(can('operations.approve')?['WARRANTY','RETURN']:[]),...(financial&&can('collections.approve')?['RECEIPT','PAYMENT']:[])];
+    if(reviewKinds.length)for(const item of await r.operationDecisions(reviewKinds,user.id))decisions.push({kind:'operation',id:item.id,title:`Review ${item.reference}`,subtitle:item.title,at:item.updated_at,href:`/operations?kind=${item.kind}&open=${item.id}`});
     if (can('exceptions.decide')) for (const e of await r.decisionExceptions(5)) if (e.raised_by_id !== user.id) decisions.push({ kind: 'exception', id: e.id, title: e.summary, subtitle: `${e.exception_type.replace(/_/g, ' ').toLowerCase()} · raised by ${e.raised_by}`, at: e.created_at, href: '/exceptions' });
     if (can('quotations.approve')) for (const q of await r.decisionQuotes(5)) if (q.created_by !== user.id) decisions.push({ kind: 'quotation', id: String(q.id), title: `Approve ${q.number ?? 'quotation'}`, subtitle: q.customer, amount: q.total, at: q.updated_at, href: `/quotations/${q.id}` });
     if (can('orders.review')) for (const o of await r.decisionOrders(5)) decisions.push({ kind: 'order', id: String(o.id), title: `Review held order ${o.number ?? ''}`.trim(), subtitle: o.customer, at: o.updated_at, href: `/orders?open=${o.id}` });
