@@ -774,3 +774,10 @@ Browser acceptance separately checks customer creation, creator denial, blocked 
 The configured Tally XML endpoint did not respond to a bounded read-only company-export request. Live freshness is NOT TESTABLE here: Tally must be running with XML export enabled at the configured local address, the intended company open, and the existing Windows connector online with a successful current receipt. No write request or switch activation was sent.
 
 Read-only inspection still confirms 575 stored sales documents (570 Sales Quotations and five Sales Orders). Retained counts are not proof of a current live sync. Evidence: verification-output/2026-11-16/live-tally.json and live-setup.json.
+
+
+## 16 November 2026 - Large retained XML viewer defect
+
+Browser acceptance found that rendering the complete 30991457-byte salesDocumentsXml payload did not produce a usable visible original view. The retained payload API itself returned the original correctly. Fixed only the existing viewer: show a clearly labelled 65536-character preview, retain the existing full-original download endpoint, and label copying as Copy preview when truncated. Both the record-detail and retained-payload entry points use the bound. Source bytes remain unchanged.
+
+A real browser then opened the preview, matched it to the beginning of the retained source, downloaded the full original and verified byte length and SHA-256 equality. The same read-only check confirmed 575 retained sales documents. Evidence: verification-output/2026-11-16/tally-original-check.json, feature-5.png, tally-view-final.log and browser-results.json. This is a 16 November fix, not an earlier delivery claim; live Tally freshness remains NOT TESTABLE.
