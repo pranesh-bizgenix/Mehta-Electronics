@@ -767,3 +767,10 @@ Real browser/API/DB acceptance with rollback fixtures verified a saved immutable
 Prepared and displayed additive migration 0058_customer_review_integrity_indexes.sql before execution. The existing backup command verified a 219744653-byte archive; only then did the existing runner apply six missing FK indexes and the nullable onboarding from-status check. No customer, approval, role grant or business policy was seeded by the migration. Updated schema classifications for the two existing onboarding tables. Read-only verification reports 58 matching checksums and zero pending migrations; focused schema/comparison tests passed six tests.
 
 Browser acceptance separately checks customer creation, creator denial, blocked pre-review orders, independent Owner approval, duplicate review, immediate permission saving, live-session access changes and audit entries. Those outcomes are recorded in the dated browser evidence, not inferred from the migration or historic test notes.
+
+
+## 16 November 2026 - Live Tally freshness limitation
+
+The configured Tally XML endpoint did not respond to a bounded read-only company-export request. Live freshness is NOT TESTABLE here: Tally must be running with XML export enabled at the configured local address, the intended company open, and the existing Windows connector online with a successful current receipt. No write request or switch activation was sent.
+
+Read-only inspection still confirms 575 stored sales documents (570 Sales Quotations and five Sales Orders). Retained counts are not proof of a current live sync. Evidence: verification-output/2026-11-16/live-tally.json and live-setup.json.
