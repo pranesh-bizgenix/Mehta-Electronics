@@ -781,3 +781,10 @@ Read-only inspection still confirms 575 stored sales documents (570 Sales Quotat
 Browser acceptance found that rendering the complete 30991457-byte salesDocumentsXml payload did not produce a usable visible original view. The retained payload API itself returned the original correctly. Fixed only the existing viewer: show a clearly labelled 65536-character preview, retain the existing full-original download endpoint, and label copying as Copy preview when truncated. Both the record-detail and retained-payload entry points use the bound. Source bytes remain unchanged.
 
 A real browser then opened the preview, matched it to the beginning of the retained source, downloaded the full original and verified byte length and SHA-256 equality. The same read-only check confirmed 575 retained sales documents. Evidence: verification-output/2026-11-16/tally-original-check.json, feature-5.png, tally-view-final.log and browser-results.json. This is a 16 November fix, not an earlier delivery claim; live Tally freshness remains NOT TESTABLE.
+
+
+## 16 November 2026 - Customer PO selection identifier regression
+
+Actual customer-PO comparison acceptance exposed an unquoted SQL alias in the existing order list: PostgreSQL folded poNumber to ponumber, so the new selector displayed undefined instead of the customer PO reference. Quoted the alias to preserve the existing typed API contract and added an exact identifier assertion to the existing sales-order lifecycle regression. No order identity, pricing or approval behavior changed.
+
+The focused sales-order and linked-search run passed three tests with zero failures/cancellations/skips. The complete full-suite rerun is recorded separately.

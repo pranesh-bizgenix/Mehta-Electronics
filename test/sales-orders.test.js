@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import crypto from 'node:crypto';
 import {salesOrderFixture,sampleOriginal} from '../test-support/sales-order-fixture.js';
-import {saveOrder,orderDetail,orderAction,uploadOriginal,downloadOriginal,dispatchOrder,markDelivered,logisticsSearch,orderHistory,validateOriginal} from '../src/sales-orders.js';
+import {saveOrder,orderList,orderDetail,orderAction,uploadOriginal,downloadOriginal,dispatchOrder,markDelivered,logisticsSearch,orderHistory,validateOriginal} from '../src/sales-orders.js';
 import {saveQuoteCost,duplicateQuote,quoteAction} from '../src/quotation-workflow.js';
 import {saveCustomer,decideCustomerOnboarding} from '../src/crm-modules.js';
 import {orderStockReceipt} from '../test-support/order-stock-fixture.js';
@@ -19,6 +19,7 @@ test('sales orders and dispatch enforce review, retain originals, exact comparis
  try{
  const raw=await db.sql`SELECT (SELECT jsonb_agg(t ORDER BY t.id) FROM tally_ledgers t WHERE company_id=${company}) AS ledgers,(SELECT jsonb_agg(t ORDER BY t.id) FROM tally_stock_items t WHERE company_id=${company}) AS stock`;
  let o=await saveOrder(db,null,body,executive);assert.equal(o.total,'1180.00');assert.ok(o.verification.flags.includes('MISSING_PO_FILE'));assert.equal(o.verification.pricing,undefined);assert.equal(o.verification.credit.exposure,undefined);
+ const listed=await orderList(db,new URL(`http://localhost/api/crm/orders?search=${encodeURIComponent(body.poNumber)}`),owner);assert.equal(listed.data.find(row=>row.id===o.id).poNumber,body.poNumber,'Customer PO selectors need the exact public camel-case identifier.');
  const normalizedPo=await db.prepare('SELECT p.legal_name,po.po_number,po.source_total::text AS source_total,po.calculated_total::text AS calculated_total,po.version FROM sales_orders o JOIN customer_pos po ON po.id=o.customer_po_id JOIN parties p ON p.id=po.customer_party_id WHERE o.id=?').get(o.id);
  assert.equal(normalizedPo.legal_name,'VERIFY-Quotation Customer');assert.equal(normalizedPo.po_number,body.poNumber);assert.equal(normalizedPo.source_total,'1180.000000');assert.equal(normalizedPo.calculated_total,'1180.000000');assert.equal(normalizedPo.version,1);
  const normalizedLine=await db.prepare("SELECT p.original_part_number,p.quantity::text AS quantity,p.uom,p.legacy_sales_order_line_id FROM customer_po_lines p WHERE p.customer_po_id=(SELECT customer_po_id FROM sales_orders WHERE id=?) AND p.status='ACTIVE'").get(o.id);
