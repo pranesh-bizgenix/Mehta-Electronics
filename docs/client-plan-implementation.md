@@ -788,3 +788,8 @@ A real browser then opened the preview, matched it to the beginning of the retai
 Actual customer-PO comparison acceptance exposed an unquoted SQL alias in the existing order list: PostgreSQL folded poNumber to ponumber, so the new selector displayed undefined instead of the customer PO reference. Quoted the alias to preserve the existing typed API contract and added an exact identifier assertion to the existing sales-order lifecycle regression. No order identity, pricing or approval behavior changed.
 
 The focused sales-order and linked-search run passed three tests with zero failures/cancellations/skips. The complete full-suite rerun is recorded separately.
+
+
+## 16 November 2026 - Linked search fixture tag follow-up
+
+The full suite reached 355 passes with no cancellations and one failure because the linked-search fixture still queried the old standalone tag after record names changed to VERIFY-. Aligned only those test search terms with the renamed fixtures. The focused linked-search regression then passed; no production search or permission behavior was changed. The final full-suite result is kept in verification-output/2026-11-16/full-suite-complete.log.

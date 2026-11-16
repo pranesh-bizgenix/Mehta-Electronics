@@ -17,7 +17,7 @@ test('linked Tally search scopes stable identities, excludes unlinked/financial 
  const source=async(company,entity,key,guid,name)=>{
   const id=`${company.company}:${key}`,fields={'/stored/tally_guid':guid,'/stored/name':name,'/stored/description':'VERIFY- source item','/stored/base_unit':'Nos','/stored/closing_value':'VERIFY-SECRET_FINANCIAL_999','/xml/GUID':guid};
   await db.sql`INSERT INTO tally_visibility_records(id,company_id,entity,record_key,session_id,name,raw_record,fields,content_hash,observed_at) VALUES(${id},${company.company},${entity},${key},${company.session},${name},'{}',${db.sql.json(fields)},'VERIFY-hash',now())`;
-  await db.sql`INSERT INTO tally_visibility_current_cache(company_id,entity,record_key,record_id,name,session_id,observed_at,summary_fields,public_summary,financial_search,public_search,has_raw) VALUES(${company.company},${entity},${key},${id},${name},${company.session},now(),${db.sql.json(fields)},'{}','VERIFY-SECRET_FINANCIAL_999','ZZTEST',true) ON CONFLICT(company_id,entity,record_key) DO UPDATE SET summary_fields=EXCLUDED.summary_fields,financial_search=EXCLUDED.financial_search,public_search=EXCLUDED.public_search`;
+  await db.sql`INSERT INTO tally_visibility_current_cache(company_id,entity,record_key,record_id,name,session_id,observed_at,summary_fields,public_summary,financial_search,public_search,has_raw) VALUES(${company.company},${entity},${key},${id},${name},${company.session},now(),${db.sql.json(fields)},'{}','VERIFY-SECRET_FINANCIAL_999','VERIFY-',true) ON CONFLICT(company_id,entity,record_key) DO UPDATE SET summary_fields=EXCLUDED.summary_fields,financial_search=EXCLUDED.financial_search,public_search=EXCLUDED.public_search`;
  };
  for(const company of [a,b]){
   await source(company,'ledgers','VERIFY-customer','VERIFY-customer_guid',company===a?'VERIFY- A customer':'VERIFY- B customer');
@@ -27,15 +27,15 @@ test('linked Tally search scopes stable identities, excludes unlinked/financial 
  }
  await source(a,'ledgers','VERIFY-unlinked','VERIFY-unlinked_guid','VERIFY- Unlinked ledger');
  await source(a,'items','VERIFY-missing_id',null,'VERIFY- No source identity');
- const url=(company=a.company,search='ZZTEST')=>new URL(`http://localhost/api/crm/search/tally?companyId=${company}&search=${encodeURIComponent(search)}`);
+ const url=(company=a.company,search='VERIFY-')=>new URL(`http://localhost/api/crm/search/tally?companyId=${company}&search=${encodeURIComponent(search)}`);
  try{
   const all=await searchLinkedTally(db,url(),f.executive);assert.equal(all.data.length,2);assert.ok(all.data.every(row=>row.companyId===a.company&&row.source==='Tally'));assert.ok(!JSON.stringify(all).includes('VERIFY-SECRET'));assert.ok(!JSON.stringify(all).includes('VERIFY- B'));assert.ok(!JSON.stringify(all).includes('Unlinked'));
   const other=await searchLinkedTally(db,url(b.company),f.owner);assert.equal(other.data.length,2);assert.ok(other.data.every(row=>row.label.includes('VERIFY- B')));
   for(const row of all.data){const href=new URL(row.href,'http://localhost');assert.equal(href.searchParams.get('companyId'),a.company);assert.equal(href.searchParams.get('recordKey'),row.recordKey);assert.equal(row.crmId,row.kind==='customer'?f.customer.id:f.item.id);}
   assert.deepEqual((await searchLinkedTally(db,url(a.company,'SECRET_FINANCIAL_999'),f.owner)).data,[]);
   assert.deepEqual((await searchLinkedTally(db,url(a.company,'%'),f.owner)).data,[]);
-  await assert.rejects(searchLinkedTally(db,new URL('http://localhost/?search=ZZTEST'),f.owner),{status:422});
-  await assert.rejects(searchLinkedTally(db,new URL(`http://localhost/?companyId=${a.company}&companyId=${b.company}&search=ZZTEST`),f.owner),{status:422});
+  await assert.rejects(searchLinkedTally(db,new URL('http://localhost/?search=VERIFY-'),f.owner),{status:422});
+  await assert.rejects(searchLinkedTally(db,new URL(`http://localhost/?companyId=${a.company}&companyId=${b.company}&search=VERIFY-`),f.owner),{status:422});
   await assert.rejects(searchLinkedTally(db,url(),{role:'STORE_STAFF'}),{status:403});
   installPermissionProvider({permissionsFor:()=>['customers.read'],requiresMfa:()=>false});assert.deepEqual((await searchLinkedTally(db,url(),f.executive)).data.map(row=>row.kind),['customer']);
   installPermissionProvider({permissionsFor:()=>['items.read'],requiresMfa:()=>false});assert.deepEqual((await searchLinkedTally(db,url(),f.executive)).data.map(row=>row.kind),['item']);
