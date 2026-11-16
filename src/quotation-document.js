@@ -19,7 +19,7 @@ function netRate(unitPrice,discountPercent) {
 }
 function group(whole) { return whole.length <= 3 ? whole : `${whole.slice(0, -3).replace(/\B(?=(\d{2})+(?!\d))/g, ',')},${whole.slice(-3)}`; }
 /** ₹12,34,567.00 from an exact decimal string. */
-export function inr(value) { return `?${formatIndian(value)}`; }
+export function inr(value) { return `\u20b9${formatIndian(value)}`; }
 
 const qty = (value) => { const [w, f = ''] = String(value).split('.'); const frac = f.replace(/0+$/, ''); return `${group(w)}${frac ? `.${frac}` : ''}`; };
 const pct = (value) => `${String(value).replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '')}%`;

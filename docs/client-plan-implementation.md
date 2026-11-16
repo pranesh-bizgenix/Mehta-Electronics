@@ -736,3 +736,8 @@ Simplified the Owner Users & roles permission matrix: every editable permission 
 Owner/Accounts can explicitly select retained order documents on the Tally orders screen. TALLY_ORDER_COMPARISON_ENABLED gates the read-only endpoint and UI. The local setting is enabled for acceptance. Sources are company-scoped and read in one snapshot; incomplete, optional, cancelled or unidentified documents cannot report a complete margin. Customer PO entries require stable explicit CRM/Tally item links. No live fetcher, Tally write or automation switch was enabled.
 
 The focused comparison and schema run passed 6 tests with zero failures, cancellations or skips. Browser/API/DB acceptance is recorded separately in verification-output/2026-11-16/browser-results.json. The old supplied-document preview remains unregistered.
+
+
+## 16 November 2026 - Quotation currency symbol correction
+
+Changed the customer document currency prefix from a question mark to the rupee character, retaining shared exact-decimal Indian grouping. Added precision/zero/discounted-price regression coverage. node --test test/quotation-currency.test.js passed 1 test, zero failures. The actual browser-created quotation PDF was downloaded and parsed with the correct net rate, tax total and terms; visual rendering evidence is saved separately before final completion reporting. No pricing policy or actual customer data was changed.
