@@ -12,6 +12,7 @@ import {
   Timeline, Truncate, useAsync, useDebounced, useToast, type Step
 } from '@/components/ds';
 import { screenHref } from '@/components/shell/nav-config';
+import {contextId} from '../../../../../public/crm-navigation.js';
 import { EnquiryForm } from '@/features/enquiries/enquiry-form';
 import { SOURCES, TRANSITIONS, enquiriesApi, type Enquiry, type EnquiryRow, type EnquiryStatus } from '@/features/enquiries/api';
 
@@ -39,25 +40,30 @@ function Inbox() {
   const [page, setPage] = useState(1);
   const [owners] = useAsync(() => api.owners(), [api]);
   const [list, reload] = useAsync((signal) => api.list({ page, search: debounced, status, ownerId, source }, signal), [api, page, debounced, status, ownerId, source]);
-  const selectedId = params.get('open');
+  const selectedContext=useMemo(()=>{try{return {id:contextId(params,'open'),error:undefined};}catch(error){return {id:null,error};}},[params]);
+  const selectedId = selectedContext.id;
   const [detail, reloadDetail] = useAsync((signal) => selectedId ? api.get(selectedId, signal) : Promise.resolve(null), [api, selectedId]);
   const [creating, setCreating] = useState(false);
+  const [initialCustomerId,setInitialCustomerId]=useState<string|null>(null),[creationError,setCreationError]=useState<unknown>();
   const [revising, setRevising] = useState(false);
   const [transition, setTransition] = useState<EnquiryStatus | null>(null);
-  useEffect(() => { if (params.get('new') && can('enquiries.create')) setCreating(true); }, [params, can]);
+  useEffect(() => { if (params.get('new')==='1' && can('enquiries.create')) {try{setInitialCustomerId(contextId(params,'customerId'));setCreationError(undefined);setCreating(true);}catch(error){setCreationError(error);setCreating(false);}} }, [params, can]);
   useEffect(() => { setPage(1); }, [debounced, status, ownerId, source]);
 
   const rows = list.status === 'ready' ? list.data : list.data;
   const select = (id: number | null) => router.replace(id ? `/enquiries?open=${id}` : '/enquiries', { scroll: false });
   const enquiry = detail.status === 'ready' ? detail.data : detail.data;
+  const closeCreation=()=>{setCreating(false);const query=new URLSearchParams(params.toString());query.delete('new');query.delete('customerId');router.replace(`/enquiries${query.size?`?${query}`:''}`,{scroll:false});};
 
   return (
     <>
       <PageHeader title="Enquiries" crumbs={[{ label: 'Sales' }, { label: 'Enquiries' }]}
         description="Every customer requirement with an owner and an SLA. NEW → QUOTED → WON or LOST."
-        actions={can('enquiries.create') && <Button icon="plus" onClick={() => setCreating(true)}>New enquiry</Button>} />
+        actions={can('enquiries.create') && <Button icon="plus" onClick={() => {setInitialCustomerId(null);setCreationError(undefined);setCreating(true);}}>New enquiry</Button>} />
+      {Boolean(creationError)&&<ErrorState error={creationError}/>}
+      {Boolean(selectedContext.error)&&<ErrorState error={selectedContext.error}/>}
 
-      <RecordWorkspace kind="enquiries">
+      <RecordWorkspace kind="enquiries" preferredSource={selectedId||creating?'crm':undefined}>
       <div className="ds-split">
         <section className={`ds-card ${selectedId ? 'ds-desktop-only-split' : ''}`} aria-label="Enquiry list">
           <div className="ds-card-body stack-sm" style={{ paddingBottom: 'var(--space-1-5)' }}>
@@ -96,7 +102,7 @@ function Inbox() {
       </div>
 
       </RecordWorkspace>
-      <EnquiryForm open={creating} onClose={() => setCreating(false)} onSaved={(e) => { setCreating(false); toast('success', `${e.enquiry_number} created.`); reload(); select(e.id); }} />
+      <EnquiryForm open={creating} initialCustomerId={initialCustomerId} onClose={closeCreation} onSaved={(e) => { setCreating(false); toast('success', `${e.enquiry_number} created.`); reload(); select(e.id); }} />
       {enquiry && <EnquiryForm open={revising} enquiry={enquiry} onClose={() => setRevising(false)} onSaved={() => { setRevising(false); toast('success', 'Revision saved.'); reload(); reloadDetail(); }} />}
       <ReasonDialog open={transition !== null} title={transition ? `Mark as ${titleCase(transition).toLowerCase()}` : ''} danger={transition === 'LOST' || transition === 'CANCELLED'} confirmLabel="Update status"
         onClose={() => setTransition(null)}

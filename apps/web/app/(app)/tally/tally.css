@@ -5,3 +5,25 @@
   overflow: auto;
   font-family: var(--font-mono);
 }
+
+.tally-profile { display: grid; gap: 1.25rem; }
+.tally-profile-intro { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; padding: 1.25rem; border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-surface); }
+.tally-profile-intro h3 { margin: .35rem 0; font-size: 1.25rem; line-height: 1.35; overflow-wrap: anywhere; }
+.tally-profile-intro p { margin: 0; color: var(--color-text-muted); }
+.tally-profile-eyebrow { color: var(--color-text-muted); font-size: .75rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+.tally-profile-section { display: grid; gap: .75rem; }
+.tally-profile-section h4, .tally-advanced h4 { margin: 0; font-size: .95rem; }
+.tally-profile-section > p { margin: 0; }
+.tally-profile-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .65rem; margin: 0; }
+.tally-profile-grid > div { min-width: 0; padding: .8rem .9rem; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface); }
+.tally-profile-grid dt { color: var(--color-text-muted); font-size: .78rem; overflow-wrap: anywhere; }
+.tally-profile-grid dd { margin: .3rem 0 0; color: var(--color-text); overflow-wrap: anywhere; white-space: pre-wrap; }
+.tally-advanced { border-top: 1px solid var(--color-border); padding-top: 1rem; }
+.tally-advanced > summary, .tally-profile details > summary { cursor: pointer; font-weight: 600; }
+.tally-advanced > summary { color: var(--color-text-muted); }
+.tally-advanced[open] { display: grid; gap: .9rem; }
+.tally-advanced p { margin: 0; overflow-wrap: anywhere; }
+.tally-advanced section { display: grid; gap: .65rem; }
+.tally-advanced details { display: grid; gap: .6rem; }
+.tally-advanced-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; }
+@media (max-width: 640px) { .tally-profile-intro { flex-direction: column; } .tally-profile-grid { grid-template-columns: minmax(0, 1fr); } }

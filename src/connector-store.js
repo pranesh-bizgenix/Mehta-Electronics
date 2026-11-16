@@ -1,10 +1,13 @@
 import crypto from 'node:crypto';
+import {collectionMetadata} from './tally-collection-metadata.js';
+import {readRequestIds} from './tally-read-requests.js';
 import { markStalledRuns } from './tally-import.js';
 import { connectPostgres } from './postgres.js';
+import {assertCurrentDatabase} from './database-guard.js';
 
 const requiredFields = ['vouchersXml', 'stockXml', 'balanceSheetXml', 'profitAndLossXml', 'billsReceivableXml', 'billsPayableXml', 'ledgersXml', 'groupsXml'];
 const supportedFields = new Set([...requiredFields, 'salesRegisterXml', 'purchaseRegisterXml', 'dayBookReportXml', 'trialBalanceXml', 'cashBankControlXml', 'stockSummaryReportXml',
-  'companiesXml','stockGroupsXml','stockCategoriesXml','unitsXml','godownsXml','priceLevelsXml','costCentresXml','voucherTypesXml','salesDocumentsXml']);
+  'companiesXml','stockGroupsXml','stockCategoriesXml','unitsXml','godownsXml','priceLevelsXml','costCentresXml','voucherTypesXml','salesDocumentsXml','salesOrdersXml','purchaseOrdersXml','logisticsDocumentsXml']);
 
 export function connectorConnectionState(connector, now = Date.now()) {
   if (connector.status === 'revoked' || connector.revoked_at) return 'revoked';
@@ -66,12 +69,13 @@ export function assembleChunkFields(rows, fieldsToRequire = requiredFields) {
   return fields;
 }
 
-export function createConnectorStore(config) {
-  const sql = config.databaseUrl ? connectPostgres(config.databaseUrl, { schema: config.databaseSchema, postgresOptions: { max: 3 } }) : null;
+export function createConnectorStore(config, {database:providedDatabase} = {}) {
+  const sql = providedDatabase ?? (config.databaseUrl ? connectPostgres(config.databaseUrl, { schema: config.databaseSchema, postgresOptions: { max: 3 } }) : null);
   const requireDb = () => { if (!sql) { const error = new Error('PostgreSQL is not configured. Set DATABASE_URL before using the Tally Connector.'); error.status = 503; throw error; } return sql; };
 
   return {
-    async close() { if (sql) await sql.end({ timeout: 2 }); },
+    async ready() { return providedDatabase ? assertCurrentDatabase(requireDb()) : requireDb().ready(); },
+    async close() { if (sql && !providedDatabase) await sql.end({ timeout: 2 }); },
     async health() { await requireDb()`SELECT 1`; return { status: 'ok' }; },
     async setup({ profileName, companyName }) {
       const database = requireDb(); const profile = clean(profileName, 120); const company = clean(companyName);
@@ -189,7 +193,7 @@ export function createConnectorStore(config) {
         h.tally_available,h.selected_company,h.open_companies,h.updated_at AS heartbeat_at
         FROM tally_connectors c LEFT JOIN tally_connector_heartbeats h ON h.connector_id=c.id ORDER BY c.created_at DESC`;
       const jobs = await database`SELECT id,connector_id,company_name,company_guid,status,message,record_count,started_at,completed_at FROM tally_sync_jobs ORDER BY started_at DESC LIMIT 20`;
-      return { connectors: connectors.map(connector => ({ ...connector, connection_state: connectorConnectionState(connector) })), jobs };
+      return { connectors: connectors.map(connector => ({ ...connector, connector_version:connector.heartbeat_at ? connector.agent_version : null,connection_state: connectorConnectionState(connector) })), jobs };
     },
     async revoke(id) { const database = requireDb(); const result = await database`UPDATE tally_connectors SET status='revoked',revoked_at=now() WHERE id=${id} AND status='active' RETURNING id`; if (!result.length) { const error = new Error('Active connector not found.'); error.status = 404; throw error; } },
     async authenticate(headers) {
@@ -211,20 +215,25 @@ export function createConnectorStore(config) {
     },
     async heartbeat(connector, body) {
       const database = requireDb(); const machine = clean(body.machineName, 255) || null; const selected = clean(body.selectedCompany) || null;
-      const agentVersion = clean(body.agentVersion, 100) || null;
+      if(body.connectorVersion!==undefined&&(typeof body.connectorVersion!=='string'||body.connectorVersion.length>100||!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/.test(body.connectorVersion)))throw Object.assign(new Error('connectorVersion must be a build version such as 1.1.0.'),{status:422});
+      const agentVersion = body.connectorVersion ?? (clean(body.agentVersion, 100) || null);
       const open = Array.isArray(body.openCompanies) ? body.openCompanies.map((item) => clean(item)).filter(Boolean).slice(0, 100) : [];
       if (selected && !sameCompany(selected, connector.expected_company_name)) { const error = new Error('Connector is bound to a different Tally company.'); error.status = 403; throw error; }
       const lastSyncAt = body.lastSyncAt && !Number.isNaN(Date.parse(body.lastSyncAt)) ? new Date(body.lastSyncAt) : null;
       await database.begin(async (tx) => {
+        const [before]=await tx`SELECT agent_version FROM tally_connectors WHERE id=${connector.id} FOR UPDATE`;
         await tx`UPDATE tally_connectors SET machine_name=${machine},agent_version=COALESCE(${agentVersion},agent_version),
           last_seen_at=now(),last_sync_at=COALESCE(${lastSyncAt},last_sync_at) WHERE id=${connector.id}`;
         await tx`INSERT INTO tally_connector_heartbeats (connector_id,tally_available,selected_company,open_companies,last_sync_at,updated_at)
           VALUES (${connector.id},${body.tallyAvailable === true},${selected},${JSON.stringify(open)}::jsonb,${lastSyncAt},now())
           ON CONFLICT (connector_id) DO UPDATE SET tally_available=EXCLUDED.tally_available,selected_company=EXCLUDED.selected_company,open_companies=EXCLUDED.open_companies,last_sync_at=EXCLUDED.last_sync_at,updated_at=now()`;
+        if(agentVersion&&before?.agent_version!==agentVersion)await tx`INSERT INTO audit_logs(user_id,entity,record_id,action,old_value,new_value,reason)
+          VALUES(NULL,'TALLY_CONNECTOR',${connector.id},'VERSION_REPORTED',${JSON.stringify({connectorVersion:before?.agent_version??null})},${JSON.stringify({connectorVersion:agentVersion})},'Authenticated connector reported its build version.')`;
       });
       return {
         ok: true,
         connectorId: connector.id,
+        readRequestIds:(await database`SELECT r.id FROM tally_read_requests r JOIN tally_companies c ON c.id=r.company_id WHERE r.connector_id=${connector.id} AND c.name=${connector.expected_company_name} AND r.status='REQUESTED' ORDER BY r.created_at,r.id LIMIT 20`).map(row=>row.id),
         syncIntervalSeconds: 3600,
         heartbeatIntervalSeconds: 60,
         historyFinancialYears: 6,
@@ -233,9 +242,13 @@ export function createConnectorStore(config) {
       };
     },
     async start(connector, body) {
+      const metadata=collectionMetadata(body.collectionMetadata);
+      const requests=readRequestIds(body.readRequestIds);
       const database = requireDb(); const company = clean(body.companyName || body.company); const from = clean(body.syncFrom || body.from, 10); const to = clean(body.syncTo || body.to, 10);
       const validDate = (value) => /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(`${value}T00:00:00Z`));
       if (!sameCompany(company, connector.expected_company_name) || !validDate(from) || !validDate(to) || from > to) { const error = new Error('Invalid company or sync window.'); error.status = 422; throw error; }
+      const [knownCompany]=await database`SELECT tally_guid FROM tally_companies WHERE name=${company}`;
+      if(knownCompany?.tally_guid&&(!clean(body.companyGuid)||knownCompany.tally_guid.trim().toLowerCase()!==clean(body.companyGuid).toLowerCase()))throw Object.assign(new Error('Company GUID is missing or does not match the imported company. Review connector company selection.'),{status:422});
       const sessionId = crypto.randomUUID();
       let jobId = clean(body.syncJobId, 80);
       if (jobId) {
@@ -250,9 +263,14 @@ export function createConnectorStore(config) {
         jobId = crypto.randomUUID();
       }
       await database.begin(async (tx) => {
+        if(requests.length){
+          const eligible=await tx`SELECT r.id FROM tally_read_requests r JOIN tally_companies c ON c.id=r.company_id WHERE r.id IN (SELECT jsonb_array_elements_text(${JSON.stringify(requests)}::text::jsonb)::uuid) AND r.connector_id=${connector.id} AND c.name=${company} AND r.status='REQUESTED' FOR UPDATE OF r`;
+          if(eligible.length!==requests.length)throw Object.assign(new Error('Read requests do not belong to this connector/company or are no longer pending.'),{status:422});
+        }
         if (!body.syncJobId) await tx`INSERT INTO tally_sync_jobs(id,connector_id,company_name,company_guid,status) VALUES(${jobId},${connector.id},${company},${clean(body.companyGuid)||null},'running')`;
-        await tx`INSERT INTO tally_upload_sessions(id,connector_id,sync_job_id,sync_id,company_name,company_guid,sync_from,sync_to,status)
-          VALUES(${sessionId},${connector.id},${jobId},${clean(body.syncId, 200)||null},${company},${clean(body.companyGuid)||null},${from},${to},'receiving')`;
+        await tx`INSERT INTO tally_upload_sessions(id,connector_id,sync_job_id,sync_id,company_name,company_guid,sync_from,sync_to,status,collection_metadata,read_request_ids)
+          VALUES(${sessionId},${connector.id},${jobId},${clean(body.syncId, 200)||null},${company},${clean(body.companyGuid)||null},${from},${to},'receiving',${tx.json(metadata)},ARRAY(SELECT jsonb_array_elements_text(${JSON.stringify(requests)}::text::jsonb)::uuid))`;
+        await tx`INSERT INTO audit_logs(entity,record_id,action,new_value,reason) VALUES('TALLY_UPLOAD',${sessionId},'SESSION_STARTED',${JSON.stringify({connectorId:connector.id,company,from,to,collectionMetadata:metadata})},'Authenticated connector started a read-only source upload.')`;
         await observeSource(tx,body,jobId,sessionId);
       });
       return { sessionId, syncJobId: jobId };

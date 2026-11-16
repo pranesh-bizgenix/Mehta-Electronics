@@ -81,6 +81,7 @@ public sealed class ApiService
             {
                 HeartbeatRequest request = new()
                 {
+                    ConnectorVersion = ConnectorMetadata.CurrentVersion,
                     AgentVersion = ConnectorMetadata.CurrentVersion,
                     ProfileName = current.ProfileName,
                     MachineName = current.MachineName,
@@ -121,6 +122,7 @@ public sealed class ApiService
 
         updated.SyncIntervalSeconds = Math.Max(60, response.SyncIntervalSeconds);
         updated.HistoryFinancialYears = ConnectorMetadata.NormalizeHistoryFinancialYears(response.HistoryFinancialYears);
+        state.PendingReadRequestIds = response.ReadRequestIds.Where(id => Guid.TryParse(id, out _)).Distinct(StringComparer.Ordinal).Take(20).ToList();
         return updated;
     }
 
@@ -271,7 +273,7 @@ public sealed class ApiService
                     }
                 }
 
-                await PostGzipJsonAsync<ChunkAckResponse>(
+                ChunkAckResponse finalized = await PostGzipJsonAsync<ChunkAckResponse>(
                     current.ApiBaseUrl,
                     "/api/ingest/tally/chunks",
                     new
@@ -281,6 +283,9 @@ public sealed class ApiService
                     },
                     bearerToken,
                     tokenCancellationToken);
+
+                if (!finalized.Ok || !string.Equals(finalized.Status, "stored", StringComparison.OrdinalIgnoreCase))
+                    throw new InvalidOperationException("The app has not fully indexed this package. Retain it for retry; do not advance alteration checkpoints.");
 
                 return true;
             },
@@ -539,6 +544,8 @@ public sealed class ApiService
             ["syncId"] = package.SyncId,
             ["sourceSystem"] = "bizgenix",
             ["retryCount"] = package.AttemptCount,
+            ["collectionMetadata"] = package.CollectionMetadata,
+            ["readRequestIds"] = package.ReadRequestIds,
         };
 
         if (!string.IsNullOrWhiteSpace(package.CompanyGuid))
@@ -586,6 +593,7 @@ public sealed class ApiService
     private sealed class ChunkAckResponse
     {
         public bool Ok { get; set; }
+        public string? Status { get; set; }
     }
 
     private sealed class ApiException : Exception

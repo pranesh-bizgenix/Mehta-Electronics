@@ -1,0 +1,1191 @@
+{
+  "version": 1,
+  "classifications": {
+    "crm_stock_consumptions": {
+      "status": "ACTIVE",
+      "reason": "Append-only company/item/order/shipment stock evidence; src/modules/stock/fulfillment.js. Pending movements block later fulfillment until independent reconciliation. No stock subtraction, historical backfill or Tally writes."
+    },
+    "crm_stock_consumption_reviews": {
+      "status": "ACTIVE",
+      "reason": "Append-only independent active Owner attestation bound to a later retained source receipt, with actor/hash idempotency and audit. Imports do not auto-clear consumption."
+    },
+    "decision_register": {
+      "status": "ACTIVE",
+      "reason": "Append-only Owner decision versions, confirmed canonical bindings and audited history; src/modules/decisions. No values seeded or historical decisions auto-confirmed."
+    },
+    "decision_register_requests": {
+      "status": "ACTIVE",
+      "reason": "Append-only actor-bound idempotency receipts for decision commands; no business setting values or credentials seeded."
+    },
+    "acceptance_lines": {
+      "status": "FOUNDATION",
+      "reason": "Reserved target-domain schema; no runtime reference found. A table alone is not a delivered workflow."
+    },
+    "access_matrix_events": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/app.js, src/modules/access/access-repository.js, src/modules/access/access-service.js"
+    },
+    "approval_decisions": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/modules/exceptions/exception-service.js, src/modules/outbound/outbound-repository.js, src/modules/pricing/disposition.js"
+    },
+    "approval_requests": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/modules/exceptions/exception-service.js, src/modules/outbound/outbound-repository.js, src/modules/pricing/disposition.js"
+    },
+    "audit_logs": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/app.js, src/connector-store.js, src/db.js"
+    },
+    "automation_switch_events": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/modules/automation/automation-service.js"
+    },
+    "automation_switches": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/modules/automation/automation-service.js"
+    },
+    "brands": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/modules/admin/tally-item-wizard.js"
+    },
+    "business_rule_values": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/sales-orders.js, src/modules/rules/rule-repository.js, src/modules/rules/workflow-rules.js"
+    },
+    "crm_customer_controls": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/sales-orders.js, src/modules/operations/operations-repository.js"
+    },
+    "crm_customer_part_mappings": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/crm-modules.js, src/sales-orders.js"
+    },
+    "crm_customer_profiles": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/crm-modules.js, src/quotation-workflow.js, src/tally-read-service.js"
+    },
+    "crm_customer_rate_contracts": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/modules/operations/contracts.js, src/modules/operations/customer-gates.js"
+    },
+    "crm_customer_tally_facts": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/crm-modules.js, src/modules/admin/setup-service.js"
+    },
+    "crm_grns": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/logistics-access.js, src/logistics.js, src/procurement.js"
+    },
+    "crm_intake_originals": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/modules/operations/operations-repository.js"
+    },
+    "crm_item_profiles": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/crm-modules.js, src/tally-read-service.js, src/modules/admin/setup-service.js"
+    },
+    "crm_item_tally_facts": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/crm-modules.js, src/modules/admin/setup-service.js"
+    },
+    "crm_operation_events": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/modules/operations/operations-repository.js"
+    },
+    "crm_operations": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/modules/dashboard/dashboard.js, src/modules/operations/operations-repository.js"
+    },
+    "crm_order_documents": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/sales-orders.js"
+    },
+    "crm_order_events": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/sales-orders.js"
+    },
+    "crm_order_versions": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/sales-orders.js"
+    },
+    "crm_order_workflows": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/app.js, src/crm-modules.js, src/logistics-access.js"
+    },
+    "crm_parties": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/crm-modules.js, src/procurement-routes.js, src/procurement.js"
+    },
+    "crm_price_list_items": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/crm-modules.js"
+    },
+    "crm_price_lists": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/crm-modules.js"
+    },
+    "crm_procurement_events": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/procurement.js"
+    },
+    "crm_procurement_vendors": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/procurement.js"
+    },
+    "crm_purchase_requests": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/procurement.js"
+    },
+    "crm_quotation_costs": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/quotation-cost-import.js, src/quotation-workflow.js, src/sales-orders.js"
+    },
+    "crm_quotation_events": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/quotation-workflow.js, src/modules/dashboard/dashboard.js"
+    },
+    "crm_quotation_policy": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/quotation-workflow.js, src/modules/admin/setup-service.js, src/modules/rules/quotation-policy-source.js"
+    },
+    "crm_quotation_versions": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/quotation-workflow.js"
+    },
+    "crm_quotation_workflows": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/app.js, src/crm-modules.js, src/quotation-workflow.js"
+    },
+    "crm_rfq_vendor_replies": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/procurement.js"
+    },
+    "crm_rfq_vendors": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/procurement.js"
+    },
+    "crm_rfqs": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/procurement.js"
+    },
+    "crm_shipment_items": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/sales-orders.js"
+    },
+    "crm_shipments": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/logistics-access.js, src/logistics.js, src/sales-orders.js"
+    },
+    "crm_supplier_documents": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/procurement.js"
+    },
+    "crm_supplier_pos": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/logistics-access.js, src/logistics.js, src/procurement.js"
+    },
+    "crm_tally_item_links": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/crm-modules.js, src/tally-conflicts.js, src/tally-global-search.js"
+    },
+    "crm_tally_stock_coverage": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/tally-read-service.js"
+    },
+    "crm_tally_sync_jobs": {
+      "status": "LEGACY",
+      "reason": "Retained compatibility model; src/app.js, src/tally-visibility-repository.js, src/tally.js"
+    },
+    "customer_contacts": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/crm-modules.js, src/db.js, src/quotation-workflow.js"
+    },
+    "customer_message_checklist": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/modules/outbound/outbound-repository.js"
+    },
+    "customer_po_lines": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/sales-orders.js"
+    },
+    "customer_po_versions": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/sales-orders.js"
+    },
+    "customer_pos": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/sales-orders.js"
+    },
+    "customers": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/app.js, src/crm-module-routes.js, src/crm-modules.js"
+    },
+    "delivery_confirmations": {
+      "status": "FOUNDATION",
+      "reason": "Reserved target-domain schema; no runtime reference found. A table alone is not a delivered workflow."
+    },
+    "dispatch_lines": {
+      "status": "FOUNDATION",
+      "reason": "Reserved target-domain schema; no runtime reference found. A table alone is not a delivered workflow."
+    },
+    "dispatches": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/sales-orders.js"
+    },
+    "document_acceptance_links": {
+      "status": "FOUNDATION",
+      "reason": "Reserved target-domain schema; no runtime reference found. A table alone is not a delivered workflow."
+    },
+    "document_customer_po_links": {
+      "status": "FOUNDATION",
+      "reason": "Reserved target-domain schema; no runtime reference found. A table alone is not a delivered workflow."
+    },
+    "document_dispatch_links": {
+      "status": "FOUNDATION",
+      "reason": "Reserved target-domain schema; no runtime reference found. A table alone is not a delivered workflow."
+    },
+    "document_enquiry_links": {
+      "status": "FOUNDATION",
+      "reason": "Reserved target-domain schema; no runtime reference found. A table alone is not a delivered workflow."
+    },
+    "document_goods_receipt_links": {
+      "status": "FOUNDATION",
+      "reason": "Reserved target-domain schema; no runtime reference found. A table alone is not a delivered workflow."
+    },
+    "document_invoice_links": {
+      "status": "FOUNDATION",
+      "reason": "Reserved target-domain schema; no runtime reference found. A table alone is not a delivered workflow."
+    },
+    "document_order_links": {
+      "status": "FOUNDATION",
+      "reason": "Reserved target-domain schema; no runtime reference found. A table alone is not a delivered workflow."
+    },
+    "document_purchase_request_links": {
+      "status": "FOUNDATION",
+      "reason": "Reserved target-domain schema; no runtime reference found. A table alone is not a delivered workflow."
+    },
+    "document_quotation_links": {
+      "status": "FOUNDATION",
+      "reason": "Reserved target-domain schema; no runtime reference found. A table alone is not a delivered workflow."
+    },
+    "document_reviews": {
+      "status": "FOUNDATION",
+      "reason": "Reserved target-domain schema; no runtime reference found. A table alone is not a delivered workflow."
+    },
+    "document_rfq_links": {
+      "status": "FOUNDATION",
+      "reason": "Reserved target-domain schema; no runtime reference found. A table alone is not a delivered workflow."
+    },
+    "document_supplier_po_links": {
+      "status": "FOUNDATION",
+      "reason": "Reserved target-domain schema; no runtime reference found. A table alone is not a delivered workflow."
+    },
+    "email_accounts": {
+      "status": "FOUNDATION",
+      "reason": "Reserved target-domain schema; no runtime reference found. A table alone is not a delivered workflow."
+    },
+    "email_draft_documents": {
+      "status": "FOUNDATION",
+      "reason": "Reserved target-domain schema; no runtime reference found. A table alone is not a delivered workflow."
+    },
+    "email_drafts": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/modules/dashboard/dashboard.js, src/modules/outbound/outbound-repository.js, src/modules/preferences/preferences.js"
+    },
+    "email_messages": {
+      "status": "FOUNDATION",
+      "reason": "Reserved target-domain schema; no runtime reference found. A table alone is not a delivered workflow."
+    },
+    "email_send_attempts": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/modules/outbound/outbound-repository.js, src/modules/outbound/outbound-service.js"
+    },
+    "email_threads": {
+      "status": "FOUNDATION",
+      "reason": "Reserved target-domain schema; no runtime reference found. A table alone is not a delivered workflow."
+    },
+    "enquiries": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/app.js, src/crm-module-routes.js, src/crm-modules.js"
+    },
+    "enquiry_lines": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/app.js, src/crm-modules.js, src/db.js"
+    },
+    "enquiry_revisions": {
+      "status": "LEGACY",
+      "reason": "Retained compatibility model; src/db.js"
+    },
+    "exception_cases": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/modules/dashboard/dashboard.js, src/modules/exceptions/exception-service.js, src/modules/preferences/preferences.js"
+    },
+    "extracted_fields": {
+      "status": "FOUNDATION",
+      "reason": "Reserved target-domain schema; no runtime reference found. A table alone is not a delivered workflow."
+    },
+    "extraction_runs": {
+      "status": "FOUNDATION",
+      "reason": "Reserved target-domain schema; no runtime reference found. A table alone is not a delivered workflow."
+    },
+    "field_corrections": {
+      "status": "FOUNDATION",
+      "reason": "Reserved target-domain schema; no runtime reference found. A table alone is not a delivered workflow."
+    },
+    "goods_receipt_lines": {
+      "status": "FOUNDATION",
+      "reason": "Reserved target-domain schema; no runtime reference found. A table alone is not a delivered workflow."
+    },
+    "goods_receipts": {
+      "status": "FOUNDATION",
+      "reason": "Reserved target-domain schema; no runtime reference found. A table alone is not a delivered workflow."
+    },
+    "idempotency_keys": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/core/http.js"
+    },
+    "invoice_lines": {
+      "status": "FOUNDATION",
+      "reason": "Reserved target-domain schema; no runtime reference found. A table alone is not a delivered workflow."
+    },
+    "items": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/app.js, src/crm-module-routes.js, src/crm-modules.js"
+    },
+    "job_logs": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/core/scheduler.js"
+    },
+    "logistics_evidence": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/logistics-access.js, src/logistics.js"
+    },
+    "logistics_order_assignments": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/logistics-access.js, src/logistics.js"
+    },
+    "manual_response_exceptions": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/modules/outbound/outbound-repository.js"
+    },
+    "mehta_schema_migrations": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/migrations.js"
+    },
+    "notifications": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/modules/container.js, src/modules/admin/user-admin-service.js, src/modules/notifications/notification-service.js"
+    },
+    "part_external_mappings": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/sales-orders.js"
+    },
+    "part_identifiers": {
+      "status": "FOUNDATION",
+      "reason": "Reserved target-domain schema; no runtime reference found. A table alone is not a delivered workflow."
+    },
+    "parties": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/quotation-document.js, src/sales-orders.js, src/tally-read-service.js"
+    },
+    "parts": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/quotation-document.js, src/sales-orders.js, src/tally-financial-read.js"
+    },
+    "party_addresses": {
+      "status": "FOUNDATION",
+      "reason": "Reserved target-domain schema; no runtime reference found. A table alone is not a delivered workflow."
+    },
+    "party_contacts": {
+      "status": "FOUNDATION",
+      "reason": "Reserved target-domain schema; no runtime reference found. A table alone is not a delivered workflow."
+    },
+    "party_external_mappings": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/sales-orders.js"
+    },
+    "party_identifiers": {
+      "status": "FOUNDATION",
+      "reason": "Reserved target-domain schema; no runtime reference found. A table alone is not a delivered workflow."
+    },
+    "party_roles": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/sales-orders.js"
+    },
+    "permissions": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/app.js, src/logistics-policy.js, src/rbac.js"
+    },
+    "po_line_schedules": {
+      "status": "FOUNDATION",
+      "reason": "Reserved target-domain schema; no runtime reference found. A table alone is not a delivered workflow."
+    },
+    "price_list_import_rows": {
+      "status": "FOUNDATION",
+      "reason": "Reserved target-domain schema; no runtime reference found. A table alone is not a delivered workflow."
+    },
+    "price_list_imports": {
+      "status": "FOUNDATION",
+      "reason": "Reserved target-domain schema; no runtime reference found. A table alone is not a delivered workflow."
+    },
+    "price_list_items": {
+      "status": "FOUNDATION",
+      "reason": "Reserved target-domain schema; no runtime reference found. A table alone is not a delivered workflow."
+    },
+    "price_lists": {
+      "status": "FOUNDATION",
+      "reason": "Reserved target-domain schema; no runtime reference found. A table alone is not a delivered workflow."
+    },
+    "procurement_events": {
+      "status": "FOUNDATION",
+      "reason": "Reserved target-domain schema; no runtime reference found. A table alone is not a delivered workflow."
+    },
+    "purchase_request_lines": {
+      "status": "FOUNDATION",
+      "reason": "Reserved target-domain schema; no runtime reference found. A table alone is not a delivered workflow."
+    },
+    "quotation_lines": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/app.js, src/db.js, src/overview.js"
+    },
+    "quotation_revisions": {
+      "status": "LEGACY",
+      "reason": "Retained compatibility model; src/db.js"
+    },
+    "quotations": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/app.js, src/crm-module-routes.js, src/crm-modules.js"
+    },
+    "reminders": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/modules/notifications/notification-service.js, src/modules/rules/business-rule-definitions.js, src/modules/rules/rule-definitions.js"
+    },
+    "rfq_vendor_reply_lines": {
+      "status": "FOUNDATION",
+      "reason": "Reserved target-domain schema; no runtime reference found. A table alone is not a delivered workflow."
+    },
+    "role_permissions": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/rbac.js, src/modules/access/access-repository.js"
+    },
+    "roles": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/app.js, src/rbac.js, src/sales-orders.js"
+    },
+    "sales_invoices": {
+      "status": "FOUNDATION",
+      "reason": "Reserved target-domain schema; no runtime reference found. A table alone is not a delivered workflow."
+    },
+    "sales_order_lines": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/app.js, src/db.js, src/logistics-access.js"
+    },
+    "sales_orders": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/app.js, src/crm-modules.js, src/db.js"
+    },
+    "sessions": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/app.js, src/local-access.js, src/modules/admin/user-admin-service.js"
+    },
+    "source_documents": {
+      "status": "FOUNDATION",
+      "reason": "Reserved target-domain schema; no runtime reference found. A table alone is not a delivered workflow."
+    },
+    "supplier_acceptances": {
+      "status": "FOUNDATION",
+      "reason": "Reserved target-domain schema; no runtime reference found. A table alone is not a delivered workflow."
+    },
+    "supplier_po_lines": {
+      "status": "FOUNDATION",
+      "reason": "Reserved target-domain schema; no runtime reference found. A table alone is not a delivered workflow."
+    },
+    "supplier_po_schedules": {
+      "status": "FOUNDATION",
+      "reason": "Reserved target-domain schema; no runtime reference found. A table alone is not a delivered workflow."
+    },
+    "supply_allocations": {
+      "status": "FOUNDATION",
+      "reason": "Reserved target-domain schema; no runtime reference found. A table alone is not a delivered workflow."
+    },
+    "tally_companies": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/app.js, src/connector-store.js, src/overview.js"
+    },
+    "tally_conflicts": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/tally-conflicts.js, src/tally-order-sync-state.js"
+    },
+    "tally_connector_heartbeats": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/connector-store.js, src/overview.js, src/tally-sync-monitor.js"
+    },
+    "tally_connectors": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/connector-store.js, src/overview.js, src/tally-import.js"
+    },
+    "tally_customers": {
+      "status": "LEGACY",
+      "reason": "Retained compatibility model; src/postgres.js, src/tally.js"
+    },
+    "tally_groups": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/crm-modules.js, src/overview.js, src/tally-import.js"
+    },
+    "tally_import_quarantine": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/app.js, src/overview.js, src/tally-import.js"
+    },
+    "tally_import_warnings": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/app.js, src/overview.js, src/tally-import.js"
+    },
+    "tally_items": {
+      "status": "LEGACY",
+      "reason": "Retained compatibility model; src/postgres.js, src/tally.js"
+    },
+    "tally_ledgers": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/crm-modules.js, src/overview.js, src/tally-import.js"
+    },
+    "tally_raw_payloads": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/overview.js, src/tally-financial-read.js, src/tally-import.js"
+    },
+    "tally_read_requests": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/connector-store.js, src/tally-conflicts.js, src/tally-import.js"
+    },
+    "tally_reconciliations": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/tally-conflicts.js, src/tally-order-sync-state.js"
+    },
+    "tally_run_datasets": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/overview.js, src/tally-conflicts.js, src/tally-freshness.js"
+    },
+    "tally_source_observations": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/connector-store.js, src/tally-visibility-repository.js"
+    },
+    "tally_stock_items": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/crm-modules.js, src/overview.js, src/tally-import.js"
+    },
+    "tally_sync_job_items": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/tally-order-sync-state.js"
+    },
+    "tally_sync_jobs": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/connector-store.js, src/overview.js, src/tally-import.js"
+    },
+    "tally_upload_chunks": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/connector-store.js, src/tally-import.js"
+    },
+    "tally_upload_sessions": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/app.js, src/connector-store.js, src/overview.js"
+    },
+    "tally_visibility_company_aliases": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/tally-visibility-repository.js"
+    },
+    "tally_visibility_crm_links": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/tally-conflicts.js, src/tally-customer-links.js, src/tally-financial-read.js"
+    },
+    "tally_visibility_current_cache": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/tally-conflicts.js, src/tally-customer-links.js, src/tally-financial-read.js"
+    },
+    "tally_visibility_field_catalogue": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/tally-visibility-repository.js"
+    },
+    "tally_visibility_public_fields": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/tally-visibility-repository.js"
+    },
+    "tally_visibility_records": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/tally-conflicts.js, src/tally-financial-read.js, src/tally-item-links.js"
+    },
+    "task_events": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/modules/tasks/task-repository.js"
+    },
+    "tasks": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/overview.js, src/rbac.js, src/modules/container.js"
+    },
+    "tracking_events": {
+      "status": "FOUNDATION",
+      "reason": "Reserved target-domain schema; no runtime reference found. A table alone is not a delivered workflow."
+    },
+    "unit_conversions": {
+      "status": "FOUNDATION",
+      "reason": "Reserved target-domain schema; no runtime reference found. A table alone is not a delivered workflow."
+    },
+    "units_of_measure": {
+      "status": "FOUNDATION",
+      "reason": "Reserved target-domain schema; no runtime reference found. A table alone is not a delivered workflow."
+    },
+    "user_mfa": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/app.js, src/modules/admin/user-admin-service.js, src/modules/mfa/mfa-repository.js"
+    },
+    "user_preferences": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/modules/preferences/preferences.js"
+    },
+    "user_recovery_codes": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/modules/mfa/mfa-repository.js"
+    },
+    "users": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/app.js, src/crm-module-routes.js, src/crm-modules.js"
+    },
+    "work_item_events": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/modules/work/work-repository.js"
+    },
+    "work_items": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/modules/dashboard/dashboard.js, src/modules/preferences/preferences.js, src/modules/work/record-sync.js"
+    },
+    "workflow_definitions": {
+      "status": "ACTIVE",
+      "reason": "Runtime reference: src/modules/automation/automation-service.js"
+    },
+    "workflow_executions": {
+      "status": "FOUNDATION",
+      "reason": "Reserved target-domain schema; no runtime reference found. A table alone is not a delivered workflow."
+    },
+    "workflow_steps": {
+      "status": "FOUNDATION",
+      "reason": "Reserved target-domain schema; no runtime reference found. A table alone is not a delivered workflow."
+    },
+    "workflow_versions": {
+      "status": "FOUNDATION",
+      "reason": "Reserved target-domain schema; no runtime reference found. A table alone is not a delivered workflow."
+    },
+    "bank_accounts": {
+      "status": "FOUNDATION",
+      "reason": "Added by S0 migration 0040 as a reserved workflow structure, not a delivered UI/API feature. No business rows or policy values seeded."
+    },
+    "bank_reconciliation_matches": {
+      "status": "FOUNDATION",
+      "reason": "Added by S0 migration 0040 as a reserved workflow structure, not a delivered UI/API feature. No business rows or policy values seeded."
+    },
+    "bank_statement_imports": {
+      "status": "FOUNDATION",
+      "reason": "Added by S0 migration 0040 as a reserved workflow structure, not a delivered UI/API feature. No business rows or policy values seeded."
+    },
+    "bank_statement_lines": {
+      "status": "FOUNDATION",
+      "reason": "Added by S0 migration 0040 as a reserved workflow structure, not a delivered UI/API feature. No business rows or policy values seeded."
+    },
+    "crm_claims": {
+      "status": "FOUNDATION",
+      "reason": "Added by S0 migration 0040 as a reserved workflow structure, not a delivered UI/API feature. No business rows or policy values seeded."
+    },
+    "crm_price_levels": {
+      "status": "ACTIVE",
+      "reason": "S2 Owner-confirmed level configuration and approved source resolution; src/modules/pricing/levels.js. Missing meanings and source mappings block pricing; no values seeded."
+    },
+    "customer_open_order_lines": {
+      "status": "FOUNDATION",
+      "reason": "Added by S0 migration 0040 as a reserved workflow structure, not a delivered UI/API feature. No business rows or policy values seeded."
+    },
+    "customer_schedule_imports": {
+      "status": "FOUNDATION",
+      "reason": "Added by S0 migration 0040 as a reserved workflow structure, not a delivered UI/API feature. No business rows or policy values seeded."
+    },
+    "item_pack_factors": {
+      "status": "FOUNDATION",
+      "reason": "Added by S0 migration 0040 as a reserved workflow structure, not a delivered UI/API feature. No business rows or policy values seeded."
+    },
+    "kpi_confirmed_events": {
+      "status": "FOUNDATION",
+      "reason": "Added by S0 migration 0040 as a reserved workflow structure, not a delivered UI/API feature. No business rows or policy values seeded."
+    },
+    "kpi_formula_settings": {
+      "status": "FOUNDATION",
+      "reason": "Added by S0 migration 0040 as a reserved workflow structure, not a delivered UI/API feature. No business rows or policy values seeded."
+    },
+    "packing_box_items": {
+      "status": "FOUNDATION",
+      "reason": "Added by S0 migration 0040 as a reserved workflow structure, not a delivered UI/API feature. No business rows or policy values seeded."
+    },
+    "packing_box_photos": {
+      "status": "FOUNDATION",
+      "reason": "Added by S0 migration 0040 as a reserved workflow structure, not a delivered UI/API feature. No business rows or policy values seeded."
+    },
+    "packing_boxes": {
+      "status": "FOUNDATION",
+      "reason": "Added by S0 migration 0040 as a reserved workflow structure, not a delivered UI/API feature. No business rows or policy values seeded."
+    },
+    "pick_scans": {
+      "status": "FOUNDATION",
+      "reason": "Added by S0 migration 0040 as a reserved workflow structure, not a delivered UI/API feature. No business rows or policy values seeded."
+    },
+    "stock_check_log": {
+      "status": "ACTIVE",
+      "reason": "S2 company-scoped stock evidence preview/record, immutable history and daily staff counts; src/modules/stock/repository.js. Real reservation mappings remain unconfirmed and block verified checks."
+    },
+    "tally_outbox": {
+      "status": "FOUNDATION",
+      "reason": "Added by S0 migration 0040 as a reserved workflow structure, not a delivered UI/API feature. No business rows or policy values seeded."
+    },
+    "tally_write_category_config": {
+      "status": "FOUNDATION",
+      "reason": "Added by S0 migration 0040 as a reserved workflow structure, not a delivered UI/API feature. No business rows or policy values seeded."
+    },
+    "vendor_debit_notes": {
+      "status": "FOUNDATION",
+      "reason": "Added by S0 migration 0040 as a reserved workflow structure, not a delivered UI/API feature. No business rows or policy values seeded."
+    },
+    "vendor_due_lines": {
+      "status": "FOUNDATION",
+      "reason": "Added by S0 migration 0040 as a reserved workflow structure, not a delivered UI/API feature. No business rows or policy values seeded."
+    },
+    "vendor_payment_advices": {
+      "status": "FOUNDATION",
+      "reason": "Added by S0 migration 0040 as a reserved workflow structure, not a delivered UI/API feature. No business rows or policy values seeded."
+    },
+    "vendor_statements": {
+      "status": "FOUNDATION",
+      "reason": "Added by S0 migration 0040 as a reserved workflow structure, not a delivered UI/API feature. No business rows or policy values seeded."
+    },
+    "tw_control": {
+      "status": "FOUNDATION",
+      "reason": "Isolated create-only Tally write infrastructure; default master/category flags OFF. Not live transport acceptance."
+    },
+    "tw_mapping_versions": {
+      "status": "FOUNDATION",
+      "reason": "Isolated create-only Tally write infrastructure; default master/category flags OFF. Not live transport acceptance."
+    },
+    "tw_mapping_evidence": {
+      "status": "ACTIVE",
+      "reason": "Append-only retained-source mapping review evidence, independent Owner promotion and named expert reference; no source or switch writes."
+    },
+    "tw_categories": {
+      "status": "FOUNDATION",
+      "reason": "Isolated create-only Tally write infrastructure; default master/category flags OFF. Not live transport acceptance."
+    },
+    "tw_party_reviews": {
+      "status": "FOUNDATION",
+      "reason": "Isolated create-only Tally write infrastructure; default master/category flags OFF. Not live transport acceptance."
+    },
+    "tw_outbox": {
+      "status": "FOUNDATION",
+      "reason": "Isolated create-only Tally write infrastructure; default master/category flags OFF. Not live transport acceptance."
+    },
+    "tw_outbox_events": {
+      "status": "FOUNDATION",
+      "reason": "Isolated create-only Tally write infrastructure; default master/category flags OFF. Not live transport acceptance."
+    },
+    "tw_connector_capabilities": {
+      "status": "FOUNDATION",
+      "reason": "Isolated create-only Tally write infrastructure; default master/category flags OFF. Not live transport acceptance."
+    },
+    "tw_document_links": {
+      "status": "FOUNDATION",
+      "reason": "Isolated create-only Tally write infrastructure; default master/category flags OFF. Not live transport acceptance."
+    },
+    "tw_alerts": {
+      "status": "FOUNDATION",
+      "reason": "Isolated create-only Tally write infrastructure; default master/category flags OFF. Not live transport acceptance."
+    },
+    "tw_conflict_observations": {
+      "status": "FOUNDATION",
+      "reason": "Isolated create-only Tally write infrastructure; default master/category flags OFF. Not live transport acceptance."
+    },
+    "crm_price_import_workflows": {
+      "status": "ACTIVE",
+      "reason": "S2 reviewed imports bridge the source registry to canonical items/crm_price_lists; no automatic activation."
+    },
+    "crm_price_import_entries": {
+      "status": "ACTIVE",
+      "reason": "S2 reviewed imports bridge the source registry to canonical items/crm_price_lists; no automatic activation."
+    },
+    "crm_price_import_events": {
+      "status": "ACTIVE",
+      "reason": "S2 reviewed imports bridge the source registry to canonical items/crm_price_lists; no automatic activation."
+    },
+    "automation_service_credentials": {
+      "status": "ACTIVE",
+      "reason": "V2 A2 isolated scoped service credential lifecycle and authentication; no users/credentials seeded, no messaging transport or switch change."
+    },
+    "automation_service_companies": {
+      "status": "ACTIVE",
+      "reason": "V2 A2 isolated scoped service credential lifecycle and authentication; no users/credentials seeded, no messaging transport or switch change."
+    },
+    "automation_service_credential_events": {
+      "status": "ACTIVE",
+      "reason": "V2 A2 isolated scoped service credential lifecycle and authentication; no users/credentials seeded, no messaging transport or switch change."
+    }
+  },
+  "exceptions": {
+    "foreign-key:audit_logs:record_id": "Polymorphic audited entity key; entity selects its domain. A single FK cannot target multiple record tables.",
+    "foreign-key:crm_intake_originals:external_id": "Upstream message identifier; the original is retained and its record_id has the local FK. Intake integration remains out of scope.",
+    "foreign-key:crm_procurement_events:record_id": "Polymorphic procurement event key; entity selects RFQ, supplier PO, receipt or request. Immutable event and service transaction validate it.",
+    "foreign-key:crm_tally_item_links:tally_master_id": "Tally-owned master identifier, not a local row ID. Stable identity is scoped by company_id and source key.",
+    "foreign-key:email_accounts:provider_account_id": "External provider account identifier; no local account table. Automation is out of scope.",
+    "foreign-key:email_messages:provider_message_id": "External provider message identity, scoped by mailbox/thread. Automation is out of scope.",
+    "foreign-key:email_send_attempts:provider_message_id": "External transport receipt identifier. No sending implementation is authorized.",
+    "foreign-key:email_threads:provider_thread_id": "External provider thread identifier, scoped by account. Automation is out of scope.",
+    "foreign-key:exception_cases:entity_id": "Polymorphic entity reference with entity_type; existing service validates type, identity and approval fingerprint.",
+    "foreign-key:part_external_mappings:external_id": "External stock identifier scoped by company/source; part_id is the local FK.",
+    "foreign-key:party_external_mappings:external_id": "External party identifier scoped by company/source; party_id is the local FK.",
+    "foreign-key:sales_invoices:source_voucher_id": "Tally-owned voucher identity; company_id scopes it. CRM does not issue or overwrite the source invoice.",
+    "foreign-key:tally_conflicts:external_id": "External source identity scoped by company and entity kind; job and mapping links have local FKs.",
+    "foreign-key:tally_connectors:installation_id": "Opaque Windows installation UUID; it is not a database row identity.",
+    "foreign-key:tally_groups:master_id": "Tally-owned numeric master identifier; company_id defines identity scope.",
+    "foreign-key:tally_groups:alter_id": "Tally-owned monotonically changing alteration marker, not a relation identifier.",
+    "foreign-key:tally_ledgers:master_id": "Tally-owned numeric master identifier; company_id defines identity scope.",
+    "foreign-key:tally_ledgers:alter_id": "Tally-owned alteration marker, not a relation identifier.",
+    "foreign-key:tally_sync_job_items:external_id": "External entity identifier scoped by company/kind; job_id has a local FK.",
+    "foreign-key:tally_upload_sessions:sync_id": "Opaque connector cycle token used for idempotency; not the local tally_sync_jobs.id.",
+    "foreign-key:tally_visibility_crm_links:crm_id": "Polymorphic CRM record ID selected by crm_entity; service validates the selected target before linking.",
+    "foreign-key:tally_visibility_current_cache:record_id": "Disposable source projection may refer to retained visibility history OR legacy imported masters, depending on has_raw. No single valid FK target.",
+    "foreign-key:tasks:entity_id": "Polymorphic task context selected by entity_type. It does not grant access to its target.",
+    "foreign-key:tracking_events:source_event_id": "External shipment/carrier event identity, not a local event ID.",
+    "foreign-key:work_items:entity_id": "Polymorphic workflow subject selected by entity_type; existing service validates the selected workflow.",
+    "status-check:customers:state": "Postal state/province text, not a workflow state. Preserve client address exactly.",
+    "status-check:party_addresses:state": "Postal state/province text, not a workflow state.",
+    "status-check:tracking_events:status": "Original carrier/source status vocabulary, not a normalized CRM workflow. Preserve source value; reviewed dispatch status is constrained on dispatches/crm_shipments.",
+    "status-check:email_accounts:status": "OUT-OF-SCOPE: messaging/extraction engine lifecycle belongs to the teammate. Existing approval/send gates stay unchanged. Agree the lifecycle contract before adding a status enum; this remains a reported schema gap, not DONE.",
+    "status-check:email_drafts:status": "OUT-OF-SCOPE: messaging/extraction engine lifecycle belongs to the teammate. Existing approval/send gates stay unchanged. Agree the lifecycle contract before adding a status enum; this remains a reported schema gap, not DONE.",
+    "status-check:email_messages:status": "OUT-OF-SCOPE: messaging/extraction engine lifecycle belongs to the teammate. Existing approval/send gates stay unchanged. Agree the lifecycle contract before adding a status enum; this remains a reported schema gap, not DONE.",
+    "status-check:email_send_attempts:status": "OUT-OF-SCOPE: messaging/extraction engine lifecycle belongs to the teammate. Existing approval/send gates stay unchanged. Agree the lifecycle contract before adding a status enum; this remains a reported schema gap, not DONE.",
+    "status-check:email_threads:status": "OUT-OF-SCOPE: messaging/extraction engine lifecycle belongs to the teammate. Existing approval/send gates stay unchanged. Agree the lifecycle contract before adding a status enum; this remains a reported schema gap, not DONE.",
+    "status-check:extraction_runs:status": "OUT-OF-SCOPE: messaging/extraction engine lifecycle belongs to the teammate. Existing approval/send gates stay unchanged. Agree the lifecycle contract before adding a status enum; this remains a reported schema gap, not DONE.",
+    "status-check:extracted_fields:validation_state": "OUT-OF-SCOPE: messaging/extraction engine lifecycle belongs to the teammate. Existing approval/send gates stay unchanged. Agree the lifecycle contract before adding a status enum; this remains a reported schema gap, not DONE.",
+    "status-check:workflow_executions:status": "OUT-OF-SCOPE: messaging/extraction engine lifecycle belongs to the teammate. Existing approval/send gates stay unchanged. Agree the lifecycle contract before adding a status enum; this remains a reported schema gap, not DONE.",
+    "status-check:workflow_steps:status": "OUT-OF-SCOPE: messaging/extraction engine lifecycle belongs to the teammate. Existing approval/send gates stay unchanged. Agree the lifecycle contract before adding a status enum; this remains a reported schema gap, not DONE.",
+    "status-check:workflow_versions:status": "OUT-OF-SCOPE: messaging/extraction engine lifecycle belongs to the teammate. Existing approval/send gates stay unchanged. Agree the lifecycle contract before adding a status enum; this remains a reported schema gap, not DONE.",
+    "status-check:workflow_definitions:status": "OUT-OF-SCOPE: messaging/extraction engine lifecycle belongs to the teammate. Existing approval/send gates stay unchanged. Agree the lifecycle contract before adding a status enum; this remains a reported schema gap, not DONE.",
+    "foreign-key:tw_outbox:entity_id": "Category-qualified polymorphic CRM source identity; the write service loads the real canonical CRM entity and validates company/version before queueing. Never matched by name.",
+    "foreign-key:tw_outbox_events:entity_id": "Category-qualified polymorphic CRM source identity; the write service loads the real canonical CRM entity and validates company/version before queueing. Never matched by name.",
+    "foreign-key:tw_party_reviews:entity_id": "Category-qualified polymorphic CRM source identity; the write service loads the real canonical CRM entity and validates company/version before queueing. Never matched by name.",
+    "foreign-key:tw_document_links:entity_id": "Category-qualified polymorphic CRM source identity; the write service loads the real canonical CRM entity and validates company/version before queueing. Never matched by name."
+  },
+  "statusDomains": {
+    "decision_register.status": ["EMPTY", "PROPOSED", "ENTERED", "CONFIRMED", "REJECTED"],
+    "approval_requests.status": [
+      "PENDING",
+      "APPROVED",
+      "REJECTED",
+      "WITHDRAWN",
+      "EXPIRED",
+      "CANCELLED"
+    ],
+    "brands.status": [
+      "ACTIVE",
+      "INACTIVE",
+      "ARCHIVED"
+    ],
+    "crm_operations.status": [
+      "OPEN",
+      "IN_PROGRESS",
+      "RESPONDED",
+      "PENDING_APPROVAL",
+      "APPROVED",
+      "REJECTED",
+      "CONFIRMED",
+      "RESOLVED",
+      "CANCELLED"
+    ],
+    "crm_operation_events.from_status": [
+      "OPEN",
+      "IN_PROGRESS",
+      "RESPONDED",
+      "PENDING_APPROVAL",
+      "APPROVED",
+      "REJECTED",
+      "CONFIRMED",
+      "RESOLVED",
+      "CANCELLED"
+    ],
+    "crm_operation_events.to_status": [
+      "OPEN",
+      "IN_PROGRESS",
+      "RESPONDED",
+      "PENDING_APPROVAL",
+      "APPROVED",
+      "REJECTED",
+      "CONFIRMED",
+      "RESOLVED",
+      "CANCELLED"
+    ],
+    "dispatches.status": [
+      "RECORDED",
+      "PENDING_APPROVAL",
+      "APPROVED",
+      "DISPATCHED",
+      "PARTIALLY_DELIVERED",
+      "DELIVERED",
+      "CANCELLED"
+    ],
+    "goods_receipts.status": [
+      "RECEIVED",
+      "HELD",
+      "PENDING_REVIEW",
+      "POSTED",
+      "CANCELLED"
+    ],
+    "notifications.delivery_state": [
+      "PENDING",
+      "DELIVERED",
+      "FAILED",
+      "READ"
+    ],
+    "party_addresses.status": [
+      "ACTIVE",
+      "INACTIVE",
+      "ARCHIVED"
+    ],
+    "party_contacts.status": [
+      "ACTIVE",
+      "INACTIVE",
+      "ARCHIVED"
+    ],
+    "price_list_import_rows.validation_state": [
+      "PENDING",
+      "VALID",
+      "INVALID",
+      "NEEDS_REVIEW",
+      "ACCEPTED",
+      "REJECTED"
+    ],
+    "price_list_imports.status": [
+      "RECEIVED",
+      "PARSING",
+      "PENDING_REVIEW",
+      "PENDING_APPROVAL",
+      "APPROVED",
+      "REJECTED",
+      "ACTIVATED",
+      "FAILED",
+      "CANCELLED"
+    ],
+    "price_lists.status": [
+      "DRAFT",
+      "PENDING_APPROVAL",
+      "APPROVED",
+      "ACTIVE",
+      "INACTIVE",
+      "EXPIRED",
+      "ARCHIVED",
+      "REJECTED"
+    ],
+    "reminders.status": [
+      "OPEN",
+      "IN_PROGRESS",
+      "WAITING",
+      "DONE",
+      "CANCELLED"
+    ],
+    "sales_invoices.status": [
+      "RECORDED",
+      "PENDING_REVIEW",
+      "VERIFIED",
+      "PARTIALLY_PAID",
+      "PAID",
+      "DISPUTED",
+      "CANCELLED"
+    ],
+    "source_documents.lifecycle_state": [
+      "RECEIVED",
+      "PENDING_REVIEW",
+      "REVIEWED",
+      "VERIFIED",
+      "REJECTED",
+      "ARCHIVED"
+    ],
+    "supplier_acceptances.status": [
+      "RECEIVED",
+      "PENDING_REVIEW",
+      "REVIEWED",
+      "ACCEPTED",
+      "REJECTED",
+      "CANCELLED"
+    ],
+    "supplier_po_lines.status": [
+      "ACTIVE",
+      "INACTIVE",
+      "CANCELLED",
+      "CLOSED"
+    ],
+    "supplier_po_schedules.status": [
+      "ACTIVE",
+      "INACTIVE",
+      "FULFILLED",
+      "CANCELLED"
+    ],
+    "supply_allocations.status": [
+      "ACTIVE",
+      "RELEASED",
+      "FULFILLED",
+      "CANCELLED"
+    ],
+    "tally_conflicts.status": [
+      "OPEN",
+      "RESOLVED",
+      "DISMISSED",
+      "SUPERSEDED"
+    ],
+    "tally_reconciliations.status": [
+      "PENDING_REVIEW",
+      "MATCHED",
+      "MISMATCH",
+      "REVIEWED",
+      "APPROVED",
+      "REJECTED",
+      "MATCH"
+    ],
+    "tally_run_datasets.status": [
+      "imported",
+      "received_empty",
+      "quarantined",
+      "failed",
+      "retained",
+      "unsupported",
+      "not_imported",
+      "partial",
+      "awaiting_data"
+    ],
+    "tally_sync_job_items.status": [
+      "PENDING",
+      "RUNNING",
+      "SUCCEEDED",
+      "FAILED",
+      "RETRY_SCHEDULED",
+      "CONFLICT",
+      "SKIPPED"
+    ],
+    "units_of_measure.status": [
+      "ACTIVE",
+      "INACTIVE",
+      "ARCHIVED"
+    ],
+    "automation_service_credentials.status": [
+      "ACTIVE",
+      "REVOKED"
+    ]
+  },
+  "notes": [
+    "Canonical identities are documented in db-schema-reference.md.",
+    "No business values or real sample contents belong in this policy.",
+    "OUT-OF-SCOPE exceptions remain outstanding gaps; they are not evidence of an implemented constraint."
+  ],
+  "remainingReview": [
+    "DONE (schema and focused rollback tests): migration 0043 adds actual future creation/update provenance to canonical quotation and sales-order lines; nine newly added historical creation columns remain NULL for legacy records, verified by scripts/verify-row-provenance.mjs --after. No historical actors/timestamps were invented.",
+    "DONE (covered existing workflows): migration 0043 adds row archive metadata and delete/truncate denial on 89 business tables. Legacy contact/enquiry paths supply actual maker/reason; full guarded regression passed 207 tests with zero residue. New later-stage write paths must use the same audited context.",
+    "DONE for reviewed typed operational fields: migration 0044 adds 16 nonnegative quantity/price checks plus received-versus-accepted/rejected consistency. workflow-integrity-policy.json and rollback tests verify required parent/core columns, nullable unreviewed source facts and signed accounting exceptions. Exact LLD-wide coverage remains limited by the missing source documents noted below.",
+    "PARTIAL: the named LLD and prompt-pack Markdown source files remain unavailable. The 25-workflow matrix maps the explicit S0-S10 request; it is not proof that every absent LLD workflow is covered.",
+    "PARTIAL: ten queries are ranked by estimated cost among 32 generated application SELECTs. No observed global production-query ranking, ANALYZE, independent-session concurrency or load test has been run.",
+    "OUT-OF-SCOPE: eleven lifecycle/status fields belong to the teammate messaging/extraction engine and remain explicit schema exceptions; no sending/intake gate or automation switch was changed.",
+    "Identity: imported voucher numbers are not globally unique across voucher kinds and financial years. Preserve stable company/source identity; never impose company+voucher_number alone or merge originals to force uniqueness."
+  ],
+  "businessTables": [
+    "customers",
+    "customer_contacts",
+    "items",
+    "enquiries",
+    "enquiry_lines",
+    "quotations",
+    "quotation_lines",
+    "sales_orders",
+    "sales_order_lines",
+    "crm_customer_profiles",
+    "crm_item_profiles",
+    "crm_customer_part_mappings",
+    "crm_price_lists",
+    "crm_price_list_items",
+    "crm_quotation_policy",
+    "crm_quotation_costs",
+    "crm_quotation_workflows",
+    "crm_order_workflows",
+    "crm_procurement_vendors",
+    "crm_purchase_requests",
+    "crm_rfqs",
+    "crm_rfq_vendors",
+    "crm_rfq_vendor_replies",
+    "crm_supplier_pos",
+    "crm_grns",
+    "crm_supplier_documents",
+    "crm_shipments",
+    "crm_shipment_items",
+    "crm_operations",
+    "crm_customer_rate_contracts",
+    "crm_order_documents",
+    "parties",
+    "parts",
+    "customer_pos",
+    "customer_po_lines",
+    "po_line_schedules",
+    "price_lists",
+    "price_list_items",
+    "price_list_imports",
+    "price_list_import_rows",
+    "sales_invoices",
+    "invoice_lines",
+    "crm_customer_controls",
+    "crm_parties",
+    "crm_tally_item_links",
+    "item_pack_factors",
+    "crm_price_levels",
+    "stock_check_log",
+    "packing_boxes",
+    "packing_box_items",
+    "packing_box_photos",
+    "pick_scans",
+    "customer_schedule_imports",
+    "customer_open_order_lines",
+    "vendor_statements",
+    "vendor_due_lines",
+    "vendor_debit_notes",
+    "vendor_payment_advices",
+    "bank_accounts",
+    "bank_statement_imports",
+    "bank_statement_lines",
+    "bank_reconciliation_matches",
+    "crm_claims",
+    "kpi_formula_settings",
+    "tally_write_category_config",
+    "tally_outbox",
+    "brands",
+    "units_of_measure",
+    "unit_conversions",
+    "party_roles",
+    "party_identifiers",
+    "party_contacts",
+    "party_addresses",
+    "part_identifiers",
+    "party_external_mappings",
+    "part_external_mappings",
+    "supplier_po_lines",
+    "supplier_po_schedules",
+    "purchase_request_lines",
+    "rfq_vendor_reply_lines",
+    "supplier_acceptances",
+    "acceptance_lines",
+    "goods_receipts",
+    "goods_receipt_lines",
+    "supply_allocations",
+    "dispatches",
+    "dispatch_lines",
+    "delivery_confirmations",
+    "source_documents",
+    "crm_price_import_workflows",
+    "crm_price_import_entries",
+    "automation_service_credentials",
+    "automation_service_companies"
+  ]
+}

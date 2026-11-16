@@ -1,0 +1,65 @@
+Tally
+Tally data
+
+Browse stored imports, including every delivered field. Tally remains read-only.
+
+Refresh
+No imported company
+Browser fixture
+Company
+Overview
+Record browser
+Group tree
+Data quality
+Reconciliation
+Quarantined rows
+Original XML payloads
+Screen
+Companies
+Groups
+All ledgers
+Customers / Sundry Debtors
+Vendors / Sundry Creditors
+Banks & cash
+Expenses
+Other ledgers
+Stock items
+Stock groups
+Stock categories
+Units
+Godowns
+Price levels
+Cost centres
+Vouchers
+Retained reports
+Entity
+
+Source: stored Tally import · Historical connector source identifier unavailable · Last updated: 30/10/2026, 5:56:36 pm · Times: IST
+
+Latest record per Tally ID
+Every imported sync snapshot
+Snapshots
+Export CSV
+Export Excel
+All filtered rows · visible fields · audited
+Search all permitted field values
+Group
+State
+All records
+Duplicate names
+Missing GSTIN
+Has GSTIN
+Invalid GSTIN format
+Missing HSN
+Missing state
+Negative stock
+Zero stock
+Has balance
+Zero-value items
+Possible encoding issues
+Filter
+Views
+Companies
+Fixture companies
+Not delivered
+1 record

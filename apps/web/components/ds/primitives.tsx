@@ -52,7 +52,7 @@ export function Truncate({ text, className = '' }: { text: string | null | undef
 // ---------------------------------------------------------------------------
 // Badges, margin flags, SLA chip, avatars
 // ---------------------------------------------------------------------------
-export type Tone = 'success' | 'warning' | 'danger' | 'info' | 'neutral';
+export type Tone = 'success' | 'warning' | 'danger' | 'info' | 'neutral' | 'purple';
 const STATUS_TONE: Record<string, Tone> = {
   ACTIVE: 'success', APPROVED: 'success', DONE: 'success', SENT: 'success', WON: 'success', ACCEPTED: 'success', DELIVERED: 'success', MET: 'success', ON: 'success', RECEIVED: 'success', CONNECTED: 'success', COMPLETED: 'success', READY: 'success',
   OPEN: 'info', NEW: 'info', IN_PROGRESS: 'info', RUNNING: 'info', QUALIFIED: 'info', ISSUED: 'info', DISPATCHED: 'info', PARTIALLY_DISPATCHED: 'info', CONFIRMED: 'info', PROCESSING: 'info', QUOTED: 'info',

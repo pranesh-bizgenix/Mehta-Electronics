@@ -8,6 +8,7 @@ import { useSession } from '@/lib/session';
 import { formatMoney, formatMoneyCompact, formatRelative, titleCase } from '@/lib/format';
 import { useDashboard } from '@/features/dashboard/use-dashboard';
 import type { Decision } from '@/features/dashboard/api';
+import {DecisionsReadiness} from '@/features/decisions/readiness';
 import {
   BarChart, Button, Card, CardSkeleton, EmptyState, ErrorState, Funnel, Icon, Meter, Notice, StatCard, Timeline, type IconName
 } from '@/components/ds';
@@ -49,6 +50,7 @@ export default function DashboardPage() {
       </nav>}
 
       <TallyImportCoverage />
+      <DecisionsReadiness />
       {can('quotations.read')&&can('enquiries.read')&&<TallySalesSyncOverview/>}
 
       <div className="grid-main-aside" style={{ marginBottom: 'var(--space-3)' }}>

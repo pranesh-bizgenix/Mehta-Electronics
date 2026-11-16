@@ -5,6 +5,7 @@ import { connectPostgres } from '../src/postgres.js';
 const config = getConfig();
 if (new URL(config.databaseUrl).pathname !== '/mehta_electronics_local') throw new Error('Unexpected DATABASE_URL database.');
 const sql = connectPostgres(config.databaseUrl, { postgresOptions: { max: 1, connection: { default_transaction_read_only: 'on' } } });
+await sql.ready();
 try {
   const tables = await sql`SELECT table_name FROM information_schema.tables WHERE table_schema='public' AND (table_name LIKE 'tally_%' OR table_name LIKE 'bizgenix%') ORDER BY table_name`;
   const counts = {};

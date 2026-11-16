@@ -4,6 +4,7 @@ import { getConfig } from '../src/config.js';
 import { connectPostgres } from '../src/postgres.js';
 import { parseCollection } from '../src/tally-import.js';
 const config=getConfig(),sql=connectPostgres(config.databaseUrl,{postgresOptions:{max:1,connection:{default_transaction_read_only:'on'}}});
+await sql.ready();
 const escape=value=>String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[c]));
 const report={checkedAt:new Date().toISOString(),tallyReadOnly:true,collections:[]};
 try {

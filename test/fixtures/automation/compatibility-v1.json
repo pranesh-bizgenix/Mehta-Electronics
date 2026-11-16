@@ -1,0 +1,6945 @@
+{
+  "database": "mehta_electronics_local",
+  "tables": [
+    {
+      "name": "approval_decisions",
+      "type": "BASE TABLE"
+    },
+    {
+      "name": "approval_requests",
+      "type": "BASE TABLE"
+    },
+    {
+      "name": "automation_switch_events",
+      "type": "BASE TABLE"
+    },
+    {
+      "name": "automation_switches",
+      "type": "BASE TABLE"
+    },
+    {
+      "name": "business_rule_values",
+      "type": "BASE TABLE"
+    },
+    {
+      "name": "customer_message_checklist",
+      "type": "BASE TABLE"
+    },
+    {
+      "name": "email_accounts",
+      "type": "BASE TABLE"
+    },
+    {
+      "name": "email_draft_documents",
+      "type": "BASE TABLE"
+    },
+    {
+      "name": "email_drafts",
+      "type": "BASE TABLE"
+    },
+    {
+      "name": "email_messages",
+      "type": "BASE TABLE"
+    },
+    {
+      "name": "email_send_attempts",
+      "type": "BASE TABLE"
+    },
+    {
+      "name": "email_threads",
+      "type": "BASE TABLE"
+    },
+    {
+      "name": "exception_cases",
+      "type": "BASE TABLE"
+    },
+    {
+      "name": "job_logs",
+      "type": "BASE TABLE"
+    },
+    {
+      "name": "manual_response_exceptions",
+      "type": "BASE TABLE"
+    },
+    {
+      "name": "notifications",
+      "type": "BASE TABLE"
+    },
+    {
+      "name": "task_events",
+      "type": "BASE TABLE"
+    },
+    {
+      "name": "tasks",
+      "type": "BASE TABLE"
+    },
+    {
+      "name": "work_item_events",
+      "type": "BASE TABLE"
+    },
+    {
+      "name": "work_items",
+      "type": "BASE TABLE"
+    }
+  ],
+  "columns": [
+    {
+      "table": "approval_decisions",
+      "name": "id",
+      "position": 1,
+      "type": "uuid",
+      "udt_name": "uuid",
+      "nullable": false,
+      "default": "gen_random_uuid()",
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "approval_decisions",
+      "name": "approval_request_id",
+      "position": 2,
+      "type": "uuid",
+      "udt_name": "uuid",
+      "nullable": false,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "approval_decisions",
+      "name": "decision",
+      "position": 3,
+      "type": "text",
+      "udt_name": "text",
+      "nullable": false,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "approval_decisions",
+      "name": "decided_by",
+      "position": 4,
+      "type": "integer",
+      "udt_name": "int4",
+      "nullable": false,
+      "default": null,
+      "precision": 32,
+      "scale": 0,
+      "identity": false
+    },
+    {
+      "table": "approval_decisions",
+      "name": "reason",
+      "position": 5,
+      "type": "text",
+      "udt_name": "text",
+      "nullable": false,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "approval_decisions",
+      "name": "payload_fingerprint",
+      "position": 6,
+      "type": "character",
+      "udt_name": "bpchar",
+      "nullable": false,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "approval_decisions",
+      "name": "decided_at",
+      "position": 7,
+      "type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "nullable": false,
+      "default": "now()",
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "approval_decisions",
+      "name": "decision_metadata",
+      "position": 8,
+      "type": "jsonb",
+      "udt_name": "jsonb",
+      "nullable": false,
+      "default": "'{}'::jsonb",
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "approval_requests",
+      "name": "id",
+      "position": 1,
+      "type": "uuid",
+      "udt_name": "uuid",
+      "nullable": false,
+      "default": "gen_random_uuid()",
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "approval_requests",
+      "name": "request_type",
+      "position": 2,
+      "type": "text",
+      "udt_name": "text",
+      "nullable": false,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "approval_requests",
+      "name": "requested_by",
+      "position": 3,
+      "type": "integer",
+      "udt_name": "int4",
+      "nullable": false,
+      "default": null,
+      "precision": 32,
+      "scale": 0,
+      "identity": false
+    },
+    {
+      "table": "approval_requests",
+      "name": "payload_fingerprint",
+      "position": 4,
+      "type": "character",
+      "udt_name": "bpchar",
+      "nullable": false,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "approval_requests",
+      "name": "record_version",
+      "position": 5,
+      "type": "integer",
+      "udt_name": "int4",
+      "nullable": true,
+      "default": null,
+      "precision": 32,
+      "scale": 0,
+      "identity": false
+    },
+    {
+      "table": "approval_requests",
+      "name": "payload_snapshot",
+      "position": 6,
+      "type": "jsonb",
+      "udt_name": "jsonb",
+      "nullable": false,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "approval_requests",
+      "name": "status",
+      "position": 7,
+      "type": "text",
+      "udt_name": "text",
+      "nullable": false,
+      "default": "'PENDING'::text",
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "approval_requests",
+      "name": "expires_at",
+      "position": 8,
+      "type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "nullable": true,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "approval_requests",
+      "name": "created_at",
+      "position": 9,
+      "type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "nullable": false,
+      "default": "now()",
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "automation_switch_events",
+      "name": "id",
+      "position": 1,
+      "type": "bigint",
+      "udt_name": "int8",
+      "nullable": false,
+      "default": null,
+      "precision": 64,
+      "scale": 0,
+      "identity": true
+    },
+    {
+      "table": "automation_switch_events",
+      "name": "workflow_key",
+      "position": 2,
+      "type": "text",
+      "udt_name": "text",
+      "nullable": false,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "automation_switch_events",
+      "name": "field",
+      "position": 3,
+      "type": "text",
+      "udt_name": "text",
+      "nullable": false,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "automation_switch_events",
+      "name": "old_value",
+      "position": 4,
+      "type": "text",
+      "udt_name": "text",
+      "nullable": false,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "automation_switch_events",
+      "name": "new_value",
+      "position": 5,
+      "type": "text",
+      "udt_name": "text",
+      "nullable": false,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "automation_switch_events",
+      "name": "reason",
+      "position": 6,
+      "type": "text",
+      "udt_name": "text",
+      "nullable": false,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "automation_switch_events",
+      "name": "changed_by",
+      "position": 7,
+      "type": "integer",
+      "udt_name": "int4",
+      "nullable": false,
+      "default": null,
+      "precision": 32,
+      "scale": 0,
+      "identity": false
+    },
+    {
+      "table": "automation_switch_events",
+      "name": "changed_at",
+      "position": 8,
+      "type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "nullable": false,
+      "default": "now()",
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "automation_switches",
+      "name": "workflow_key",
+      "position": 1,
+      "type": "text",
+      "udt_name": "text",
+      "nullable": false,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "automation_switches",
+      "name": "enabled",
+      "position": 2,
+      "type": "boolean",
+      "udt_name": "bool",
+      "nullable": false,
+      "default": "false",
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "automation_switches",
+      "name": "rollout_stage",
+      "position": 3,
+      "type": "text",
+      "udt_name": "text",
+      "nullable": false,
+      "default": "'DRAFT_AND_APPROVAL'::text",
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "automation_switches",
+      "name": "updated_by",
+      "position": 4,
+      "type": "integer",
+      "udt_name": "int4",
+      "nullable": true,
+      "default": null,
+      "precision": 32,
+      "scale": 0,
+      "identity": false
+    },
+    {
+      "table": "automation_switches",
+      "name": "updated_at",
+      "position": 5,
+      "type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "nullable": false,
+      "default": "now()",
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "business_rule_values",
+      "name": "id",
+      "position": 1,
+      "type": "uuid",
+      "udt_name": "uuid",
+      "nullable": false,
+      "default": "gen_random_uuid()",
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "business_rule_values",
+      "name": "rule_key",
+      "position": 2,
+      "type": "text",
+      "udt_name": "text",
+      "nullable": false,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "business_rule_values",
+      "name": "version",
+      "position": 3,
+      "type": "integer",
+      "udt_name": "int4",
+      "nullable": false,
+      "default": null,
+      "precision": 32,
+      "scale": 0,
+      "identity": false
+    },
+    {
+      "table": "business_rule_values",
+      "name": "value",
+      "position": 4,
+      "type": "jsonb",
+      "udt_name": "jsonb",
+      "nullable": true,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "business_rule_values",
+      "name": "is_cleared",
+      "position": 5,
+      "type": "boolean",
+      "udt_name": "bool",
+      "nullable": false,
+      "default": "false",
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "business_rule_values",
+      "name": "reason",
+      "position": 6,
+      "type": "text",
+      "udt_name": "text",
+      "nullable": false,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "business_rule_values",
+      "name": "created_by",
+      "position": 7,
+      "type": "integer",
+      "udt_name": "int4",
+      "nullable": false,
+      "default": null,
+      "precision": 32,
+      "scale": 0,
+      "identity": false
+    },
+    {
+      "table": "business_rule_values",
+      "name": "created_at",
+      "position": 8,
+      "type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "nullable": false,
+      "default": "now()",
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "customer_message_checklist",
+      "name": "customer_id",
+      "position": 1,
+      "type": "integer",
+      "udt_name": "int4",
+      "nullable": false,
+      "default": null,
+      "precision": 32,
+      "scale": 0,
+      "identity": false
+    },
+    {
+      "table": "customer_message_checklist",
+      "name": "category",
+      "position": 2,
+      "type": "text",
+      "udt_name": "text",
+      "nullable": false,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "customer_message_checklist",
+      "name": "ticked",
+      "position": 3,
+      "type": "boolean",
+      "udt_name": "bool",
+      "nullable": false,
+      "default": "false",
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "customer_message_checklist",
+      "name": "updated_by",
+      "position": 4,
+      "type": "integer",
+      "udt_name": "int4",
+      "nullable": false,
+      "default": null,
+      "precision": 32,
+      "scale": 0,
+      "identity": false
+    },
+    {
+      "table": "customer_message_checklist",
+      "name": "updated_at",
+      "position": 5,
+      "type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "nullable": false,
+      "default": "now()",
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "customer_message_checklist",
+      "name": "reason",
+      "position": 6,
+      "type": "text",
+      "udt_name": "text",
+      "nullable": false,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "email_accounts",
+      "name": "id",
+      "position": 1,
+      "type": "uuid",
+      "udt_name": "uuid",
+      "nullable": false,
+      "default": "gen_random_uuid()",
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "email_accounts",
+      "name": "provider",
+      "position": 2,
+      "type": "text",
+      "udt_name": "text",
+      "nullable": false,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "email_accounts",
+      "name": "mailbox_address",
+      "position": 3,
+      "type": "USER-DEFINED",
+      "udt_name": "citext",
+      "nullable": false,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "email_accounts",
+      "name": "provider_account_id",
+      "position": 4,
+      "type": "text",
+      "udt_name": "text",
+      "nullable": true,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "email_accounts",
+      "name": "secret_reference",
+      "position": 5,
+      "type": "text",
+      "udt_name": "text",
+      "nullable": true,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "email_accounts",
+      "name": "granted_scopes",
+      "position": 6,
+      "type": "jsonb",
+      "udt_name": "jsonb",
+      "nullable": false,
+      "default": "'[]'::jsonb",
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "email_accounts",
+      "name": "status",
+      "position": 7,
+      "type": "text",
+      "udt_name": "text",
+      "nullable": false,
+      "default": "'DISABLED'::text",
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "email_accounts",
+      "name": "connected_at",
+      "position": 8,
+      "type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "nullable": true,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "email_accounts",
+      "name": "revoked_at",
+      "position": 9,
+      "type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "nullable": true,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "email_accounts",
+      "name": "created_at",
+      "position": 10,
+      "type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "nullable": false,
+      "default": "now()",
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "email_accounts",
+      "name": "updated_at",
+      "position": 11,
+      "type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "nullable": false,
+      "default": "now()",
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "email_accounts",
+      "name": "created_by",
+      "position": 12,
+      "type": "integer",
+      "udt_name": "int4",
+      "nullable": true,
+      "default": null,
+      "precision": 32,
+      "scale": 0,
+      "identity": false
+    },
+    {
+      "table": "email_draft_documents",
+      "name": "email_draft_id",
+      "position": 1,
+      "type": "uuid",
+      "udt_name": "uuid",
+      "nullable": false,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "email_draft_documents",
+      "name": "source_document_id",
+      "position": 2,
+      "type": "uuid",
+      "udt_name": "uuid",
+      "nullable": false,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "email_draft_documents",
+      "name": "created_at",
+      "position": 3,
+      "type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "nullable": false,
+      "default": "now()",
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "email_draft_documents",
+      "name": "created_by",
+      "position": 4,
+      "type": "integer",
+      "udt_name": "int4",
+      "nullable": true,
+      "default": null,
+      "precision": 32,
+      "scale": 0,
+      "identity": false
+    },
+    {
+      "table": "email_drafts",
+      "name": "id",
+      "position": 1,
+      "type": "uuid",
+      "udt_name": "uuid",
+      "nullable": false,
+      "default": "gen_random_uuid()",
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "email_drafts",
+      "name": "workflow_execution_id",
+      "position": 2,
+      "type": "uuid",
+      "udt_name": "uuid",
+      "nullable": true,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "email_drafts",
+      "name": "customer_id",
+      "position": 3,
+      "type": "integer",
+      "udt_name": "int4",
+      "nullable": true,
+      "default": null,
+      "precision": 32,
+      "scale": 0,
+      "identity": false
+    },
+    {
+      "table": "email_drafts",
+      "name": "enquiry_id",
+      "position": 4,
+      "type": "integer",
+      "udt_name": "int4",
+      "nullable": true,
+      "default": null,
+      "precision": 32,
+      "scale": 0,
+      "identity": false
+    },
+    {
+      "table": "email_drafts",
+      "name": "quotation_id",
+      "position": 5,
+      "type": "integer",
+      "udt_name": "int4",
+      "nullable": true,
+      "default": null,
+      "precision": 32,
+      "scale": 0,
+      "identity": false
+    },
+    {
+      "table": "email_drafts",
+      "name": "sales_order_id",
+      "position": 6,
+      "type": "integer",
+      "udt_name": "int4",
+      "nullable": true,
+      "default": null,
+      "precision": 32,
+      "scale": 0,
+      "identity": false
+    },
+    {
+      "table": "email_drafts",
+      "name": "recipient_addresses",
+      "position": 7,
+      "type": "jsonb",
+      "udt_name": "jsonb",
+      "nullable": false,
+      "default": "'[]'::jsonb",
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "email_drafts",
+      "name": "cc_addresses",
+      "position": 8,
+      "type": "jsonb",
+      "udt_name": "jsonb",
+      "nullable": false,
+      "default": "'[]'::jsonb",
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "email_drafts",
+      "name": "subject",
+      "position": 9,
+      "type": "text",
+      "udt_name": "text",
+      "nullable": false,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "email_drafts",
+      "name": "body_reference",
+      "position": 10,
+      "type": "text",
+      "udt_name": "text",
+      "nullable": false,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "email_drafts",
+      "name": "content_fingerprint",
+      "position": 11,
+      "type": "character",
+      "udt_name": "bpchar",
+      "nullable": false,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "email_drafts",
+      "name": "linked_record_version",
+      "position": 12,
+      "type": "integer",
+      "udt_name": "int4",
+      "nullable": true,
+      "default": null,
+      "precision": 32,
+      "scale": 0,
+      "identity": false
+    },
+    {
+      "table": "email_drafts",
+      "name": "approval_request_id",
+      "position": 13,
+      "type": "uuid",
+      "udt_name": "uuid",
+      "nullable": true,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "email_drafts",
+      "name": "status",
+      "position": 14,
+      "type": "text",
+      "udt_name": "text",
+      "nullable": false,
+      "default": "'DRAFT'::text",
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "email_drafts",
+      "name": "created_at",
+      "position": 15,
+      "type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "nullable": false,
+      "default": "now()",
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "email_drafts",
+      "name": "updated_at",
+      "position": 16,
+      "type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "nullable": false,
+      "default": "now()",
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "email_drafts",
+      "name": "created_by",
+      "position": 17,
+      "type": "integer",
+      "udt_name": "int4",
+      "nullable": true,
+      "default": null,
+      "precision": 32,
+      "scale": 0,
+      "identity": false
+    },
+    {
+      "table": "email_drafts",
+      "name": "updated_by",
+      "position": 18,
+      "type": "integer",
+      "udt_name": "int4",
+      "nullable": true,
+      "default": null,
+      "precision": 32,
+      "scale": 0,
+      "identity": false
+    },
+    {
+      "table": "email_drafts",
+      "name": "context_state",
+      "position": 19,
+      "type": "text",
+      "udt_name": "text",
+      "nullable": false,
+      "default": "'UNVERIFIED'::text",
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "email_drafts",
+      "name": "workflow_key",
+      "position": 20,
+      "type": "text",
+      "udt_name": "text",
+      "nullable": true,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "email_drafts",
+      "name": "message_category",
+      "position": 21,
+      "type": "text",
+      "udt_name": "text",
+      "nullable": true,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "email_drafts",
+      "name": "body_text",
+      "position": 22,
+      "type": "text",
+      "udt_name": "text",
+      "nullable": true,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "email_drafts",
+      "name": "gate_result",
+      "position": 23,
+      "type": "jsonb",
+      "udt_name": "jsonb",
+      "nullable": true,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "email_messages",
+      "name": "id",
+      "position": 1,
+      "type": "uuid",
+      "udt_name": "uuid",
+      "nullable": false,
+      "default": "gen_random_uuid()",
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "email_messages",
+      "name": "email_account_id",
+      "position": 2,
+      "type": "uuid",
+      "udt_name": "uuid",
+      "nullable": false,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "email_messages",
+      "name": "thread_id",
+      "position": 3,
+      "type": "uuid",
+      "udt_name": "uuid",
+      "nullable": true,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "email_messages",
+      "name": "provider_message_id",
+      "position": 4,
+      "type": "text",
+      "udt_name": "text",
+      "nullable": true,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "email_messages",
+      "name": "direction",
+      "position": 5,
+      "type": "text",
+      "udt_name": "text",
+      "nullable": false,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "email_messages",
+      "name": "sender_address",
+      "position": 6,
+      "type": "USER-DEFINED",
+      "udt_name": "citext",
+      "nullable": true,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "email_messages",
+      "name": "recipient_addresses",
+      "position": 7,
+      "type": "jsonb",
+      "udt_name": "jsonb",
+      "nullable": false,
+      "default": "'[]'::jsonb",
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "email_messages",
+      "name": "cc_addresses",
+      "position": 8,
+      "type": "jsonb",
+      "udt_name": "jsonb",
+      "nullable": false,
+      "default": "'[]'::jsonb",
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "email_messages",
+      "name": "parsed_headers",
+      "position": 9,
+      "type": "jsonb",
+      "udt_name": "jsonb",
+      "nullable": false,
+      "default": "'{}'::jsonb",
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "email_messages",
+      "name": "safe_body_reference",
+      "position": 10,
+      "type": "text",
+      "udt_name": "text",
+      "nullable": true,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "email_messages",
+      "name": "received_at",
+      "position": 11,
+      "type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "nullable": true,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "email_messages",
+      "name": "sent_at",
+      "position": 12,
+      "type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "nullable": true,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "email_messages",
+      "name": "status",
+      "position": 13,
+      "type": "text",
+      "udt_name": "text",
+      "nullable": false,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "email_messages",
+      "name": "created_at",
+      "position": 14,
+      "type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "nullable": false,
+      "default": "now()",
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "email_send_attempts",
+      "name": "id",
+      "position": 1,
+      "type": "uuid",
+      "udt_name": "uuid",
+      "nullable": false,
+      "default": "gen_random_uuid()",
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "email_send_attempts",
+      "name": "email_draft_id",
+      "position": 2,
+      "type": "uuid",
+      "udt_name": "uuid",
+      "nullable": false,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "email_send_attempts",
+      "name": "approval_decision_id",
+      "position": 3,
+      "type": "uuid",
+      "udt_name": "uuid",
+      "nullable": false,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "email_send_attempts",
+      "name": "attempt_number",
+      "position": 4,
+      "type": "integer",
+      "udt_name": "int4",
+      "nullable": false,
+      "default": null,
+      "precision": 32,
+      "scale": 0,
+      "identity": false
+    },
+    {
+      "table": "email_send_attempts",
+      "name": "idempotency_key",
+      "position": 5,
+      "type": "text",
+      "udt_name": "text",
+      "nullable": false,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "email_send_attempts",
+      "name": "status",
+      "position": 6,
+      "type": "text",
+      "udt_name": "text",
+      "nullable": false,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "email_send_attempts",
+      "name": "provider_message_id",
+      "position": 7,
+      "type": "text",
+      "udt_name": "text",
+      "nullable": true,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "email_send_attempts",
+      "name": "provider_response",
+      "position": 8,
+      "type": "jsonb",
+      "udt_name": "jsonb",
+      "nullable": true,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "email_send_attempts",
+      "name": "error_detail",
+      "position": 9,
+      "type": "jsonb",
+      "udt_name": "jsonb",
+      "nullable": true,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "email_send_attempts",
+      "name": "started_at",
+      "position": 10,
+      "type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "nullable": false,
+      "default": "now()",
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "email_send_attempts",
+      "name": "completed_at",
+      "position": 11,
+      "type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "nullable": true,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "email_threads",
+      "name": "id",
+      "position": 1,
+      "type": "uuid",
+      "udt_name": "uuid",
+      "nullable": false,
+      "default": "gen_random_uuid()",
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "email_threads",
+      "name": "email_account_id",
+      "position": 2,
+      "type": "uuid",
+      "udt_name": "uuid",
+      "nullable": false,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "email_threads",
+      "name": "provider_thread_id",
+      "position": 3,
+      "type": "text",
+      "udt_name": "text",
+      "nullable": false,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "email_threads",
+      "name": "customer_id",
+      "position": 4,
+      "type": "integer",
+      "udt_name": "int4",
+      "nullable": true,
+      "default": null,
+      "precision": 32,
+      "scale": 0,
+      "identity": false
+    },
+    {
+      "table": "email_threads",
+      "name": "enquiry_id",
+      "position": 5,
+      "type": "integer",
+      "udt_name": "int4",
+      "nullable": true,
+      "default": null,
+      "precision": 32,
+      "scale": 0,
+      "identity": false
+    },
+    {
+      "table": "email_threads",
+      "name": "quotation_id",
+      "position": 6,
+      "type": "integer",
+      "udt_name": "int4",
+      "nullable": true,
+      "default": null,
+      "precision": 32,
+      "scale": 0,
+      "identity": false
+    },
+    {
+      "table": "email_threads",
+      "name": "sales_order_id",
+      "position": 7,
+      "type": "integer",
+      "udt_name": "int4",
+      "nullable": true,
+      "default": null,
+      "precision": 32,
+      "scale": 0,
+      "identity": false
+    },
+    {
+      "table": "email_threads",
+      "name": "subject",
+      "position": 8,
+      "type": "text",
+      "udt_name": "text",
+      "nullable": true,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "email_threads",
+      "name": "status",
+      "position": 9,
+      "type": "text",
+      "udt_name": "text",
+      "nullable": false,
+      "default": "'OPEN'::text",
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "email_threads",
+      "name": "first_message_at",
+      "position": 10,
+      "type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "nullable": true,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "email_threads",
+      "name": "last_message_at",
+      "position": 11,
+      "type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "nullable": true,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "email_threads",
+      "name": "created_at",
+      "position": 12,
+      "type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "nullable": false,
+      "default": "now()",
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "email_threads",
+      "name": "updated_at",
+      "position": 13,
+      "type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "nullable": false,
+      "default": "now()",
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "email_threads",
+      "name": "invoice_id",
+      "position": 14,
+      "type": "uuid",
+      "udt_name": "uuid",
+      "nullable": true,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "exception_cases",
+      "name": "id",
+      "position": 1,
+      "type": "uuid",
+      "udt_name": "uuid",
+      "nullable": false,
+      "default": "gen_random_uuid()",
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "exception_cases",
+      "name": "exception_type",
+      "position": 2,
+      "type": "text",
+      "udt_name": "text",
+      "nullable": false,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "exception_cases",
+      "name": "entity_type",
+      "position": 3,
+      "type": "text",
+      "udt_name": "text",
+      "nullable": false,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "exception_cases",
+      "name": "entity_id",
+      "position": 4,
+      "type": "text",
+      "udt_name": "text",
+      "nullable": false,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "exception_cases",
+      "name": "summary",
+      "position": 5,
+      "type": "text",
+      "udt_name": "text",
+      "nullable": false,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "exception_cases",
+      "name": "details",
+      "position": 6,
+      "type": "jsonb",
+      "udt_name": "jsonb",
+      "nullable": false,
+      "default": "'{}'::jsonb",
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "exception_cases",
+      "name": "fingerprint",
+      "position": 7,
+      "type": "character",
+      "udt_name": "bpchar",
+      "nullable": false,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "exception_cases",
+      "name": "status",
+      "position": 8,
+      "type": "text",
+      "udt_name": "text",
+      "nullable": false,
+      "default": "'OPEN'::text",
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "exception_cases",
+      "name": "department",
+      "position": 9,
+      "type": "text",
+      "udt_name": "text",
+      "nullable": true,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "exception_cases",
+      "name": "raised_by",
+      "position": 10,
+      "type": "integer",
+      "udt_name": "int4",
+      "nullable": false,
+      "default": null,
+      "precision": 32,
+      "scale": 0,
+      "identity": false
+    },
+    {
+      "table": "exception_cases",
+      "name": "record_creator_id",
+      "position": 11,
+      "type": "integer",
+      "udt_name": "int4",
+      "nullable": true,
+      "default": null,
+      "precision": 32,
+      "scale": 0,
+      "identity": false
+    },
+    {
+      "table": "exception_cases",
+      "name": "approval_request_id",
+      "position": 12,
+      "type": "uuid",
+      "udt_name": "uuid",
+      "nullable": false,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "exception_cases",
+      "name": "decided_by",
+      "position": 13,
+      "type": "integer",
+      "udt_name": "int4",
+      "nullable": true,
+      "default": null,
+      "precision": 32,
+      "scale": 0,
+      "identity": false
+    },
+    {
+      "table": "exception_cases",
+      "name": "decided_at",
+      "position": 14,
+      "type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "nullable": true,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "exception_cases",
+      "name": "decision_reason",
+      "position": 15,
+      "type": "text",
+      "udt_name": "text",
+      "nullable": true,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "exception_cases",
+      "name": "backdate_to",
+      "position": 16,
+      "type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "nullable": true,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "exception_cases",
+      "name": "created_at",
+      "position": 17,
+      "type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "nullable": false,
+      "default": "now()",
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "exception_cases",
+      "name": "updated_at",
+      "position": 18,
+      "type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "nullable": false,
+      "default": "now()",
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "job_logs",
+      "name": "id",
+      "position": 1,
+      "type": "bigint",
+      "udt_name": "int8",
+      "nullable": false,
+      "default": null,
+      "precision": 64,
+      "scale": 0,
+      "identity": true
+    },
+    {
+      "table": "job_logs",
+      "name": "job_name",
+      "position": 2,
+      "type": "text",
+      "udt_name": "text",
+      "nullable": false,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "job_logs",
+      "name": "run_at",
+      "position": 3,
+      "type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "nullable": false,
+      "default": "now()",
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "job_logs",
+      "name": "finished_at",
+      "position": 4,
+      "type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "nullable": true,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "job_logs",
+      "name": "status",
+      "position": 5,
+      "type": "text",
+      "udt_name": "text",
+      "nullable": false,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "job_logs",
+      "name": "message",
+      "position": 6,
+      "type": "text",
+      "udt_name": "text",
+      "nullable": true,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "job_logs",
+      "name": "detail",
+      "position": 7,
+      "type": "jsonb",
+      "udt_name": "jsonb",
+      "nullable": false,
+      "default": "'{}'::jsonb",
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "manual_response_exceptions",
+      "name": "id",
+      "position": 1,
+      "type": "uuid",
+      "udt_name": "uuid",
+      "nullable": false,
+      "default": "gen_random_uuid()",
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "manual_response_exceptions",
+      "name": "customer_id",
+      "position": 2,
+      "type": "integer",
+      "udt_name": "int4",
+      "nullable": true,
+      "default": null,
+      "precision": 32,
+      "scale": 0,
+      "identity": false
+    },
+    {
+      "table": "manual_response_exceptions",
+      "name": "item_id",
+      "position": 3,
+      "type": "integer",
+      "udt_name": "int4",
+      "nullable": true,
+      "default": null,
+      "precision": 32,
+      "scale": 0,
+      "identity": false
+    },
+    {
+      "table": "manual_response_exceptions",
+      "name": "reason",
+      "position": 4,
+      "type": "text",
+      "udt_name": "text",
+      "nullable": false,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "manual_response_exceptions",
+      "name": "status",
+      "position": 5,
+      "type": "text",
+      "udt_name": "text",
+      "nullable": false,
+      "default": "'ACTIVE'::text",
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "manual_response_exceptions",
+      "name": "created_by",
+      "position": 6,
+      "type": "integer",
+      "udt_name": "int4",
+      "nullable": false,
+      "default": null,
+      "precision": 32,
+      "scale": 0,
+      "identity": false
+    },
+    {
+      "table": "manual_response_exceptions",
+      "name": "created_at",
+      "position": 7,
+      "type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "nullable": false,
+      "default": "now()",
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "manual_response_exceptions",
+      "name": "archived_by",
+      "position": 8,
+      "type": "integer",
+      "udt_name": "int4",
+      "nullable": true,
+      "default": null,
+      "precision": 32,
+      "scale": 0,
+      "identity": false
+    },
+    {
+      "table": "manual_response_exceptions",
+      "name": "archived_at",
+      "position": 9,
+      "type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "nullable": true,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "manual_response_exceptions",
+      "name": "archive_reason",
+      "position": 10,
+      "type": "text",
+      "udt_name": "text",
+      "nullable": true,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "notifications",
+      "name": "id",
+      "position": 1,
+      "type": "uuid",
+      "udt_name": "uuid",
+      "nullable": false,
+      "default": "gen_random_uuid()",
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "notifications",
+      "name": "user_id",
+      "position": 2,
+      "type": "integer",
+      "udt_name": "int4",
+      "nullable": false,
+      "default": null,
+      "precision": 32,
+      "scale": 0,
+      "identity": false
+    },
+    {
+      "table": "notifications",
+      "name": "reminder_id",
+      "position": 3,
+      "type": "uuid",
+      "udt_name": "uuid",
+      "nullable": true,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "notifications",
+      "name": "channel",
+      "position": 4,
+      "type": "text",
+      "udt_name": "text",
+      "nullable": false,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "notifications",
+      "name": "delivery_state",
+      "position": 5,
+      "type": "text",
+      "udt_name": "text",
+      "nullable": false,
+      "default": "'PENDING'::text",
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "notifications",
+      "name": "payload",
+      "position": 6,
+      "type": "jsonb",
+      "udt_name": "jsonb",
+      "nullable": false,
+      "default": "'{}'::jsonb",
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "notifications",
+      "name": "idempotency_key",
+      "position": 7,
+      "type": "text",
+      "udt_name": "text",
+      "nullable": true,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "notifications",
+      "name": "attempt_count",
+      "position": 8,
+      "type": "integer",
+      "udt_name": "int4",
+      "nullable": false,
+      "default": "0",
+      "precision": 32,
+      "scale": 0,
+      "identity": false
+    },
+    {
+      "table": "notifications",
+      "name": "last_error",
+      "position": 9,
+      "type": "jsonb",
+      "udt_name": "jsonb",
+      "nullable": true,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "notifications",
+      "name": "scheduled_at",
+      "position": 10,
+      "type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "nullable": true,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "notifications",
+      "name": "delivered_at",
+      "position": 11,
+      "type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "nullable": true,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "notifications",
+      "name": "created_at",
+      "position": 12,
+      "type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "nullable": false,
+      "default": "now()",
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "task_events",
+      "name": "id",
+      "position": 1,
+      "type": "bigint",
+      "udt_name": "int8",
+      "nullable": false,
+      "default": null,
+      "precision": 64,
+      "scale": 0,
+      "identity": true
+    },
+    {
+      "table": "task_events",
+      "name": "task_id",
+      "position": 2,
+      "type": "uuid",
+      "udt_name": "uuid",
+      "nullable": false,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "task_events",
+      "name": "event",
+      "position": 3,
+      "type": "text",
+      "udt_name": "text",
+      "nullable": false,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "task_events",
+      "name": "old_value",
+      "position": 4,
+      "type": "jsonb",
+      "udt_name": "jsonb",
+      "nullable": true,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "task_events",
+      "name": "new_value",
+      "position": 5,
+      "type": "jsonb",
+      "udt_name": "jsonb",
+      "nullable": true,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "task_events",
+      "name": "reason",
+      "position": 6,
+      "type": "text",
+      "udt_name": "text",
+      "nullable": true,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "task_events",
+      "name": "actor_user_id",
+      "position": 7,
+      "type": "integer",
+      "udt_name": "int4",
+      "nullable": true,
+      "default": null,
+      "precision": 32,
+      "scale": 0,
+      "identity": false
+    },
+    {
+      "table": "task_events",
+      "name": "created_at",
+      "position": 8,
+      "type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "nullable": false,
+      "default": "now()",
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "tasks",
+      "name": "id",
+      "position": 1,
+      "type": "uuid",
+      "udt_name": "uuid",
+      "nullable": false,
+      "default": "gen_random_uuid()",
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "tasks",
+      "name": "title",
+      "position": 2,
+      "type": "text",
+      "udt_name": "text",
+      "nullable": false,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "tasks",
+      "name": "description",
+      "position": 3,
+      "type": "text",
+      "udt_name": "text",
+      "nullable": true,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "tasks",
+      "name": "status",
+      "position": 4,
+      "type": "text",
+      "udt_name": "text",
+      "nullable": false,
+      "default": "'OPEN'::text",
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "tasks",
+      "name": "source",
+      "position": 5,
+      "type": "text",
+      "udt_name": "text",
+      "nullable": false,
+      "default": "'MANUAL'::text",
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "tasks",
+      "name": "department",
+      "position": 6,
+      "type": "text",
+      "udt_name": "text",
+      "nullable": true,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "tasks",
+      "name": "owner_user_id",
+      "position": 7,
+      "type": "integer",
+      "udt_name": "int4",
+      "nullable": false,
+      "default": null,
+      "precision": 32,
+      "scale": 0,
+      "identity": false
+    },
+    {
+      "table": "tasks",
+      "name": "backup_user_id",
+      "position": 8,
+      "type": "integer",
+      "udt_name": "int4",
+      "nullable": true,
+      "default": null,
+      "precision": 32,
+      "scale": 0,
+      "identity": false
+    },
+    {
+      "table": "tasks",
+      "name": "due_at",
+      "position": 9,
+      "type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "nullable": true,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "tasks",
+      "name": "parent_task_id",
+      "position": 10,
+      "type": "uuid",
+      "udt_name": "uuid",
+      "nullable": true,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "tasks",
+      "name": "forwarded_to_task_id",
+      "position": 11,
+      "type": "uuid",
+      "udt_name": "uuid",
+      "nullable": true,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "tasks",
+      "name": "entity_type",
+      "position": 12,
+      "type": "text",
+      "udt_name": "text",
+      "nullable": true,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "tasks",
+      "name": "entity_id",
+      "position": 13,
+      "type": "text",
+      "udt_name": "text",
+      "nullable": true,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "tasks",
+      "name": "next_reminder_at",
+      "position": 14,
+      "type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "nullable": true,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "tasks",
+      "name": "reminder_count",
+      "position": 15,
+      "type": "integer",
+      "udt_name": "int4",
+      "nullable": false,
+      "default": "0",
+      "precision": 32,
+      "scale": 0,
+      "identity": false
+    },
+    {
+      "table": "tasks",
+      "name": "completed_at",
+      "position": 16,
+      "type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "nullable": true,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "tasks",
+      "name": "version",
+      "position": 17,
+      "type": "integer",
+      "udt_name": "int4",
+      "nullable": false,
+      "default": "1",
+      "precision": 32,
+      "scale": 0,
+      "identity": false
+    },
+    {
+      "table": "tasks",
+      "name": "created_by",
+      "position": 18,
+      "type": "integer",
+      "udt_name": "int4",
+      "nullable": false,
+      "default": null,
+      "precision": 32,
+      "scale": 0,
+      "identity": false
+    },
+    {
+      "table": "tasks",
+      "name": "updated_by",
+      "position": 19,
+      "type": "integer",
+      "udt_name": "int4",
+      "nullable": false,
+      "default": null,
+      "precision": 32,
+      "scale": 0,
+      "identity": false
+    },
+    {
+      "table": "tasks",
+      "name": "created_at",
+      "position": 20,
+      "type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "nullable": false,
+      "default": "now()",
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "tasks",
+      "name": "updated_at",
+      "position": 21,
+      "type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "nullable": false,
+      "default": "now()",
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "tasks",
+      "name": "is_deleted",
+      "position": 22,
+      "type": "boolean",
+      "udt_name": "bool",
+      "nullable": false,
+      "default": "false",
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "tasks",
+      "name": "deleted_reason",
+      "position": 23,
+      "type": "text",
+      "udt_name": "text",
+      "nullable": true,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "work_item_events",
+      "name": "id",
+      "position": 1,
+      "type": "bigint",
+      "udt_name": "int8",
+      "nullable": false,
+      "default": null,
+      "precision": 64,
+      "scale": 0,
+      "identity": true
+    },
+    {
+      "table": "work_item_events",
+      "name": "work_item_id",
+      "position": 2,
+      "type": "uuid",
+      "udt_name": "uuid",
+      "nullable": false,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "work_item_events",
+      "name": "event",
+      "position": 3,
+      "type": "text",
+      "udt_name": "text",
+      "nullable": false,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "work_item_events",
+      "name": "from_user_id",
+      "position": 4,
+      "type": "integer",
+      "udt_name": "int4",
+      "nullable": true,
+      "default": null,
+      "precision": 32,
+      "scale": 0,
+      "identity": false
+    },
+    {
+      "table": "work_item_events",
+      "name": "to_user_id",
+      "position": 5,
+      "type": "integer",
+      "udt_name": "int4",
+      "nullable": true,
+      "default": null,
+      "precision": 32,
+      "scale": 0,
+      "identity": false
+    },
+    {
+      "table": "work_item_events",
+      "name": "detail",
+      "position": 6,
+      "type": "jsonb",
+      "udt_name": "jsonb",
+      "nullable": false,
+      "default": "'{}'::jsonb",
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "work_item_events",
+      "name": "reason",
+      "position": 7,
+      "type": "text",
+      "udt_name": "text",
+      "nullable": true,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "work_item_events",
+      "name": "actor_user_id",
+      "position": 8,
+      "type": "integer",
+      "udt_name": "int4",
+      "nullable": true,
+      "default": null,
+      "precision": 32,
+      "scale": 0,
+      "identity": false
+    },
+    {
+      "table": "work_item_events",
+      "name": "created_at",
+      "position": 9,
+      "type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "nullable": false,
+      "default": "now()",
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "work_items",
+      "name": "id",
+      "position": 1,
+      "type": "uuid",
+      "udt_name": "uuid",
+      "nullable": false,
+      "default": "gen_random_uuid()",
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "work_items",
+      "name": "entity_type",
+      "position": 2,
+      "type": "text",
+      "udt_name": "text",
+      "nullable": false,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "work_items",
+      "name": "entity_id",
+      "position": 3,
+      "type": "text",
+      "udt_name": "text",
+      "nullable": false,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "work_items",
+      "name": "title",
+      "position": 4,
+      "type": "text",
+      "udt_name": "text",
+      "nullable": false,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "work_items",
+      "name": "department",
+      "position": 5,
+      "type": "text",
+      "udt_name": "text",
+      "nullable": true,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "work_items",
+      "name": "owner_user_id",
+      "position": 6,
+      "type": "integer",
+      "udt_name": "int4",
+      "nullable": true,
+      "default": null,
+      "precision": 32,
+      "scale": 0,
+      "identity": false
+    },
+    {
+      "table": "work_items",
+      "name": "backup_user_id",
+      "position": 7,
+      "type": "integer",
+      "udt_name": "int4",
+      "nullable": true,
+      "default": null,
+      "precision": 32,
+      "scale": 0,
+      "identity": false
+    },
+    {
+      "table": "work_items",
+      "name": "assignment_reason",
+      "position": 8,
+      "type": "text",
+      "udt_name": "text",
+      "nullable": true,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "work_items",
+      "name": "status",
+      "position": 9,
+      "type": "text",
+      "udt_name": "text",
+      "nullable": false,
+      "default": "'OPEN'::text",
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "work_items",
+      "name": "started_at",
+      "position": 10,
+      "type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "nullable": false,
+      "default": "now()",
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "work_items",
+      "name": "due_at",
+      "position": 11,
+      "type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "nullable": true,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "work_items",
+      "name": "sla_state",
+      "position": 12,
+      "type": "text",
+      "udt_name": "text",
+      "nullable": false,
+      "default": "'NOT_CONFIGURED'::text",
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "work_items",
+      "name": "sla_rule_version",
+      "position": 13,
+      "type": "integer",
+      "udt_name": "int4",
+      "nullable": true,
+      "default": null,
+      "precision": 32,
+      "scale": 0,
+      "identity": false
+    },
+    {
+      "table": "work_items",
+      "name": "sla_timezone",
+      "position": 14,
+      "type": "text",
+      "udt_name": "text",
+      "nullable": true,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "work_items",
+      "name": "escalation_level",
+      "position": 15,
+      "type": "integer",
+      "udt_name": "int4",
+      "nullable": false,
+      "default": "0",
+      "precision": 32,
+      "scale": 0,
+      "identity": false
+    },
+    {
+      "table": "work_items",
+      "name": "escalated_to_user_id",
+      "position": 16,
+      "type": "integer",
+      "udt_name": "int4",
+      "nullable": true,
+      "default": null,
+      "precision": 32,
+      "scale": 0,
+      "identity": false
+    },
+    {
+      "table": "work_items",
+      "name": "last_escalated_at",
+      "position": 17,
+      "type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "nullable": true,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "work_items",
+      "name": "escalation_blocked_reason",
+      "position": 18,
+      "type": "text",
+      "udt_name": "text",
+      "nullable": true,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "work_items",
+      "name": "closed_at",
+      "position": 19,
+      "type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "nullable": true,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "work_items",
+      "name": "created_by",
+      "position": 20,
+      "type": "integer",
+      "udt_name": "int4",
+      "nullable": true,
+      "default": null,
+      "precision": 32,
+      "scale": 0,
+      "identity": false
+    },
+    {
+      "table": "work_items",
+      "name": "updated_by",
+      "position": 21,
+      "type": "integer",
+      "udt_name": "int4",
+      "nullable": true,
+      "default": null,
+      "precision": 32,
+      "scale": 0,
+      "identity": false
+    },
+    {
+      "table": "work_items",
+      "name": "created_at",
+      "position": 22,
+      "type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "nullable": false,
+      "default": "now()",
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "work_items",
+      "name": "updated_at",
+      "position": 23,
+      "type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "nullable": false,
+      "default": "now()",
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "work_items",
+      "name": "is_deleted",
+      "position": 24,
+      "type": "boolean",
+      "udt_name": "bool",
+      "nullable": false,
+      "default": "false",
+      "precision": null,
+      "scale": null,
+      "identity": false
+    },
+    {
+      "table": "work_items",
+      "name": "deleted_reason",
+      "position": 25,
+      "type": "text",
+      "udt_name": "text",
+      "nullable": true,
+      "default": null,
+      "precision": null,
+      "scale": null,
+      "identity": false
+    }
+  ],
+  "constraints": [
+    {
+      "table": "approval_decisions",
+      "name": "approval_decisions_approval_request_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (approval_request_id) REFERENCES approval_requests(id)",
+      "validated": true,
+      "columns": [
+        "approval_request_id"
+      ],
+      "target": "approval_requests",
+      "target_columns": [
+        "id"
+      ]
+    },
+    {
+      "table": "approval_decisions",
+      "name": "approval_decisions_decided_by_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (decided_by) REFERENCES users(id)",
+      "validated": true,
+      "columns": [
+        "decided_by"
+      ],
+      "target": "users",
+      "target_columns": [
+        "id"
+      ]
+    },
+    {
+      "table": "approval_decisions",
+      "name": "approval_decisions_decision_metadata_check",
+      "type": "c",
+      "definition": "CHECK ((jsonb_typeof(decision_metadata) = 'object'::text))",
+      "validated": true,
+      "columns": [
+        "decision_metadata"
+      ],
+      "target": null,
+      "target_columns": []
+    },
+    {
+      "table": "approval_decisions",
+      "name": "approval_decisions_payload_fingerprint_check",
+      "type": "c",
+      "definition": "CHECK ((payload_fingerprint ~ '^[0-9a-f]{64}$'::text))",
+      "validated": true,
+      "columns": [
+        "payload_fingerprint"
+      ],
+      "target": null,
+      "target_columns": []
+    },
+    {
+      "table": "approval_decisions",
+      "name": "approval_decisions_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)",
+      "validated": true,
+      "columns": [
+        "id"
+      ],
+      "target": null,
+      "target_columns": []
+    },
+    {
+      "table": "approval_requests",
+      "name": "approval_requests_payload_fingerprint_check",
+      "type": "c",
+      "definition": "CHECK ((payload_fingerprint ~ '^[0-9a-f]{64}$'::text))",
+      "validated": true,
+      "columns": [
+        "payload_fingerprint"
+      ],
+      "target": null,
+      "target_columns": []
+    },
+    {
+      "table": "approval_requests",
+      "name": "approval_requests_payload_snapshot_check",
+      "type": "c",
+      "definition": "CHECK ((jsonb_typeof(payload_snapshot) = 'object'::text))",
+      "validated": true,
+      "columns": [
+        "payload_snapshot"
+      ],
+      "target": null,
+      "target_columns": []
+    },
+    {
+      "table": "approval_requests",
+      "name": "approval_requests_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)",
+      "validated": true,
+      "columns": [
+        "id"
+      ],
+      "target": null,
+      "target_columns": []
+    },
+    {
+      "table": "approval_requests",
+      "name": "approval_requests_requested_by_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (requested_by) REFERENCES users(id)",
+      "validated": true,
+      "columns": [
+        "requested_by"
+      ],
+      "target": "users",
+      "target_columns": [
+        "id"
+      ]
+    },
+    {
+      "table": "approval_requests",
+      "name": "s0_approval_requests_status_check",
+      "type": "c",
+      "definition": "CHECK ((status = ANY (ARRAY['PENDING'::text, 'APPROVED'::text, 'REJECTED'::text, 'WITHDRAWN'::text, 'EXPIRED'::text, 'CANCELLED'::text])))",
+      "validated": true,
+      "columns": [
+        "status"
+      ],
+      "target": null,
+      "target_columns": []
+    },
+    {
+      "table": "automation_switch_events",
+      "name": "automation_switch_events_changed_by_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (changed_by) REFERENCES users(id)",
+      "validated": true,
+      "columns": [
+        "changed_by"
+      ],
+      "target": "users",
+      "target_columns": [
+        "id"
+      ]
+    },
+    {
+      "table": "automation_switch_events",
+      "name": "automation_switch_events_field_check",
+      "type": "c",
+      "definition": "CHECK ((field = ANY (ARRAY['enabled'::text, 'rollout_stage'::text])))",
+      "validated": true,
+      "columns": [
+        "field"
+      ],
+      "target": null,
+      "target_columns": []
+    },
+    {
+      "table": "automation_switch_events",
+      "name": "automation_switch_events_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)",
+      "validated": true,
+      "columns": [
+        "id"
+      ],
+      "target": null,
+      "target_columns": []
+    },
+    {
+      "table": "automation_switch_events",
+      "name": "automation_switch_events_reason_check",
+      "type": "c",
+      "definition": "CHECK ((length(TRIM(BOTH FROM reason)) >= 3))",
+      "validated": true,
+      "columns": [
+        "reason"
+      ],
+      "target": null,
+      "target_columns": []
+    },
+    {
+      "table": "automation_switch_events",
+      "name": "automation_switch_events_workflow_key_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (workflow_key) REFERENCES automation_switches(workflow_key)",
+      "validated": true,
+      "columns": [
+        "workflow_key"
+      ],
+      "target": "automation_switches",
+      "target_columns": [
+        "workflow_key"
+      ]
+    },
+    {
+      "table": "automation_switches",
+      "name": "automation_switches_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (workflow_key)",
+      "validated": true,
+      "columns": [
+        "workflow_key"
+      ],
+      "target": null,
+      "target_columns": []
+    },
+    {
+      "table": "automation_switches",
+      "name": "automation_switches_rollout_stage_check",
+      "type": "c",
+      "definition": "CHECK ((rollout_stage = ANY (ARRAY['DRAFT_AND_APPROVAL'::text, 'SELECTIVE'::text])))",
+      "validated": true,
+      "columns": [
+        "rollout_stage"
+      ],
+      "target": null,
+      "target_columns": []
+    },
+    {
+      "table": "automation_switches",
+      "name": "automation_switches_updated_by_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (updated_by) REFERENCES users(id)",
+      "validated": true,
+      "columns": [
+        "updated_by"
+      ],
+      "target": "users",
+      "target_columns": [
+        "id"
+      ]
+    },
+    {
+      "table": "automation_switches",
+      "name": "automation_switches_workflow_key_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (workflow_key) REFERENCES workflow_definitions(workflow_key)",
+      "validated": true,
+      "columns": [
+        "workflow_key"
+      ],
+      "target": "workflow_definitions",
+      "target_columns": [
+        "workflow_key"
+      ]
+    },
+    {
+      "table": "business_rule_values",
+      "name": "business_rule_values_check",
+      "type": "c",
+      "definition": "CHECK ((is_cleared OR (value IS NOT NULL)))",
+      "validated": true,
+      "columns": [
+        "is_cleared",
+        "value"
+      ],
+      "target": null,
+      "target_columns": []
+    },
+    {
+      "table": "business_rule_values",
+      "name": "business_rule_values_created_by_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (created_by) REFERENCES users(id)",
+      "validated": true,
+      "columns": [
+        "created_by"
+      ],
+      "target": "users",
+      "target_columns": [
+        "id"
+      ]
+    },
+    {
+      "table": "business_rule_values",
+      "name": "business_rule_values_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)",
+      "validated": true,
+      "columns": [
+        "id"
+      ],
+      "target": null,
+      "target_columns": []
+    },
+    {
+      "table": "business_rule_values",
+      "name": "business_rule_values_reason_check",
+      "type": "c",
+      "definition": "CHECK ((length(TRIM(BOTH FROM reason)) >= 3))",
+      "validated": true,
+      "columns": [
+        "reason"
+      ],
+      "target": null,
+      "target_columns": []
+    },
+    {
+      "table": "business_rule_values",
+      "name": "business_rule_values_rule_key_check",
+      "type": "c",
+      "definition": "CHECK ((rule_key ~ '^[a-z][a-z0-9_.]+$'::text))",
+      "validated": true,
+      "columns": [
+        "rule_key"
+      ],
+      "target": null,
+      "target_columns": []
+    },
+    {
+      "table": "business_rule_values",
+      "name": "business_rule_values_rule_key_version_key",
+      "type": "u",
+      "definition": "UNIQUE (rule_key, version)",
+      "validated": true,
+      "columns": [
+        "rule_key",
+        "version"
+      ],
+      "target": null,
+      "target_columns": []
+    },
+    {
+      "table": "business_rule_values",
+      "name": "business_rule_values_version_check",
+      "type": "c",
+      "definition": "CHECK ((version > 0))",
+      "validated": true,
+      "columns": [
+        "version"
+      ],
+      "target": null,
+      "target_columns": []
+    },
+    {
+      "table": "customer_message_checklist",
+      "name": "customer_message_checklist_category_check",
+      "type": "c",
+      "definition": "CHECK ((category ~ '^[a-z][a-z0-9_]+$'::text))",
+      "validated": true,
+      "columns": [
+        "category"
+      ],
+      "target": null,
+      "target_columns": []
+    },
+    {
+      "table": "customer_message_checklist",
+      "name": "customer_message_checklist_customer_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (customer_id) REFERENCES customers(id)",
+      "validated": true,
+      "columns": [
+        "customer_id"
+      ],
+      "target": "customers",
+      "target_columns": [
+        "id"
+      ]
+    },
+    {
+      "table": "customer_message_checklist",
+      "name": "customer_message_checklist_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (customer_id, category)",
+      "validated": true,
+      "columns": [
+        "customer_id",
+        "category"
+      ],
+      "target": null,
+      "target_columns": []
+    },
+    {
+      "table": "customer_message_checklist",
+      "name": "customer_message_checklist_reason_check",
+      "type": "c",
+      "definition": "CHECK ((length(TRIM(BOTH FROM reason)) >= 3))",
+      "validated": true,
+      "columns": [
+        "reason"
+      ],
+      "target": null,
+      "target_columns": []
+    },
+    {
+      "table": "customer_message_checklist",
+      "name": "customer_message_checklist_updated_by_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (updated_by) REFERENCES users(id)",
+      "validated": true,
+      "columns": [
+        "updated_by"
+      ],
+      "target": "users",
+      "target_columns": [
+        "id"
+      ]
+    },
+    {
+      "table": "email_accounts",
+      "name": "email_accounts_created_by_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (created_by) REFERENCES users(id)",
+      "validated": true,
+      "columns": [
+        "created_by"
+      ],
+      "target": "users",
+      "target_columns": [
+        "id"
+      ]
+    },
+    {
+      "table": "email_accounts",
+      "name": "email_accounts_granted_scopes_check",
+      "type": "c",
+      "definition": "CHECK ((jsonb_typeof(granted_scopes) = 'array'::text))",
+      "validated": true,
+      "columns": [
+        "granted_scopes"
+      ],
+      "target": null,
+      "target_columns": []
+    },
+    {
+      "table": "email_accounts",
+      "name": "email_accounts_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)",
+      "validated": true,
+      "columns": [
+        "id"
+      ],
+      "target": null,
+      "target_columns": []
+    },
+    {
+      "table": "email_draft_documents",
+      "name": "email_draft_documents_created_by_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (created_by) REFERENCES users(id)",
+      "validated": true,
+      "columns": [
+        "created_by"
+      ],
+      "target": "users",
+      "target_columns": [
+        "id"
+      ]
+    },
+    {
+      "table": "email_draft_documents",
+      "name": "email_draft_documents_email_draft_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (email_draft_id) REFERENCES email_drafts(id)",
+      "validated": true,
+      "columns": [
+        "email_draft_id"
+      ],
+      "target": "email_drafts",
+      "target_columns": [
+        "id"
+      ]
+    },
+    {
+      "table": "email_draft_documents",
+      "name": "email_draft_documents_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (email_draft_id, source_document_id)",
+      "validated": true,
+      "columns": [
+        "email_draft_id",
+        "source_document_id"
+      ],
+      "target": null,
+      "target_columns": []
+    },
+    {
+      "table": "email_draft_documents",
+      "name": "email_draft_documents_source_document_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (source_document_id) REFERENCES source_documents(id)",
+      "validated": true,
+      "columns": [
+        "source_document_id"
+      ],
+      "target": "source_documents",
+      "target_columns": [
+        "id"
+      ]
+    },
+    {
+      "table": "email_drafts",
+      "name": "email_drafts_approval_request_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (approval_request_id) REFERENCES approval_requests(id)",
+      "validated": true,
+      "columns": [
+        "approval_request_id"
+      ],
+      "target": "approval_requests",
+      "target_columns": [
+        "id"
+      ]
+    },
+    {
+      "table": "email_drafts",
+      "name": "email_drafts_cc_addresses_check",
+      "type": "c",
+      "definition": "CHECK ((jsonb_typeof(cc_addresses) = 'array'::text))",
+      "validated": true,
+      "columns": [
+        "cc_addresses"
+      ],
+      "target": null,
+      "target_columns": []
+    },
+    {
+      "table": "email_drafts",
+      "name": "email_drafts_content_fingerprint_check",
+      "type": "c",
+      "definition": "CHECK ((content_fingerprint ~ '^[0-9a-f]{64}$'::text))",
+      "validated": true,
+      "columns": [
+        "content_fingerprint"
+      ],
+      "target": null,
+      "target_columns": []
+    },
+    {
+      "table": "email_drafts",
+      "name": "email_drafts_context_state_check",
+      "type": "c",
+      "definition": "CHECK ((context_state = ANY (ARRAY['UNVERIFIED'::text, 'READY'::text, 'NEEDS_INFORMATION'::text])))",
+      "validated": true,
+      "columns": [
+        "context_state"
+      ],
+      "target": null,
+      "target_columns": []
+    },
+    {
+      "table": "email_drafts",
+      "name": "email_drafts_created_by_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (created_by) REFERENCES users(id)",
+      "validated": true,
+      "columns": [
+        "created_by"
+      ],
+      "target": "users",
+      "target_columns": [
+        "id"
+      ]
+    },
+    {
+      "table": "email_drafts",
+      "name": "email_drafts_customer_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (customer_id) REFERENCES customers(id)",
+      "validated": true,
+      "columns": [
+        "customer_id"
+      ],
+      "target": "customers",
+      "target_columns": [
+        "id"
+      ]
+    },
+    {
+      "table": "email_drafts",
+      "name": "email_drafts_enquiry_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (enquiry_id) REFERENCES enquiries(id)",
+      "validated": true,
+      "columns": [
+        "enquiry_id"
+      ],
+      "target": "enquiries",
+      "target_columns": [
+        "id"
+      ]
+    },
+    {
+      "table": "email_drafts",
+      "name": "email_drafts_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)",
+      "validated": true,
+      "columns": [
+        "id"
+      ],
+      "target": null,
+      "target_columns": []
+    },
+    {
+      "table": "email_drafts",
+      "name": "email_drafts_quotation_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (quotation_id) REFERENCES quotations(id)",
+      "validated": true,
+      "columns": [
+        "quotation_id"
+      ],
+      "target": "quotations",
+      "target_columns": [
+        "id"
+      ]
+    },
+    {
+      "table": "email_drafts",
+      "name": "email_drafts_recipient_addresses_check",
+      "type": "c",
+      "definition": "CHECK ((jsonb_typeof(recipient_addresses) = 'array'::text))",
+      "validated": true,
+      "columns": [
+        "recipient_addresses"
+      ],
+      "target": null,
+      "target_columns": []
+    },
+    {
+      "table": "email_drafts",
+      "name": "email_drafts_sales_order_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (sales_order_id) REFERENCES sales_orders(id)",
+      "validated": true,
+      "columns": [
+        "sales_order_id"
+      ],
+      "target": "sales_orders",
+      "target_columns": [
+        "id"
+      ]
+    },
+    {
+      "table": "email_drafts",
+      "name": "email_drafts_updated_by_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (updated_by) REFERENCES users(id)",
+      "validated": true,
+      "columns": [
+        "updated_by"
+      ],
+      "target": "users",
+      "target_columns": [
+        "id"
+      ]
+    },
+    {
+      "table": "email_drafts",
+      "name": "email_drafts_workflow_execution_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (workflow_execution_id) REFERENCES workflow_executions(id)",
+      "validated": true,
+      "columns": [
+        "workflow_execution_id"
+      ],
+      "target": "workflow_executions",
+      "target_columns": [
+        "id"
+      ]
+    },
+    {
+      "table": "email_drafts",
+      "name": "email_drafts_workflow_key_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (workflow_key) REFERENCES workflow_definitions(workflow_key)",
+      "validated": true,
+      "columns": [
+        "workflow_key"
+      ],
+      "target": "workflow_definitions",
+      "target_columns": [
+        "workflow_key"
+      ]
+    },
+    {
+      "table": "email_messages",
+      "name": "email_messages_cc_addresses_check",
+      "type": "c",
+      "definition": "CHECK ((jsonb_typeof(cc_addresses) = 'array'::text))",
+      "validated": true,
+      "columns": [
+        "cc_addresses"
+      ],
+      "target": null,
+      "target_columns": []
+    },
+    {
+      "table": "email_messages",
+      "name": "email_messages_email_account_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (email_account_id) REFERENCES email_accounts(id)",
+      "validated": true,
+      "columns": [
+        "email_account_id"
+      ],
+      "target": "email_accounts",
+      "target_columns": [
+        "id"
+      ]
+    },
+    {
+      "table": "email_messages",
+      "name": "email_messages_parsed_headers_check",
+      "type": "c",
+      "definition": "CHECK ((jsonb_typeof(parsed_headers) = 'object'::text))",
+      "validated": true,
+      "columns": [
+        "parsed_headers"
+      ],
+      "target": null,
+      "target_columns": []
+    },
+    {
+      "table": "email_messages",
+      "name": "email_messages_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)",
+      "validated": true,
+      "columns": [
+        "id"
+      ],
+      "target": null,
+      "target_columns": []
+    },
+    {
+      "table": "email_messages",
+      "name": "email_messages_recipient_addresses_check",
+      "type": "c",
+      "definition": "CHECK ((jsonb_typeof(recipient_addresses) = 'array'::text))",
+      "validated": true,
+      "columns": [
+        "recipient_addresses"
+      ],
+      "target": null,
+      "target_columns": []
+    },
+    {
+      "table": "email_messages",
+      "name": "email_messages_thread_account_fk",
+      "type": "f",
+      "definition": "FOREIGN KEY (thread_id, email_account_id) REFERENCES email_threads(id, email_account_id)",
+      "validated": true,
+      "columns": [
+        "thread_id",
+        "email_account_id"
+      ],
+      "target": "email_threads",
+      "target_columns": [
+        "id",
+        "email_account_id"
+      ]
+    },
+    {
+      "table": "email_messages",
+      "name": "email_messages_thread_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (thread_id) REFERENCES email_threads(id)",
+      "validated": true,
+      "columns": [
+        "thread_id"
+      ],
+      "target": "email_threads",
+      "target_columns": [
+        "id"
+      ]
+    },
+    {
+      "table": "email_send_attempts",
+      "name": "email_send_attempts_approval_decision_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (approval_decision_id) REFERENCES approval_decisions(id)",
+      "validated": true,
+      "columns": [
+        "approval_decision_id"
+      ],
+      "target": "approval_decisions",
+      "target_columns": [
+        "id"
+      ]
+    },
+    {
+      "table": "email_send_attempts",
+      "name": "email_send_attempts_email_draft_id_attempt_number_key",
+      "type": "u",
+      "definition": "UNIQUE (email_draft_id, attempt_number)",
+      "validated": true,
+      "columns": [
+        "email_draft_id",
+        "attempt_number"
+      ],
+      "target": null,
+      "target_columns": []
+    },
+    {
+      "table": "email_send_attempts",
+      "name": "email_send_attempts_email_draft_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (email_draft_id) REFERENCES email_drafts(id)",
+      "validated": true,
+      "columns": [
+        "email_draft_id"
+      ],
+      "target": "email_drafts",
+      "target_columns": [
+        "id"
+      ]
+    },
+    {
+      "table": "email_send_attempts",
+      "name": "email_send_attempts_email_draft_id_idempotency_key_key",
+      "type": "u",
+      "definition": "UNIQUE (email_draft_id, idempotency_key)",
+      "validated": true,
+      "columns": [
+        "email_draft_id",
+        "idempotency_key"
+      ],
+      "target": null,
+      "target_columns": []
+    },
+    {
+      "table": "email_send_attempts",
+      "name": "email_send_attempts_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)",
+      "validated": true,
+      "columns": [
+        "id"
+      ],
+      "target": null,
+      "target_columns": []
+    },
+    {
+      "table": "email_threads",
+      "name": "email_threads_customer_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (customer_id) REFERENCES customers(id)",
+      "validated": true,
+      "columns": [
+        "customer_id"
+      ],
+      "target": "customers",
+      "target_columns": [
+        "id"
+      ]
+    },
+    {
+      "table": "email_threads",
+      "name": "email_threads_email_account_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (email_account_id) REFERENCES email_accounts(id)",
+      "validated": true,
+      "columns": [
+        "email_account_id"
+      ],
+      "target": "email_accounts",
+      "target_columns": [
+        "id"
+      ]
+    },
+    {
+      "table": "email_threads",
+      "name": "email_threads_email_account_id_provider_thread_id_key",
+      "type": "u",
+      "definition": "UNIQUE (email_account_id, provider_thread_id)",
+      "validated": true,
+      "columns": [
+        "email_account_id",
+        "provider_thread_id"
+      ],
+      "target": null,
+      "target_columns": []
+    },
+    {
+      "table": "email_threads",
+      "name": "email_threads_enquiry_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (enquiry_id) REFERENCES enquiries(id)",
+      "validated": true,
+      "columns": [
+        "enquiry_id"
+      ],
+      "target": "enquiries",
+      "target_columns": [
+        "id"
+      ]
+    },
+    {
+      "table": "email_threads",
+      "name": "email_threads_id_account_unique",
+      "type": "u",
+      "definition": "UNIQUE (id, email_account_id)",
+      "validated": true,
+      "columns": [
+        "id",
+        "email_account_id"
+      ],
+      "target": null,
+      "target_columns": []
+    },
+    {
+      "table": "email_threads",
+      "name": "email_threads_invoice_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (invoice_id) REFERENCES sales_invoices(id)",
+      "validated": true,
+      "columns": [
+        "invoice_id"
+      ],
+      "target": "sales_invoices",
+      "target_columns": [
+        "id"
+      ]
+    },
+    {
+      "table": "email_threads",
+      "name": "email_threads_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)",
+      "validated": true,
+      "columns": [
+        "id"
+      ],
+      "target": null,
+      "target_columns": []
+    },
+    {
+      "table": "email_threads",
+      "name": "email_threads_quotation_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (quotation_id) REFERENCES quotations(id)",
+      "validated": true,
+      "columns": [
+        "quotation_id"
+      ],
+      "target": "quotations",
+      "target_columns": [
+        "id"
+      ]
+    },
+    {
+      "table": "email_threads",
+      "name": "email_threads_sales_order_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (sales_order_id) REFERENCES sales_orders(id)",
+      "validated": true,
+      "columns": [
+        "sales_order_id"
+      ],
+      "target": "sales_orders",
+      "target_columns": [
+        "id"
+      ]
+    },
+    {
+      "table": "exception_cases",
+      "name": "exception_cases_approval_request_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (approval_request_id) REFERENCES approval_requests(id)",
+      "validated": true,
+      "columns": [
+        "approval_request_id"
+      ],
+      "target": "approval_requests",
+      "target_columns": [
+        "id"
+      ]
+    },
+    {
+      "table": "exception_cases",
+      "name": "exception_cases_approval_request_id_key",
+      "type": "u",
+      "definition": "UNIQUE (approval_request_id)",
+      "validated": true,
+      "columns": [
+        "approval_request_id"
+      ],
+      "target": null,
+      "target_columns": []
+    },
+    {
+      "table": "exception_cases",
+      "name": "exception_cases_check",
+      "type": "c",
+      "definition": "CHECK (((status = 'OPEN'::text) OR ((decided_by IS NOT NULL) AND (decided_at IS NOT NULL) AND (length(TRIM(BOTH FROM COALESCE(decision_reason, ''::text))) >= 3))))",
+      "validated": true,
+      "columns": [
+        "status",
+        "decided_by",
+        "decided_at",
+        "decision_reason"
+      ],
+      "target": null,
+      "target_columns": []
+    },
+    {
+      "table": "exception_cases",
+      "name": "exception_cases_check1",
+      "type": "c",
+      "definition": "CHECK (((decided_by IS NULL) OR ((decided_by <> raised_by) AND (decided_by IS DISTINCT FROM record_creator_id))))",
+      "validated": true,
+      "columns": [
+        "decided_by",
+        "raised_by",
+        "record_creator_id"
+      ],
+      "target": null,
+      "target_columns": []
+    },
+    {
+      "table": "exception_cases",
+      "name": "exception_cases_decided_by_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (decided_by) REFERENCES users(id)",
+      "validated": true,
+      "columns": [
+        "decided_by"
+      ],
+      "target": "users",
+      "target_columns": [
+        "id"
+      ]
+    },
+    {
+      "table": "exception_cases",
+      "name": "exception_cases_department_check",
+      "type": "c",
+      "definition": "CHECK ((department = ANY (ARRAY['SALES'::text, 'OPERATIONS'::text, 'ACCOUNTS'::text, 'CUSTOMER_SUPPORT'::text])))",
+      "validated": true,
+      "columns": [
+        "department"
+      ],
+      "target": null,
+      "target_columns": []
+    },
+    {
+      "table": "exception_cases",
+      "name": "exception_cases_exception_type_check",
+      "type": "c",
+      "definition": "CHECK ((exception_type ~ '^[A-Z][A-Z_]+$'::text))",
+      "validated": true,
+      "columns": [
+        "exception_type"
+      ],
+      "target": null,
+      "target_columns": []
+    },
+    {
+      "table": "exception_cases",
+      "name": "exception_cases_fingerprint_check",
+      "type": "c",
+      "definition": "CHECK ((fingerprint ~ '^[0-9a-f]{64}$'::text))",
+      "validated": true,
+      "columns": [
+        "fingerprint"
+      ],
+      "target": null,
+      "target_columns": []
+    },
+    {
+      "table": "exception_cases",
+      "name": "exception_cases_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)",
+      "validated": true,
+      "columns": [
+        "id"
+      ],
+      "target": null,
+      "target_columns": []
+    },
+    {
+      "table": "exception_cases",
+      "name": "exception_cases_raised_by_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (raised_by) REFERENCES users(id)",
+      "validated": true,
+      "columns": [
+        "raised_by"
+      ],
+      "target": "users",
+      "target_columns": [
+        "id"
+      ]
+    },
+    {
+      "table": "exception_cases",
+      "name": "exception_cases_record_creator_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (record_creator_id) REFERENCES users(id)",
+      "validated": true,
+      "columns": [
+        "record_creator_id"
+      ],
+      "target": "users",
+      "target_columns": [
+        "id"
+      ]
+    },
+    {
+      "table": "exception_cases",
+      "name": "exception_cases_status_check",
+      "type": "c",
+      "definition": "CHECK ((status = ANY (ARRAY['OPEN'::text, 'APPROVED'::text, 'REJECTED'::text, 'WITHDRAWN'::text])))",
+      "validated": true,
+      "columns": [
+        "status"
+      ],
+      "target": null,
+      "target_columns": []
+    },
+    {
+      "table": "job_logs",
+      "name": "job_logs_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)",
+      "validated": true,
+      "columns": [
+        "id"
+      ],
+      "target": null,
+      "target_columns": []
+    },
+    {
+      "table": "job_logs",
+      "name": "job_logs_status_check",
+      "type": "c",
+      "definition": "CHECK ((status = ANY (ARRAY['RUNNING'::text, 'SUCCEEDED'::text, 'FAILED'::text, 'SKIPPED'::text])))",
+      "validated": true,
+      "columns": [
+        "status"
+      ],
+      "target": null,
+      "target_columns": []
+    },
+    {
+      "table": "manual_response_exceptions",
+      "name": "manual_response_exceptions_archived_by_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (archived_by) REFERENCES users(id)",
+      "validated": true,
+      "columns": [
+        "archived_by"
+      ],
+      "target": "users",
+      "target_columns": [
+        "id"
+      ]
+    },
+    {
+      "table": "manual_response_exceptions",
+      "name": "manual_response_exceptions_check",
+      "type": "c",
+      "definition": "CHECK (((customer_id IS NULL) <> (item_id IS NULL)))",
+      "validated": true,
+      "columns": [
+        "customer_id",
+        "item_id"
+      ],
+      "target": null,
+      "target_columns": []
+    },
+    {
+      "table": "manual_response_exceptions",
+      "name": "manual_response_exceptions_created_by_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (created_by) REFERENCES users(id)",
+      "validated": true,
+      "columns": [
+        "created_by"
+      ],
+      "target": "users",
+      "target_columns": [
+        "id"
+      ]
+    },
+    {
+      "table": "manual_response_exceptions",
+      "name": "manual_response_exceptions_customer_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (customer_id) REFERENCES customers(id)",
+      "validated": true,
+      "columns": [
+        "customer_id"
+      ],
+      "target": "customers",
+      "target_columns": [
+        "id"
+      ]
+    },
+    {
+      "table": "manual_response_exceptions",
+      "name": "manual_response_exceptions_item_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (item_id) REFERENCES items(id)",
+      "validated": true,
+      "columns": [
+        "item_id"
+      ],
+      "target": "items",
+      "target_columns": [
+        "id"
+      ]
+    },
+    {
+      "table": "manual_response_exceptions",
+      "name": "manual_response_exceptions_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)",
+      "validated": true,
+      "columns": [
+        "id"
+      ],
+      "target": null,
+      "target_columns": []
+    },
+    {
+      "table": "manual_response_exceptions",
+      "name": "manual_response_exceptions_reason_check",
+      "type": "c",
+      "definition": "CHECK ((length(TRIM(BOTH FROM reason)) >= 3))",
+      "validated": true,
+      "columns": [
+        "reason"
+      ],
+      "target": null,
+      "target_columns": []
+    },
+    {
+      "table": "manual_response_exceptions",
+      "name": "manual_response_exceptions_status_check",
+      "type": "c",
+      "definition": "CHECK ((status = ANY (ARRAY['ACTIVE'::text, 'ARCHIVED'::text])))",
+      "validated": true,
+      "columns": [
+        "status"
+      ],
+      "target": null,
+      "target_columns": []
+    },
+    {
+      "table": "notifications",
+      "name": "notifications_attempt_count_check",
+      "type": "c",
+      "definition": "CHECK ((attempt_count >= 0))",
+      "validated": true,
+      "columns": [
+        "attempt_count"
+      ],
+      "target": null,
+      "target_columns": []
+    },
+    {
+      "table": "notifications",
+      "name": "notifications_payload_check",
+      "type": "c",
+      "definition": "CHECK ((jsonb_typeof(payload) = 'object'::text))",
+      "validated": true,
+      "columns": [
+        "payload"
+      ],
+      "target": null,
+      "target_columns": []
+    },
+    {
+      "table": "notifications",
+      "name": "notifications_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)",
+      "validated": true,
+      "columns": [
+        "id"
+      ],
+      "target": null,
+      "target_columns": []
+    },
+    {
+      "table": "notifications",
+      "name": "notifications_reminder_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (reminder_id) REFERENCES reminders(id)",
+      "validated": true,
+      "columns": [
+        "reminder_id"
+      ],
+      "target": "reminders",
+      "target_columns": [
+        "id"
+      ]
+    },
+    {
+      "table": "notifications",
+      "name": "notifications_user_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (user_id) REFERENCES users(id)",
+      "validated": true,
+      "columns": [
+        "user_id"
+      ],
+      "target": "users",
+      "target_columns": [
+        "id"
+      ]
+    },
+    {
+      "table": "notifications",
+      "name": "s0_notifications_delivery_state_check",
+      "type": "c",
+      "definition": "CHECK ((delivery_state = ANY (ARRAY['PENDING'::text, 'DELIVERED'::text, 'FAILED'::text, 'READ'::text])))",
+      "validated": true,
+      "columns": [
+        "delivery_state"
+      ],
+      "target": null,
+      "target_columns": []
+    },
+    {
+      "table": "task_events",
+      "name": "task_events_actor_user_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (actor_user_id) REFERENCES users(id)",
+      "validated": true,
+      "columns": [
+        "actor_user_id"
+      ],
+      "target": "users",
+      "target_columns": [
+        "id"
+      ]
+    },
+    {
+      "table": "task_events",
+      "name": "task_events_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)",
+      "validated": true,
+      "columns": [
+        "id"
+      ],
+      "target": null,
+      "target_columns": []
+    },
+    {
+      "table": "task_events",
+      "name": "task_events_task_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (task_id) REFERENCES tasks(id)",
+      "validated": true,
+      "columns": [
+        "task_id"
+      ],
+      "target": "tasks",
+      "target_columns": [
+        "id"
+      ]
+    },
+    {
+      "table": "tasks",
+      "name": "tasks_backup_user_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (backup_user_id) REFERENCES users(id)",
+      "validated": true,
+      "columns": [
+        "backup_user_id"
+      ],
+      "target": "users",
+      "target_columns": [
+        "id"
+      ]
+    },
+    {
+      "table": "tasks",
+      "name": "tasks_check",
+      "type": "c",
+      "definition": "CHECK (((NOT is_deleted) OR (length(TRIM(BOTH FROM COALESCE(deleted_reason, ''::text))) >= 3)))",
+      "validated": true,
+      "columns": [
+        "is_deleted",
+        "deleted_reason"
+      ],
+      "target": null,
+      "target_columns": []
+    },
+    {
+      "table": "tasks",
+      "name": "tasks_check1",
+      "type": "c",
+      "definition": "CHECK (((status <> 'FORWARDED'::text) OR (forwarded_to_task_id IS NOT NULL)))",
+      "validated": true,
+      "columns": [
+        "status",
+        "forwarded_to_task_id"
+      ],
+      "target": null,
+      "target_columns": []
+    },
+    {
+      "table": "tasks",
+      "name": "tasks_created_by_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (created_by) REFERENCES users(id)",
+      "validated": true,
+      "columns": [
+        "created_by"
+      ],
+      "target": "users",
+      "target_columns": [
+        "id"
+      ]
+    },
+    {
+      "table": "tasks",
+      "name": "tasks_department_check",
+      "type": "c",
+      "definition": "CHECK ((department = ANY (ARRAY['SALES'::text, 'OPERATIONS'::text, 'ACCOUNTS'::text, 'CUSTOMER_SUPPORT'::text])))",
+      "validated": true,
+      "columns": [
+        "department"
+      ],
+      "target": null,
+      "target_columns": []
+    },
+    {
+      "table": "tasks",
+      "name": "tasks_forwarded_to_task_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (forwarded_to_task_id) REFERENCES tasks(id)",
+      "validated": true,
+      "columns": [
+        "forwarded_to_task_id"
+      ],
+      "target": "tasks",
+      "target_columns": [
+        "id"
+      ]
+    },
+    {
+      "table": "tasks",
+      "name": "tasks_owner_user_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (owner_user_id) REFERENCES users(id)",
+      "validated": true,
+      "columns": [
+        "owner_user_id"
+      ],
+      "target": "users",
+      "target_columns": [
+        "id"
+      ]
+    },
+    {
+      "table": "tasks",
+      "name": "tasks_parent_task_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (parent_task_id) REFERENCES tasks(id)",
+      "validated": true,
+      "columns": [
+        "parent_task_id"
+      ],
+      "target": "tasks",
+      "target_columns": [
+        "id"
+      ]
+    },
+    {
+      "table": "tasks",
+      "name": "tasks_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)",
+      "validated": true,
+      "columns": [
+        "id"
+      ],
+      "target": null,
+      "target_columns": []
+    },
+    {
+      "table": "tasks",
+      "name": "tasks_source_check",
+      "type": "c",
+      "definition": "CHECK ((source = ANY (ARRAY['MANUAL'::text, 'AUTO'::text])))",
+      "validated": true,
+      "columns": [
+        "source"
+      ],
+      "target": null,
+      "target_columns": []
+    },
+    {
+      "table": "tasks",
+      "name": "tasks_status_check",
+      "type": "c",
+      "definition": "CHECK ((status = ANY (ARRAY['OPEN'::text, 'IN_PROGRESS'::text, 'FORWARDED'::text, 'DONE'::text])))",
+      "validated": true,
+      "columns": [
+        "status"
+      ],
+      "target": null,
+      "target_columns": []
+    },
+    {
+      "table": "tasks",
+      "name": "tasks_title_check",
+      "type": "c",
+      "definition": "CHECK ((length(TRIM(BOTH FROM title)) > 0))",
+      "validated": true,
+      "columns": [
+        "title"
+      ],
+      "target": null,
+      "target_columns": []
+    },
+    {
+      "table": "tasks",
+      "name": "tasks_updated_by_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (updated_by) REFERENCES users(id)",
+      "validated": true,
+      "columns": [
+        "updated_by"
+      ],
+      "target": "users",
+      "target_columns": [
+        "id"
+      ]
+    },
+    {
+      "table": "work_item_events",
+      "name": "work_item_events_actor_user_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (actor_user_id) REFERENCES users(id)",
+      "validated": true,
+      "columns": [
+        "actor_user_id"
+      ],
+      "target": "users",
+      "target_columns": [
+        "id"
+      ]
+    },
+    {
+      "table": "work_item_events",
+      "name": "work_item_events_from_user_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (from_user_id) REFERENCES users(id)",
+      "validated": true,
+      "columns": [
+        "from_user_id"
+      ],
+      "target": "users",
+      "target_columns": [
+        "id"
+      ]
+    },
+    {
+      "table": "work_item_events",
+      "name": "work_item_events_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)",
+      "validated": true,
+      "columns": [
+        "id"
+      ],
+      "target": null,
+      "target_columns": []
+    },
+    {
+      "table": "work_item_events",
+      "name": "work_item_events_to_user_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (to_user_id) REFERENCES users(id)",
+      "validated": true,
+      "columns": [
+        "to_user_id"
+      ],
+      "target": "users",
+      "target_columns": [
+        "id"
+      ]
+    },
+    {
+      "table": "work_item_events",
+      "name": "work_item_events_work_item_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (work_item_id) REFERENCES work_items(id)",
+      "validated": true,
+      "columns": [
+        "work_item_id"
+      ],
+      "target": "work_items",
+      "target_columns": [
+        "id"
+      ]
+    },
+    {
+      "table": "work_items",
+      "name": "work_items_backup_user_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (backup_user_id) REFERENCES users(id)",
+      "validated": true,
+      "columns": [
+        "backup_user_id"
+      ],
+      "target": "users",
+      "target_columns": [
+        "id"
+      ]
+    },
+    {
+      "table": "work_items",
+      "name": "work_items_check",
+      "type": "c",
+      "definition": "CHECK (((backup_user_id IS NULL) OR (owner_user_id IS NULL) OR (backup_user_id <> owner_user_id)))",
+      "validated": true,
+      "columns": [
+        "backup_user_id",
+        "owner_user_id"
+      ],
+      "target": null,
+      "target_columns": []
+    },
+    {
+      "table": "work_items",
+      "name": "work_items_check1",
+      "type": "c",
+      "definition": "CHECK (((NOT is_deleted) OR (length(TRIM(BOTH FROM COALESCE(deleted_reason, ''::text))) >= 3)))",
+      "validated": true,
+      "columns": [
+        "is_deleted",
+        "deleted_reason"
+      ],
+      "target": null,
+      "target_columns": []
+    },
+    {
+      "table": "work_items",
+      "name": "work_items_created_by_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (created_by) REFERENCES users(id)",
+      "validated": true,
+      "columns": [
+        "created_by"
+      ],
+      "target": "users",
+      "target_columns": [
+        "id"
+      ]
+    },
+    {
+      "table": "work_items",
+      "name": "work_items_department_check",
+      "type": "c",
+      "definition": "CHECK ((department = ANY (ARRAY['SALES'::text, 'OPERATIONS'::text, 'ACCOUNTS'::text, 'CUSTOMER_SUPPORT'::text])))",
+      "validated": true,
+      "columns": [
+        "department"
+      ],
+      "target": null,
+      "target_columns": []
+    },
+    {
+      "table": "work_items",
+      "name": "work_items_entity_type_check",
+      "type": "c",
+      "definition": "CHECK ((entity_type ~ '^[A-Z][A-Z_]+$'::text))",
+      "validated": true,
+      "columns": [
+        "entity_type"
+      ],
+      "target": null,
+      "target_columns": []
+    },
+    {
+      "table": "work_items",
+      "name": "work_items_entity_type_entity_id_key",
+      "type": "u",
+      "definition": "UNIQUE (entity_type, entity_id)",
+      "validated": true,
+      "columns": [
+        "entity_type",
+        "entity_id"
+      ],
+      "target": null,
+      "target_columns": []
+    },
+    {
+      "table": "work_items",
+      "name": "work_items_escalated_to_user_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (escalated_to_user_id) REFERENCES users(id)",
+      "validated": true,
+      "columns": [
+        "escalated_to_user_id"
+      ],
+      "target": "users",
+      "target_columns": [
+        "id"
+      ]
+    },
+    {
+      "table": "work_items",
+      "name": "work_items_escalation_level_check",
+      "type": "c",
+      "definition": "CHECK (((escalation_level >= 0) AND (escalation_level <= 2)))",
+      "validated": true,
+      "columns": [
+        "escalation_level"
+      ],
+      "target": null,
+      "target_columns": []
+    },
+    {
+      "table": "work_items",
+      "name": "work_items_owner_user_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (owner_user_id) REFERENCES users(id)",
+      "validated": true,
+      "columns": [
+        "owner_user_id"
+      ],
+      "target": "users",
+      "target_columns": [
+        "id"
+      ]
+    },
+    {
+      "table": "work_items",
+      "name": "work_items_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)",
+      "validated": true,
+      "columns": [
+        "id"
+      ],
+      "target": null,
+      "target_columns": []
+    },
+    {
+      "table": "work_items",
+      "name": "work_items_sla_state_check",
+      "type": "c",
+      "definition": "CHECK ((sla_state = ANY (ARRAY['NOT_CONFIGURED'::text, 'RUNNING'::text, 'BREACHED'::text, 'MET'::text, 'STOPPED'::text])))",
+      "validated": true,
+      "columns": [
+        "sla_state"
+      ],
+      "target": null,
+      "target_columns": []
+    },
+    {
+      "table": "work_items",
+      "name": "work_items_status_check",
+      "type": "c",
+      "definition": "CHECK ((status = ANY (ARRAY['OPEN'::text, 'IN_PROGRESS'::text, 'WAITING'::text, 'DONE'::text, 'CANCELLED'::text])))",
+      "validated": true,
+      "columns": [
+        "status"
+      ],
+      "target": null,
+      "target_columns": []
+    },
+    {
+      "table": "work_items",
+      "name": "work_items_updated_by_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (updated_by) REFERENCES users(id)",
+      "validated": true,
+      "columns": [
+        "updated_by"
+      ],
+      "target": "users",
+      "target_columns": [
+        "id"
+      ]
+    }
+  ],
+  "indexes": [
+    {
+      "table": "approval_decisions",
+      "name": "approval_decisions_pkey",
+      "definition": "CREATE UNIQUE INDEX approval_decisions_pkey ON public.approval_decisions USING btree (id)",
+      "valid": true,
+      "unique": true,
+      "predicate": null,
+      "columns": [
+        "id"
+      ]
+    },
+    {
+      "table": "approval_decisions",
+      "name": "approval_decisions_request_idx",
+      "definition": "CREATE INDEX approval_decisions_request_idx ON public.approval_decisions USING btree (approval_request_id, decided_at DESC)",
+      "valid": true,
+      "unique": false,
+      "predicate": null,
+      "columns": [
+        "approval_request_id",
+        "decided_at"
+      ]
+    },
+    {
+      "table": "approval_decisions",
+      "name": "s0_fk_5087dbb90be4fb41",
+      "definition": "CREATE INDEX s0_fk_5087dbb90be4fb41 ON public.approval_decisions USING btree (decided_by)",
+      "valid": true,
+      "unique": false,
+      "predicate": null,
+      "columns": [
+        "decided_by"
+      ]
+    },
+    {
+      "table": "approval_requests",
+      "name": "approval_requests_pkey",
+      "definition": "CREATE UNIQUE INDEX approval_requests_pkey ON public.approval_requests USING btree (id)",
+      "valid": true,
+      "unique": true,
+      "predicate": null,
+      "columns": [
+        "id"
+      ]
+    },
+    {
+      "table": "approval_requests",
+      "name": "approval_requests_requester_idx",
+      "definition": "CREATE INDEX approval_requests_requester_idx ON public.approval_requests USING btree (requested_by, created_at DESC)",
+      "valid": true,
+      "unique": false,
+      "predicate": null,
+      "columns": [
+        "requested_by",
+        "created_at"
+      ]
+    },
+    {
+      "table": "approval_requests",
+      "name": "approval_requests_status_idx",
+      "definition": "CREATE INDEX approval_requests_status_idx ON public.approval_requests USING btree (status, created_at)",
+      "valid": true,
+      "unique": false,
+      "predicate": null,
+      "columns": [
+        "status",
+        "created_at"
+      ]
+    },
+    {
+      "table": "approval_requests",
+      "name": "s0_filter_3a2cb845592a6572",
+      "definition": "CREATE INDEX s0_filter_3a2cb845592a6572 ON public.approval_requests USING btree (created_at)",
+      "valid": true,
+      "unique": false,
+      "predicate": null,
+      "columns": [
+        "created_at"
+      ]
+    },
+    {
+      "table": "automation_switch_events",
+      "name": "automation_switch_events_pkey",
+      "definition": "CREATE UNIQUE INDEX automation_switch_events_pkey ON public.automation_switch_events USING btree (id)",
+      "valid": true,
+      "unique": true,
+      "predicate": null,
+      "columns": [
+        "id"
+      ]
+    },
+    {
+      "table": "automation_switch_events",
+      "name": "s0_fk_0dd0073e1b9ca488",
+      "definition": "CREATE INDEX s0_fk_0dd0073e1b9ca488 ON public.automation_switch_events USING btree (changed_by)",
+      "valid": true,
+      "unique": false,
+      "predicate": null,
+      "columns": [
+        "changed_by"
+      ]
+    },
+    {
+      "table": "automation_switch_events",
+      "name": "s0_fk_6a762cd1c30239ab",
+      "definition": "CREATE INDEX s0_fk_6a762cd1c30239ab ON public.automation_switch_events USING btree (workflow_key)",
+      "valid": true,
+      "unique": false,
+      "predicate": null,
+      "columns": [
+        "workflow_key"
+      ]
+    },
+    {
+      "table": "automation_switches",
+      "name": "automation_switches_pkey",
+      "definition": "CREATE UNIQUE INDEX automation_switches_pkey ON public.automation_switches USING btree (workflow_key)",
+      "valid": true,
+      "unique": true,
+      "predicate": null,
+      "columns": [
+        "workflow_key"
+      ]
+    },
+    {
+      "table": "automation_switches",
+      "name": "s0_fk_17d595780e38a523",
+      "definition": "CREATE INDEX s0_fk_17d595780e38a523 ON public.automation_switches USING btree (updated_by)",
+      "valid": true,
+      "unique": false,
+      "predicate": null,
+      "columns": [
+        "updated_by"
+      ]
+    },
+    {
+      "table": "business_rule_values",
+      "name": "business_rule_values_current",
+      "definition": "CREATE INDEX business_rule_values_current ON public.business_rule_values USING btree (rule_key, version DESC)",
+      "valid": true,
+      "unique": false,
+      "predicate": null,
+      "columns": [
+        "rule_key",
+        "version"
+      ]
+    },
+    {
+      "table": "business_rule_values",
+      "name": "business_rule_values_pkey",
+      "definition": "CREATE UNIQUE INDEX business_rule_values_pkey ON public.business_rule_values USING btree (id)",
+      "valid": true,
+      "unique": true,
+      "predicate": null,
+      "columns": [
+        "id"
+      ]
+    },
+    {
+      "table": "business_rule_values",
+      "name": "business_rule_values_rule_key_version_key",
+      "definition": "CREATE UNIQUE INDEX business_rule_values_rule_key_version_key ON public.business_rule_values USING btree (rule_key, version)",
+      "valid": true,
+      "unique": true,
+      "predicate": null,
+      "columns": [
+        "rule_key",
+        "version"
+      ]
+    },
+    {
+      "table": "business_rule_values",
+      "name": "s0_filter_85dd4ca61897492b",
+      "definition": "CREATE INDEX s0_filter_85dd4ca61897492b ON public.business_rule_values USING btree (created_at)",
+      "valid": true,
+      "unique": false,
+      "predicate": null,
+      "columns": [
+        "created_at"
+      ]
+    },
+    {
+      "table": "business_rule_values",
+      "name": "s0_fk_0d54607d3abead99",
+      "definition": "CREATE INDEX s0_fk_0d54607d3abead99 ON public.business_rule_values USING btree (created_by)",
+      "valid": true,
+      "unique": false,
+      "predicate": null,
+      "columns": [
+        "created_by"
+      ]
+    },
+    {
+      "table": "customer_message_checklist",
+      "name": "customer_message_checklist_pkey",
+      "definition": "CREATE UNIQUE INDEX customer_message_checklist_pkey ON public.customer_message_checklist USING btree (customer_id, category)",
+      "valid": true,
+      "unique": true,
+      "predicate": null,
+      "columns": [
+        "customer_id",
+        "category"
+      ]
+    },
+    {
+      "table": "customer_message_checklist",
+      "name": "s0_fk_efc79ab9c5ab0a91",
+      "definition": "CREATE INDEX s0_fk_efc79ab9c5ab0a91 ON public.customer_message_checklist USING btree (updated_by)",
+      "valid": true,
+      "unique": false,
+      "predicate": null,
+      "columns": [
+        "updated_by"
+      ]
+    },
+    {
+      "table": "email_accounts",
+      "name": "email_accounts_address_idx",
+      "definition": "CREATE INDEX email_accounts_address_idx ON public.email_accounts USING btree (mailbox_address)",
+      "valid": true,
+      "unique": false,
+      "predicate": null,
+      "columns": [
+        "mailbox_address"
+      ]
+    },
+    {
+      "table": "email_accounts",
+      "name": "email_accounts_pkey",
+      "definition": "CREATE UNIQUE INDEX email_accounts_pkey ON public.email_accounts USING btree (id)",
+      "valid": true,
+      "unique": true,
+      "predicate": null,
+      "columns": [
+        "id"
+      ]
+    },
+    {
+      "table": "email_accounts",
+      "name": "s0_filter_d4821e52b8658057",
+      "definition": "CREATE INDEX s0_filter_d4821e52b8658057 ON public.email_accounts USING btree (status)",
+      "valid": true,
+      "unique": false,
+      "predicate": null,
+      "columns": [
+        "status"
+      ]
+    },
+    {
+      "table": "email_accounts",
+      "name": "s0_filter_ed5402c4b7d71031",
+      "definition": "CREATE INDEX s0_filter_ed5402c4b7d71031 ON public.email_accounts USING btree (created_at)",
+      "valid": true,
+      "unique": false,
+      "predicate": null,
+      "columns": [
+        "created_at"
+      ]
+    },
+    {
+      "table": "email_accounts",
+      "name": "s0_fk_08f1bce213ab30b7",
+      "definition": "CREATE INDEX s0_fk_08f1bce213ab30b7 ON public.email_accounts USING btree (created_by)",
+      "valid": true,
+      "unique": false,
+      "predicate": null,
+      "columns": [
+        "created_by"
+      ]
+    },
+    {
+      "table": "email_draft_documents",
+      "name": "email_draft_documents_pkey",
+      "definition": "CREATE UNIQUE INDEX email_draft_documents_pkey ON public.email_draft_documents USING btree (email_draft_id, source_document_id)",
+      "valid": true,
+      "unique": true,
+      "predicate": null,
+      "columns": [
+        "email_draft_id",
+        "source_document_id"
+      ]
+    },
+    {
+      "table": "email_draft_documents",
+      "name": "s0_filter_547781c73015d342",
+      "definition": "CREATE INDEX s0_filter_547781c73015d342 ON public.email_draft_documents USING btree (created_at)",
+      "valid": true,
+      "unique": false,
+      "predicate": null,
+      "columns": [
+        "created_at"
+      ]
+    },
+    {
+      "table": "email_draft_documents",
+      "name": "s0_fk_86ec3f4a35e8d253",
+      "definition": "CREATE INDEX s0_fk_86ec3f4a35e8d253 ON public.email_draft_documents USING btree (source_document_id)",
+      "valid": true,
+      "unique": false,
+      "predicate": null,
+      "columns": [
+        "source_document_id"
+      ]
+    },
+    {
+      "table": "email_draft_documents",
+      "name": "s0_fk_d419c706279fbe88",
+      "definition": "CREATE INDEX s0_fk_d419c706279fbe88 ON public.email_draft_documents USING btree (created_by)",
+      "valid": true,
+      "unique": false,
+      "predicate": null,
+      "columns": [
+        "created_by"
+      ]
+    },
+    {
+      "table": "email_drafts",
+      "name": "email_drafts_approval_idx",
+      "definition": "CREATE INDEX email_drafts_approval_idx ON public.email_drafts USING btree (approval_request_id) WHERE (approval_request_id IS NOT NULL)",
+      "valid": true,
+      "unique": false,
+      "predicate": "(approval_request_id IS NOT NULL)",
+      "columns": [
+        "approval_request_id"
+      ]
+    },
+    {
+      "table": "email_drafts",
+      "name": "email_drafts_customer_idx",
+      "definition": "CREATE INDEX email_drafts_customer_idx ON public.email_drafts USING btree (customer_id, created_at DESC) WHERE (customer_id IS NOT NULL)",
+      "valid": true,
+      "unique": false,
+      "predicate": "(customer_id IS NOT NULL)",
+      "columns": [
+        "customer_id",
+        "created_at"
+      ]
+    },
+    {
+      "table": "email_drafts",
+      "name": "email_drafts_enquiry_idx",
+      "definition": "CREATE INDEX email_drafts_enquiry_idx ON public.email_drafts USING btree (enquiry_id, created_at DESC) WHERE (enquiry_id IS NOT NULL)",
+      "valid": true,
+      "unique": false,
+      "predicate": "(enquiry_id IS NOT NULL)",
+      "columns": [
+        "enquiry_id",
+        "created_at"
+      ]
+    },
+    {
+      "table": "email_drafts",
+      "name": "email_drafts_order_idx",
+      "definition": "CREATE INDEX email_drafts_order_idx ON public.email_drafts USING btree (sales_order_id, created_at DESC) WHERE (sales_order_id IS NOT NULL)",
+      "valid": true,
+      "unique": false,
+      "predicate": "(sales_order_id IS NOT NULL)",
+      "columns": [
+        "sales_order_id",
+        "created_at"
+      ]
+    },
+    {
+      "table": "email_drafts",
+      "name": "email_drafts_pkey",
+      "definition": "CREATE UNIQUE INDEX email_drafts_pkey ON public.email_drafts USING btree (id)",
+      "valid": true,
+      "unique": true,
+      "predicate": null,
+      "columns": [
+        "id"
+      ]
+    },
+    {
+      "table": "email_drafts",
+      "name": "email_drafts_quotation_idx",
+      "definition": "CREATE INDEX email_drafts_quotation_idx ON public.email_drafts USING btree (quotation_id, created_at DESC) WHERE (quotation_id IS NOT NULL)",
+      "valid": true,
+      "unique": false,
+      "predicate": "(quotation_id IS NOT NULL)",
+      "columns": [
+        "quotation_id",
+        "created_at"
+      ]
+    },
+    {
+      "table": "email_drafts",
+      "name": "email_drafts_status_idx",
+      "definition": "CREATE INDEX email_drafts_status_idx ON public.email_drafts USING btree (status, created_at DESC)",
+      "valid": true,
+      "unique": false,
+      "predicate": null,
+      "columns": [
+        "status",
+        "created_at"
+      ]
+    },
+    {
+      "table": "email_drafts",
+      "name": "email_drafts_workflow_execution_idx",
+      "definition": "CREATE INDEX email_drafts_workflow_execution_idx ON public.email_drafts USING btree (workflow_execution_id) WHERE (workflow_execution_id IS NOT NULL)",
+      "valid": true,
+      "unique": false,
+      "predicate": "(workflow_execution_id IS NOT NULL)",
+      "columns": [
+        "workflow_execution_id"
+      ]
+    },
+    {
+      "table": "email_drafts",
+      "name": "s0_filter_87d4357a13cc2a83",
+      "definition": "CREATE INDEX s0_filter_87d4357a13cc2a83 ON public.email_drafts USING btree (created_at)",
+      "valid": true,
+      "unique": false,
+      "predicate": null,
+      "columns": [
+        "created_at"
+      ]
+    },
+    {
+      "table": "email_drafts",
+      "name": "s0_fk_50d51f456f31e426",
+      "definition": "CREATE INDEX s0_fk_50d51f456f31e426 ON public.email_drafts USING btree (updated_by)",
+      "valid": true,
+      "unique": false,
+      "predicate": null,
+      "columns": [
+        "updated_by"
+      ]
+    },
+    {
+      "table": "email_drafts",
+      "name": "s0_fk_ba711901a2d77b69",
+      "definition": "CREATE INDEX s0_fk_ba711901a2d77b69 ON public.email_drafts USING btree (workflow_key)",
+      "valid": true,
+      "unique": false,
+      "predicate": null,
+      "columns": [
+        "workflow_key"
+      ]
+    },
+    {
+      "table": "email_drafts",
+      "name": "s0_fk_c53544c4d92947b6",
+      "definition": "CREATE INDEX s0_fk_c53544c4d92947b6 ON public.email_drafts USING btree (created_by)",
+      "valid": true,
+      "unique": false,
+      "predicate": null,
+      "columns": [
+        "created_by"
+      ]
+    },
+    {
+      "table": "email_messages",
+      "name": "email_messages_pkey",
+      "definition": "CREATE UNIQUE INDEX email_messages_pkey ON public.email_messages USING btree (id)",
+      "valid": true,
+      "unique": true,
+      "predicate": null,
+      "columns": [
+        "id"
+      ]
+    },
+    {
+      "table": "email_messages",
+      "name": "email_messages_provider_id_idx",
+      "definition": "CREATE UNIQUE INDEX email_messages_provider_id_idx ON public.email_messages USING btree (email_account_id, provider_message_id) WHERE (provider_message_id IS NOT NULL)",
+      "valid": true,
+      "unique": true,
+      "predicate": "(provider_message_id IS NOT NULL)",
+      "columns": [
+        "email_account_id",
+        "provider_message_id"
+      ]
+    },
+    {
+      "table": "email_messages",
+      "name": "email_messages_thread_time_idx",
+      "definition": "CREATE INDEX email_messages_thread_time_idx ON public.email_messages USING btree (thread_id, COALESCE(received_at, sent_at, created_at) DESC)",
+      "valid": true,
+      "unique": false,
+      "predicate": null,
+      "columns": [
+        "thread_id",
+        "NULL"
+      ]
+    },
+    {
+      "table": "email_messages",
+      "name": "s0_filter_38fff0cb9ddd5e30",
+      "definition": "CREATE INDEX s0_filter_38fff0cb9ddd5e30 ON public.email_messages USING btree (created_at)",
+      "valid": true,
+      "unique": false,
+      "predicate": null,
+      "columns": [
+        "created_at"
+      ]
+    },
+    {
+      "table": "email_messages",
+      "name": "s0_filter_f729425d3b5b0927",
+      "definition": "CREATE INDEX s0_filter_f729425d3b5b0927 ON public.email_messages USING btree (status)",
+      "valid": true,
+      "unique": false,
+      "predicate": null,
+      "columns": [
+        "status"
+      ]
+    },
+    {
+      "table": "email_messages",
+      "name": "s0_fk_7b62ccab90513c7f",
+      "definition": "CREATE INDEX s0_fk_7b62ccab90513c7f ON public.email_messages USING btree (email_account_id)",
+      "valid": true,
+      "unique": false,
+      "predicate": null,
+      "columns": [
+        "email_account_id"
+      ]
+    },
+    {
+      "table": "email_messages",
+      "name": "s0_fk_82e42d9423b1d24b",
+      "definition": "CREATE INDEX s0_fk_82e42d9423b1d24b ON public.email_messages USING btree (thread_id, email_account_id)",
+      "valid": true,
+      "unique": false,
+      "predicate": null,
+      "columns": [
+        "thread_id",
+        "email_account_id"
+      ]
+    },
+    {
+      "table": "email_send_attempts",
+      "name": "email_send_attempts_email_draft_id_attempt_number_key",
+      "definition": "CREATE UNIQUE INDEX email_send_attempts_email_draft_id_attempt_number_key ON public.email_send_attempts USING btree (email_draft_id, attempt_number)",
+      "valid": true,
+      "unique": true,
+      "predicate": null,
+      "columns": [
+        "email_draft_id",
+        "attempt_number"
+      ]
+    },
+    {
+      "table": "email_send_attempts",
+      "name": "email_send_attempts_email_draft_id_idempotency_key_key",
+      "definition": "CREATE UNIQUE INDEX email_send_attempts_email_draft_id_idempotency_key_key ON public.email_send_attempts USING btree (email_draft_id, idempotency_key)",
+      "valid": true,
+      "unique": true,
+      "predicate": null,
+      "columns": [
+        "email_draft_id",
+        "idempotency_key"
+      ]
+    },
+    {
+      "table": "email_send_attempts",
+      "name": "email_send_attempts_pkey",
+      "definition": "CREATE UNIQUE INDEX email_send_attempts_pkey ON public.email_send_attempts USING btree (id)",
+      "valid": true,
+      "unique": true,
+      "predicate": null,
+      "columns": [
+        "id"
+      ]
+    },
+    {
+      "table": "email_send_attempts",
+      "name": "email_send_attempts_status_idx",
+      "definition": "CREATE INDEX email_send_attempts_status_idx ON public.email_send_attempts USING btree (status, started_at)",
+      "valid": true,
+      "unique": false,
+      "predicate": null,
+      "columns": [
+        "status",
+        "started_at"
+      ]
+    },
+    {
+      "table": "email_send_attempts",
+      "name": "s0_fk_f0c336edafbd27dc",
+      "definition": "CREATE INDEX s0_fk_f0c336edafbd27dc ON public.email_send_attempts USING btree (approval_decision_id)",
+      "valid": true,
+      "unique": false,
+      "predicate": null,
+      "columns": [
+        "approval_decision_id"
+      ]
+    },
+    {
+      "table": "email_threads",
+      "name": "email_threads_customer_idx",
+      "definition": "CREATE INDEX email_threads_customer_idx ON public.email_threads USING btree (customer_id, last_message_at DESC) WHERE (customer_id IS NOT NULL)",
+      "valid": true,
+      "unique": false,
+      "predicate": "(customer_id IS NOT NULL)",
+      "columns": [
+        "customer_id",
+        "last_message_at"
+      ]
+    },
+    {
+      "table": "email_threads",
+      "name": "email_threads_email_account_id_provider_thread_id_key",
+      "definition": "CREATE UNIQUE INDEX email_threads_email_account_id_provider_thread_id_key ON public.email_threads USING btree (email_account_id, provider_thread_id)",
+      "valid": true,
+      "unique": true,
+      "predicate": null,
+      "columns": [
+        "email_account_id",
+        "provider_thread_id"
+      ]
+    },
+    {
+      "table": "email_threads",
+      "name": "email_threads_id_account_unique",
+      "definition": "CREATE UNIQUE INDEX email_threads_id_account_unique ON public.email_threads USING btree (id, email_account_id)",
+      "valid": true,
+      "unique": true,
+      "predicate": null,
+      "columns": [
+        "id",
+        "email_account_id"
+      ]
+    },
+    {
+      "table": "email_threads",
+      "name": "email_threads_invoice_idx",
+      "definition": "CREATE INDEX email_threads_invoice_idx ON public.email_threads USING btree (invoice_id, last_message_at DESC) WHERE (invoice_id IS NOT NULL)",
+      "valid": true,
+      "unique": false,
+      "predicate": "(invoice_id IS NOT NULL)",
+      "columns": [
+        "invoice_id",
+        "last_message_at"
+      ]
+    },
+    {
+      "table": "email_threads",
+      "name": "email_threads_order_idx",
+      "definition": "CREATE INDEX email_threads_order_idx ON public.email_threads USING btree (sales_order_id, last_message_at DESC) WHERE (sales_order_id IS NOT NULL)",
+      "valid": true,
+      "unique": false,
+      "predicate": "(sales_order_id IS NOT NULL)",
+      "columns": [
+        "sales_order_id",
+        "last_message_at"
+      ]
+    },
+    {
+      "table": "email_threads",
+      "name": "email_threads_pkey",
+      "definition": "CREATE UNIQUE INDEX email_threads_pkey ON public.email_threads USING btree (id)",
+      "valid": true,
+      "unique": true,
+      "predicate": null,
+      "columns": [
+        "id"
+      ]
+    },
+    {
+      "table": "email_threads",
+      "name": "s0_filter_27269934a1fc3655",
+      "definition": "CREATE INDEX s0_filter_27269934a1fc3655 ON public.email_threads USING btree (status)",
+      "valid": true,
+      "unique": false,
+      "predicate": null,
+      "columns": [
+        "status"
+      ]
+    },
+    {
+      "table": "email_threads",
+      "name": "s0_filter_c768aade69dd81e7",
+      "definition": "CREATE INDEX s0_filter_c768aade69dd81e7 ON public.email_threads USING btree (created_at)",
+      "valid": true,
+      "unique": false,
+      "predicate": null,
+      "columns": [
+        "created_at"
+      ]
+    },
+    {
+      "table": "email_threads",
+      "name": "s0_fk_200c351b9b107160",
+      "definition": "CREATE INDEX s0_fk_200c351b9b107160 ON public.email_threads USING btree (enquiry_id)",
+      "valid": true,
+      "unique": false,
+      "predicate": null,
+      "columns": [
+        "enquiry_id"
+      ]
+    },
+    {
+      "table": "email_threads",
+      "name": "s0_fk_52b2bc400ece9626",
+      "definition": "CREATE INDEX s0_fk_52b2bc400ece9626 ON public.email_threads USING btree (quotation_id)",
+      "valid": true,
+      "unique": false,
+      "predicate": null,
+      "columns": [
+        "quotation_id"
+      ]
+    },
+    {
+      "table": "exception_cases",
+      "name": "exception_cases_approval_request_id_key",
+      "definition": "CREATE UNIQUE INDEX exception_cases_approval_request_id_key ON public.exception_cases USING btree (approval_request_id)",
+      "valid": true,
+      "unique": true,
+      "predicate": null,
+      "columns": [
+        "approval_request_id"
+      ]
+    },
+    {
+      "table": "exception_cases",
+      "name": "exception_cases_open_unique",
+      "definition": "CREATE UNIQUE INDEX exception_cases_open_unique ON public.exception_cases USING btree (exception_type, entity_type, entity_id, fingerprint) WHERE (status = 'OPEN'::text)",
+      "valid": true,
+      "unique": true,
+      "predicate": "(status = 'OPEN'::text)",
+      "columns": [
+        "exception_type",
+        "entity_type",
+        "entity_id",
+        "fingerprint"
+      ]
+    },
+    {
+      "table": "exception_cases",
+      "name": "exception_cases_pkey",
+      "definition": "CREATE UNIQUE INDEX exception_cases_pkey ON public.exception_cases USING btree (id)",
+      "valid": true,
+      "unique": true,
+      "predicate": null,
+      "columns": [
+        "id"
+      ]
+    },
+    {
+      "table": "exception_cases",
+      "name": "exception_cases_queue",
+      "definition": "CREATE INDEX exception_cases_queue ON public.exception_cases USING btree (status, created_at DESC)",
+      "valid": true,
+      "unique": false,
+      "predicate": null,
+      "columns": [
+        "status",
+        "created_at"
+      ]
+    },
+    {
+      "table": "exception_cases",
+      "name": "s0_filter_41d66d5f055018f9",
+      "definition": "CREATE INDEX s0_filter_41d66d5f055018f9 ON public.exception_cases USING btree (created_at)",
+      "valid": true,
+      "unique": false,
+      "predicate": null,
+      "columns": [
+        "created_at"
+      ]
+    },
+    {
+      "table": "exception_cases",
+      "name": "s0_fk_2eed8e5b39ef1295",
+      "definition": "CREATE INDEX s0_fk_2eed8e5b39ef1295 ON public.exception_cases USING btree (record_creator_id)",
+      "valid": true,
+      "unique": false,
+      "predicate": null,
+      "columns": [
+        "record_creator_id"
+      ]
+    },
+    {
+      "table": "exception_cases",
+      "name": "s0_fk_4edcc858c5cecc08",
+      "definition": "CREATE INDEX s0_fk_4edcc858c5cecc08 ON public.exception_cases USING btree (raised_by)",
+      "valid": true,
+      "unique": false,
+      "predicate": null,
+      "columns": [
+        "raised_by"
+      ]
+    },
+    {
+      "table": "exception_cases",
+      "name": "s0_fk_86950cbde6dea412",
+      "definition": "CREATE INDEX s0_fk_86950cbde6dea412 ON public.exception_cases USING btree (decided_by)",
+      "valid": true,
+      "unique": false,
+      "predicate": null,
+      "columns": [
+        "decided_by"
+      ]
+    },
+    {
+      "table": "job_logs",
+      "name": "job_logs_pkey",
+      "definition": "CREATE UNIQUE INDEX job_logs_pkey ON public.job_logs USING btree (id)",
+      "valid": true,
+      "unique": true,
+      "predicate": null,
+      "columns": [
+        "id"
+      ]
+    },
+    {
+      "table": "job_logs",
+      "name": "job_logs_recent",
+      "definition": "CREATE INDEX job_logs_recent ON public.job_logs USING btree (job_name, run_at DESC)",
+      "valid": true,
+      "unique": false,
+      "predicate": null,
+      "columns": [
+        "job_name",
+        "run_at"
+      ]
+    },
+    {
+      "table": "job_logs",
+      "name": "s0_filter_b1ea56289aeb6478",
+      "definition": "CREATE INDEX s0_filter_b1ea56289aeb6478 ON public.job_logs USING btree (status)",
+      "valid": true,
+      "unique": false,
+      "predicate": null,
+      "columns": [
+        "status"
+      ]
+    },
+    {
+      "table": "manual_response_exceptions",
+      "name": "manual_response_customer",
+      "definition": "CREATE UNIQUE INDEX manual_response_customer ON public.manual_response_exceptions USING btree (customer_id) WHERE ((status = 'ACTIVE'::text) AND (customer_id IS NOT NULL))",
+      "valid": true,
+      "unique": true,
+      "predicate": "((status = 'ACTIVE'::text) AND (customer_id IS NOT NULL))",
+      "columns": [
+        "customer_id"
+      ]
+    },
+    {
+      "table": "manual_response_exceptions",
+      "name": "manual_response_exceptions_pkey",
+      "definition": "CREATE UNIQUE INDEX manual_response_exceptions_pkey ON public.manual_response_exceptions USING btree (id)",
+      "valid": true,
+      "unique": true,
+      "predicate": null,
+      "columns": [
+        "id"
+      ]
+    },
+    {
+      "table": "manual_response_exceptions",
+      "name": "manual_response_item",
+      "definition": "CREATE UNIQUE INDEX manual_response_item ON public.manual_response_exceptions USING btree (item_id) WHERE ((status = 'ACTIVE'::text) AND (item_id IS NOT NULL))",
+      "valid": true,
+      "unique": true,
+      "predicate": "((status = 'ACTIVE'::text) AND (item_id IS NOT NULL))",
+      "columns": [
+        "item_id"
+      ]
+    },
+    {
+      "table": "manual_response_exceptions",
+      "name": "s0_filter_02a5e47354a8e40f",
+      "definition": "CREATE INDEX s0_filter_02a5e47354a8e40f ON public.manual_response_exceptions USING btree (created_at)",
+      "valid": true,
+      "unique": false,
+      "predicate": null,
+      "columns": [
+        "created_at"
+      ]
+    },
+    {
+      "table": "manual_response_exceptions",
+      "name": "s0_filter_f2f64f1b5942bc48",
+      "definition": "CREATE INDEX s0_filter_f2f64f1b5942bc48 ON public.manual_response_exceptions USING btree (status)",
+      "valid": true,
+      "unique": false,
+      "predicate": null,
+      "columns": [
+        "status"
+      ]
+    },
+    {
+      "table": "manual_response_exceptions",
+      "name": "s0_fk_2b9059249240324d",
+      "definition": "CREATE INDEX s0_fk_2b9059249240324d ON public.manual_response_exceptions USING btree (created_by)",
+      "valid": true,
+      "unique": false,
+      "predicate": null,
+      "columns": [
+        "created_by"
+      ]
+    },
+    {
+      "table": "manual_response_exceptions",
+      "name": "s0_fk_45ebb8ef7abfc5dd",
+      "definition": "CREATE INDEX s0_fk_45ebb8ef7abfc5dd ON public.manual_response_exceptions USING btree (customer_id)",
+      "valid": true,
+      "unique": false,
+      "predicate": null,
+      "columns": [
+        "customer_id"
+      ]
+    },
+    {
+      "table": "manual_response_exceptions",
+      "name": "s0_fk_5a37503fc800f7c7",
+      "definition": "CREATE INDEX s0_fk_5a37503fc800f7c7 ON public.manual_response_exceptions USING btree (archived_by)",
+      "valid": true,
+      "unique": false,
+      "predicate": null,
+      "columns": [
+        "archived_by"
+      ]
+    },
+    {
+      "table": "manual_response_exceptions",
+      "name": "s0_fk_6903d31e8de16ec4",
+      "definition": "CREATE INDEX s0_fk_6903d31e8de16ec4 ON public.manual_response_exceptions USING btree (item_id)",
+      "valid": true,
+      "unique": false,
+      "predicate": null,
+      "columns": [
+        "item_id"
+      ]
+    },
+    {
+      "table": "notifications",
+      "name": "notifications_idempotency_idx",
+      "definition": "CREATE UNIQUE INDEX notifications_idempotency_idx ON public.notifications USING btree (user_id, idempotency_key) WHERE (idempotency_key IS NOT NULL)",
+      "valid": true,
+      "unique": true,
+      "predicate": "(idempotency_key IS NOT NULL)",
+      "columns": [
+        "user_id",
+        "idempotency_key"
+      ]
+    },
+    {
+      "table": "notifications",
+      "name": "notifications_pkey",
+      "definition": "CREATE UNIQUE INDEX notifications_pkey ON public.notifications USING btree (id)",
+      "valid": true,
+      "unique": true,
+      "predicate": null,
+      "columns": [
+        "id"
+      ]
+    },
+    {
+      "table": "notifications",
+      "name": "notifications_reminder_idx",
+      "definition": "CREATE INDEX notifications_reminder_idx ON public.notifications USING btree (reminder_id) WHERE (reminder_id IS NOT NULL)",
+      "valid": true,
+      "unique": false,
+      "predicate": "(reminder_id IS NOT NULL)",
+      "columns": [
+        "reminder_id"
+      ]
+    },
+    {
+      "table": "notifications",
+      "name": "notifications_user_state_idx",
+      "definition": "CREATE INDEX notifications_user_state_idx ON public.notifications USING btree (user_id, delivery_state, scheduled_at)",
+      "valid": true,
+      "unique": false,
+      "predicate": null,
+      "columns": [
+        "user_id",
+        "delivery_state",
+        "scheduled_at"
+      ]
+    },
+    {
+      "table": "notifications",
+      "name": "s0_filter_e9ae7ad8a06b74c5",
+      "definition": "CREATE INDEX s0_filter_e9ae7ad8a06b74c5 ON public.notifications USING btree (created_at)",
+      "valid": true,
+      "unique": false,
+      "predicate": null,
+      "columns": [
+        "created_at"
+      ]
+    },
+    {
+      "table": "task_events",
+      "name": "s0_filter_f973bf42b98a67ab",
+      "definition": "CREATE INDEX s0_filter_f973bf42b98a67ab ON public.task_events USING btree (created_at)",
+      "valid": true,
+      "unique": false,
+      "predicate": null,
+      "columns": [
+        "created_at"
+      ]
+    },
+    {
+      "table": "task_events",
+      "name": "s0_fk_b1d00239f61633fe",
+      "definition": "CREATE INDEX s0_fk_b1d00239f61633fe ON public.task_events USING btree (actor_user_id)",
+      "valid": true,
+      "unique": false,
+      "predicate": null,
+      "columns": [
+        "actor_user_id"
+      ]
+    },
+    {
+      "table": "task_events",
+      "name": "s0_fk_b2990e7ab5a6e9a4",
+      "definition": "CREATE INDEX s0_fk_b2990e7ab5a6e9a4 ON public.task_events USING btree (task_id)",
+      "valid": true,
+      "unique": false,
+      "predicate": null,
+      "columns": [
+        "task_id"
+      ]
+    },
+    {
+      "table": "task_events",
+      "name": "task_events_pkey",
+      "definition": "CREATE UNIQUE INDEX task_events_pkey ON public.task_events USING btree (id)",
+      "valid": true,
+      "unique": true,
+      "predicate": null,
+      "columns": [
+        "id"
+      ]
+    },
+    {
+      "table": "tasks",
+      "name": "s0_filter_337bcca1486120e1",
+      "definition": "CREATE INDEX s0_filter_337bcca1486120e1 ON public.tasks USING btree (due_at)",
+      "valid": true,
+      "unique": false,
+      "predicate": null,
+      "columns": [
+        "due_at"
+      ]
+    },
+    {
+      "table": "tasks",
+      "name": "s0_filter_add900f16ca0a1a7",
+      "definition": "CREATE INDEX s0_filter_add900f16ca0a1a7 ON public.tasks USING btree (status)",
+      "valid": true,
+      "unique": false,
+      "predicate": null,
+      "columns": [
+        "status"
+      ]
+    },
+    {
+      "table": "tasks",
+      "name": "s0_filter_ba70e4fd34899f8a",
+      "definition": "CREATE INDEX s0_filter_ba70e4fd34899f8a ON public.tasks USING btree (created_at)",
+      "valid": true,
+      "unique": false,
+      "predicate": null,
+      "columns": [
+        "created_at"
+      ]
+    },
+    {
+      "table": "tasks",
+      "name": "s0_fk_2e8dc1721c77b73e",
+      "definition": "CREATE INDEX s0_fk_2e8dc1721c77b73e ON public.tasks USING btree (forwarded_to_task_id)",
+      "valid": true,
+      "unique": false,
+      "predicate": null,
+      "columns": [
+        "forwarded_to_task_id"
+      ]
+    },
+    {
+      "table": "tasks",
+      "name": "s0_fk_5ef7b94d8fb49a28",
+      "definition": "CREATE INDEX s0_fk_5ef7b94d8fb49a28 ON public.tasks USING btree (parent_task_id)",
+      "valid": true,
+      "unique": false,
+      "predicate": null,
+      "columns": [
+        "parent_task_id"
+      ]
+    },
+    {
+      "table": "tasks",
+      "name": "s0_fk_67855412ce79fff5",
+      "definition": "CREATE INDEX s0_fk_67855412ce79fff5 ON public.tasks USING btree (owner_user_id)",
+      "valid": true,
+      "unique": false,
+      "predicate": null,
+      "columns": [
+        "owner_user_id"
+      ]
+    },
+    {
+      "table": "tasks",
+      "name": "s0_fk_68f8429ddaf44bb9",
+      "definition": "CREATE INDEX s0_fk_68f8429ddaf44bb9 ON public.tasks USING btree (created_by)",
+      "valid": true,
+      "unique": false,
+      "predicate": null,
+      "columns": [
+        "created_by"
+      ]
+    },
+    {
+      "table": "tasks",
+      "name": "s0_fk_b206685d0321054e",
+      "definition": "CREATE INDEX s0_fk_b206685d0321054e ON public.tasks USING btree (backup_user_id)",
+      "valid": true,
+      "unique": false,
+      "predicate": null,
+      "columns": [
+        "backup_user_id"
+      ]
+    },
+    {
+      "table": "tasks",
+      "name": "s0_fk_c680772f8f433d0d",
+      "definition": "CREATE INDEX s0_fk_c680772f8f433d0d ON public.tasks USING btree (updated_by)",
+      "valid": true,
+      "unique": false,
+      "predicate": null,
+      "columns": [
+        "updated_by"
+      ]
+    },
+    {
+      "table": "tasks",
+      "name": "tasks_owner_open",
+      "definition": "CREATE INDEX tasks_owner_open ON public.tasks USING btree (owner_user_id, status, due_at) WHERE (NOT is_deleted)",
+      "valid": true,
+      "unique": false,
+      "predicate": "(NOT is_deleted)",
+      "columns": [
+        "owner_user_id",
+        "status",
+        "due_at"
+      ]
+    },
+    {
+      "table": "tasks",
+      "name": "tasks_pkey",
+      "definition": "CREATE UNIQUE INDEX tasks_pkey ON public.tasks USING btree (id)",
+      "valid": true,
+      "unique": true,
+      "predicate": null,
+      "columns": [
+        "id"
+      ]
+    },
+    {
+      "table": "tasks",
+      "name": "tasks_reminder_due",
+      "definition": "CREATE INDEX tasks_reminder_due ON public.tasks USING btree (next_reminder_at) WHERE ((status = ANY (ARRAY['OPEN'::text, 'IN_PROGRESS'::text])) AND (NOT is_deleted))",
+      "valid": true,
+      "unique": false,
+      "predicate": "((status = ANY (ARRAY['OPEN'::text, 'IN_PROGRESS'::text])) AND (NOT is_deleted))",
+      "columns": [
+        "next_reminder_at"
+      ]
+    },
+    {
+      "table": "work_item_events",
+      "name": "s0_filter_9f18d8c9443168fa",
+      "definition": "CREATE INDEX s0_filter_9f18d8c9443168fa ON public.work_item_events USING btree (created_at)",
+      "valid": true,
+      "unique": false,
+      "predicate": null,
+      "columns": [
+        "created_at"
+      ]
+    },
+    {
+      "table": "work_item_events",
+      "name": "s0_fk_04e5c576665530c1",
+      "definition": "CREATE INDEX s0_fk_04e5c576665530c1 ON public.work_item_events USING btree (from_user_id)",
+      "valid": true,
+      "unique": false,
+      "predicate": null,
+      "columns": [
+        "from_user_id"
+      ]
+    },
+    {
+      "table": "work_item_events",
+      "name": "s0_fk_7e95bc961e8f035e",
+      "definition": "CREATE INDEX s0_fk_7e95bc961e8f035e ON public.work_item_events USING btree (to_user_id)",
+      "valid": true,
+      "unique": false,
+      "predicate": null,
+      "columns": [
+        "to_user_id"
+      ]
+    },
+    {
+      "table": "work_item_events",
+      "name": "s0_fk_e84a1324fdd07592",
+      "definition": "CREATE INDEX s0_fk_e84a1324fdd07592 ON public.work_item_events USING btree (actor_user_id)",
+      "valid": true,
+      "unique": false,
+      "predicate": null,
+      "columns": [
+        "actor_user_id"
+      ]
+    },
+    {
+      "table": "work_item_events",
+      "name": "work_item_events_item",
+      "definition": "CREATE INDEX work_item_events_item ON public.work_item_events USING btree (work_item_id, id)",
+      "valid": true,
+      "unique": false,
+      "predicate": null,
+      "columns": [
+        "work_item_id",
+        "id"
+      ]
+    },
+    {
+      "table": "work_item_events",
+      "name": "work_item_events_pkey",
+      "definition": "CREATE UNIQUE INDEX work_item_events_pkey ON public.work_item_events USING btree (id)",
+      "valid": true,
+      "unique": true,
+      "predicate": null,
+      "columns": [
+        "id"
+      ]
+    },
+    {
+      "table": "work_items",
+      "name": "s0_filter_809cd8a51fa086d9",
+      "definition": "CREATE INDEX s0_filter_809cd8a51fa086d9 ON public.work_items USING btree (created_at)",
+      "valid": true,
+      "unique": false,
+      "predicate": null,
+      "columns": [
+        "created_at"
+      ]
+    },
+    {
+      "table": "work_items",
+      "name": "s0_filter_82e8074fe369b04f",
+      "definition": "CREATE INDEX s0_filter_82e8074fe369b04f ON public.work_items USING btree (status)",
+      "valid": true,
+      "unique": false,
+      "predicate": null,
+      "columns": [
+        "status"
+      ]
+    },
+    {
+      "table": "work_items",
+      "name": "s0_filter_8f0ca3c6d2b84e5e",
+      "definition": "CREATE INDEX s0_filter_8f0ca3c6d2b84e5e ON public.work_items USING btree (due_at)",
+      "valid": true,
+      "unique": false,
+      "predicate": null,
+      "columns": [
+        "due_at"
+      ]
+    },
+    {
+      "table": "work_items",
+      "name": "s0_fk_4dc11178fc059778",
+      "definition": "CREATE INDEX s0_fk_4dc11178fc059778 ON public.work_items USING btree (escalated_to_user_id)",
+      "valid": true,
+      "unique": false,
+      "predicate": null,
+      "columns": [
+        "escalated_to_user_id"
+      ]
+    },
+    {
+      "table": "work_items",
+      "name": "s0_fk_65bc0e586bd566db",
+      "definition": "CREATE INDEX s0_fk_65bc0e586bd566db ON public.work_items USING btree (created_by)",
+      "valid": true,
+      "unique": false,
+      "predicate": null,
+      "columns": [
+        "created_by"
+      ]
+    },
+    {
+      "table": "work_items",
+      "name": "s0_fk_b27d619ea501bc9a",
+      "definition": "CREATE INDEX s0_fk_b27d619ea501bc9a ON public.work_items USING btree (updated_by)",
+      "valid": true,
+      "unique": false,
+      "predicate": null,
+      "columns": [
+        "updated_by"
+      ]
+    },
+    {
+      "table": "work_items",
+      "name": "s0_fk_be03080aa2764ebb",
+      "definition": "CREATE INDEX s0_fk_be03080aa2764ebb ON public.work_items USING btree (owner_user_id)",
+      "valid": true,
+      "unique": false,
+      "predicate": null,
+      "columns": [
+        "owner_user_id"
+      ]
+    },
+    {
+      "table": "work_items",
+      "name": "s0_fk_d7a51ec4b50abe5f",
+      "definition": "CREATE INDEX s0_fk_d7a51ec4b50abe5f ON public.work_items USING btree (backup_user_id)",
+      "valid": true,
+      "unique": false,
+      "predicate": null,
+      "columns": [
+        "backup_user_id"
+      ]
+    },
+    {
+      "table": "work_items",
+      "name": "work_items_backup_open",
+      "definition": "CREATE INDEX work_items_backup_open ON public.work_items USING btree (backup_user_id) WHERE ((status = ANY (ARRAY['OPEN'::text, 'IN_PROGRESS'::text, 'WAITING'::text])) AND (NOT is_deleted))",
+      "valid": true,
+      "unique": false,
+      "predicate": "((status = ANY (ARRAY['OPEN'::text, 'IN_PROGRESS'::text, 'WAITING'::text])) AND (NOT is_deleted))",
+      "columns": [
+        "backup_user_id"
+      ]
+    },
+    {
+      "table": "work_items",
+      "name": "work_items_due",
+      "definition": "CREATE INDEX work_items_due ON public.work_items USING btree (due_at) WHERE (sla_state = 'RUNNING'::text)",
+      "valid": true,
+      "unique": false,
+      "predicate": "(sla_state = 'RUNNING'::text)",
+      "columns": [
+        "due_at"
+      ]
+    },
+    {
+      "table": "work_items",
+      "name": "work_items_entity_type_entity_id_key",
+      "definition": "CREATE UNIQUE INDEX work_items_entity_type_entity_id_key ON public.work_items USING btree (entity_type, entity_id)",
+      "valid": true,
+      "unique": true,
+      "predicate": null,
+      "columns": [
+        "entity_type",
+        "entity_id"
+      ]
+    },
+    {
+      "table": "work_items",
+      "name": "work_items_owner_open",
+      "definition": "CREATE INDEX work_items_owner_open ON public.work_items USING btree (owner_user_id, due_at) WHERE ((status = ANY (ARRAY['OPEN'::text, 'IN_PROGRESS'::text, 'WAITING'::text])) AND (NOT is_deleted))",
+      "valid": true,
+      "unique": false,
+      "predicate": "((status = ANY (ARRAY['OPEN'::text, 'IN_PROGRESS'::text, 'WAITING'::text])) AND (NOT is_deleted))",
+      "columns": [
+        "owner_user_id",
+        "due_at"
+      ]
+    },
+    {
+      "table": "work_items",
+      "name": "work_items_pkey",
+      "definition": "CREATE UNIQUE INDEX work_items_pkey ON public.work_items USING btree (id)",
+      "valid": true,
+      "unique": true,
+      "predicate": null,
+      "columns": [
+        "id"
+      ]
+    }
+  ],
+  "triggers": [
+    {
+      "table": "approval_decisions",
+      "name": "approval_decisions_append_only",
+      "definition": "CREATE TRIGGER approval_decisions_append_only BEFORE DELETE OR UPDATE ON public.approval_decisions FOR EACH ROW EXECUTE FUNCTION f1_append_only()",
+      "enabled": "O",
+      "function": "f1_append_only",
+      "body": "\nBEGIN\n  RAISE EXCEPTION '% is append-only', TG_TABLE_NAME;\nEND "
+    },
+    {
+      "table": "approval_decisions",
+      "name": "approval_decisions_immutable",
+      "definition": "CREATE TRIGGER approval_decisions_immutable BEFORE DELETE OR UPDATE ON public.approval_decisions FOR EACH ROW EXECUTE FUNCTION target_immutable_history_guard()",
+      "enabled": "O",
+      "function": "target_immutable_history_guard",
+      "body": "\r\nBEGIN\r\n  RAISE EXCEPTION '% is append-only; corrections must be recorded as new rows', TG_TABLE_NAME;\r\nEND\r\n"
+    },
+    {
+      "table": "approval_decisions",
+      "name": "approval_decisions_no_truncate",
+      "definition": "CREATE TRIGGER approval_decisions_no_truncate BEFORE TRUNCATE ON public.approval_decisions FOR EACH STATEMENT EXECUTE FUNCTION target_immutable_history_guard()",
+      "enabled": "O",
+      "function": "target_immutable_history_guard",
+      "body": "\r\nBEGIN\r\n  RAISE EXCEPTION '% is append-only; corrections must be recorded as new rows', TG_TABLE_NAME;\r\nEND\r\n"
+    },
+    {
+      "table": "automation_switch_events",
+      "name": "automation_switch_events_append_only",
+      "definition": "CREATE TRIGGER automation_switch_events_append_only BEFORE DELETE OR UPDATE ON public.automation_switch_events FOR EACH ROW EXECUTE FUNCTION f1_append_only()",
+      "enabled": "O",
+      "function": "f1_append_only",
+      "body": "\nBEGIN\n  RAISE EXCEPTION '% is append-only', TG_TABLE_NAME;\nEND "
+    },
+    {
+      "table": "automation_switch_events",
+      "name": "s0_no_truncate",
+      "definition": "CREATE TRIGGER s0_no_truncate BEFORE TRUNCATE ON public.automation_switch_events FOR EACH STATEMENT EXECUTE FUNCTION f1_append_only()",
+      "enabled": "O",
+      "function": "f1_append_only",
+      "body": "\nBEGIN\n  RAISE EXCEPTION '% is append-only', TG_TABLE_NAME;\nEND "
+    },
+    {
+      "table": "business_rule_values",
+      "name": "business_rule_values_append_only",
+      "definition": "CREATE TRIGGER business_rule_values_append_only BEFORE DELETE OR UPDATE ON public.business_rule_values FOR EACH ROW EXECUTE FUNCTION f1_append_only()",
+      "enabled": "O",
+      "function": "f1_append_only",
+      "body": "\nBEGIN\n  RAISE EXCEPTION '% is append-only', TG_TABLE_NAME;\nEND "
+    },
+    {
+      "table": "email_drafts",
+      "name": "email_drafts_approval_guard",
+      "definition": "CREATE TRIGGER email_drafts_approval_guard BEFORE INSERT OR UPDATE ON public.email_drafts FOR EACH ROW EXECUTE FUNCTION target_email_draft_approval_guard()",
+      "enabled": "O",
+      "function": "target_email_draft_approval_guard",
+      "body": "\r\nDECLARE approval_fingerprint char(64);\r\nBEGIN\r\n  IF NEW.approval_request_id IS NOT NULL THEN\r\n    SELECT payload_fingerprint INTO approval_fingerprint\r\n    FROM approval_requests WHERE id=NEW.approval_request_id;\r\n    IF approval_fingerprint IS NULL OR approval_fingerprint IS DISTINCT FROM NEW.content_fingerprint THEN\r\n      RAISE EXCEPTION 'Email approval must match the current draft content fingerprint';\r\n    END IF;\r\n  END IF;\r\n\r\n  IF TG_OP='UPDATE'\r\n     AND (NEW.recipient_addresses,NEW.cc_addresses,NEW.subject,NEW.body_reference,\r\n          NEW.content_fingerprint,NEW.linked_record_version,NEW.customer_id,\r\n          NEW.enquiry_id,NEW.quotation_id,NEW.sales_order_id)\r\n       IS DISTINCT FROM\r\n         (OLD.recipient_addresses,OLD.cc_addresses,OLD.subject,OLD.body_reference,\r\n          OLD.content_fingerprint,OLD.linked_record_version,OLD.customer_id,\r\n          OLD.enquiry_id,OLD.quotation_id,OLD.sales_order_id)\r\n     AND OLD.approval_request_id IS NOT NULL\r\n     AND (NEW.approval_request_id IS NOT NULL OR NEW.status<>'DRAFT') THEN\r\n    RAISE EXCEPTION 'Clear the prior approval and return the email draft to DRAFT before editing approved content';\r\n  END IF;\r\n  RETURN NEW;\r\nEND\r\n"
+    },
+    {
+      "table": "email_messages",
+      "name": "email_messages_immutable",
+      "definition": "CREATE TRIGGER email_messages_immutable BEFORE DELETE OR UPDATE ON public.email_messages FOR EACH ROW EXECUTE FUNCTION target_immutable_history_guard()",
+      "enabled": "O",
+      "function": "target_immutable_history_guard",
+      "body": "\r\nBEGIN\r\n  RAISE EXCEPTION '% is append-only; corrections must be recorded as new rows', TG_TABLE_NAME;\r\nEND\r\n"
+    },
+    {
+      "table": "email_messages",
+      "name": "email_messages_no_truncate",
+      "definition": "CREATE TRIGGER email_messages_no_truncate BEFORE TRUNCATE ON public.email_messages FOR EACH STATEMENT EXECUTE FUNCTION target_immutable_history_guard()",
+      "enabled": "O",
+      "function": "target_immutable_history_guard",
+      "body": "\r\nBEGIN\r\n  RAISE EXCEPTION '% is append-only; corrections must be recorded as new rows', TG_TABLE_NAME;\r\nEND\r\n"
+    },
+    {
+      "table": "email_send_attempts",
+      "name": "email_send_attempt_approval_guard",
+      "definition": "CREATE TRIGGER email_send_attempt_approval_guard BEFORE INSERT OR UPDATE ON public.email_send_attempts FOR EACH ROW EXECUTE FUNCTION target_email_send_approval_guard()",
+      "enabled": "O",
+      "function": "target_email_send_approval_guard",
+      "body": "\r\nDECLARE\r\n  draft_fingerprint char(64);\r\n  draft_context_state text;\r\n  draft_approval_request uuid;\r\n  request_fingerprint char(64);\r\n  decision text;\r\n  decision_fingerprint char(64);\r\nBEGIN\r\n  SELECT content_fingerprint,context_state,approval_request_id\r\n    INTO draft_fingerprint,draft_context_state,draft_approval_request\r\n  FROM email_drafts WHERE id=NEW.email_draft_id;\r\n  SELECT ar.payload_fingerprint,ad.decision,ad.payload_fingerprint\r\n    INTO request_fingerprint,decision,decision_fingerprint\r\n  FROM approval_decisions ad\r\n  JOIN approval_requests ar ON ar.id=ad.approval_request_id\r\n  WHERE ad.id=NEW.approval_decision_id\r\n    AND ad.approval_request_id=draft_approval_request;\r\n\r\n  IF draft_context_state IS DISTINCT FROM 'READY' THEN\r\n    RAISE EXCEPTION 'Email automation cannot send until required context is verified';\r\n  END IF;\r\n  IF draft_approval_request IS NULL\r\n     OR request_fingerprint IS DISTINCT FROM draft_fingerprint\r\n     OR decision_fingerprint IS DISTINCT FROM draft_fingerprint\r\n     OR upper(COALESCE(decision,''))<>'APPROVED' THEN\r\n    RAISE EXCEPTION 'Email send attempt requires approval for the exact current draft content';\r\n  END IF;\r\n  RETURN NEW;\r\nEND\r\n"
+    },
+    {
+      "table": "email_send_attempts",
+      "name": "email_send_attempts_immutable",
+      "definition": "CREATE TRIGGER email_send_attempts_immutable BEFORE DELETE OR UPDATE ON public.email_send_attempts FOR EACH ROW EXECUTE FUNCTION target_immutable_history_guard()",
+      "enabled": "O",
+      "function": "target_immutable_history_guard",
+      "body": "\r\nBEGIN\r\n  RAISE EXCEPTION '% is append-only; corrections must be recorded as new rows', TG_TABLE_NAME;\r\nEND\r\n"
+    },
+    {
+      "table": "email_send_attempts",
+      "name": "email_send_attempts_no_truncate",
+      "definition": "CREATE TRIGGER email_send_attempts_no_truncate BEFORE TRUNCATE ON public.email_send_attempts FOR EACH STATEMENT EXECUTE FUNCTION target_immutable_history_guard()",
+      "enabled": "O",
+      "function": "target_immutable_history_guard",
+      "body": "\r\nBEGIN\r\n  RAISE EXCEPTION '% is append-only; corrections must be recorded as new rows', TG_TABLE_NAME;\r\nEND\r\n"
+    },
+    {
+      "table": "exception_cases",
+      "name": "exception_cases_no_delete",
+      "definition": "CREATE TRIGGER exception_cases_no_delete BEFORE DELETE ON public.exception_cases FOR EACH ROW EXECUTE FUNCTION f1_no_hard_delete()",
+      "enabled": "O",
+      "function": "f1_no_hard_delete",
+      "body": "\nBEGIN\n  RAISE EXCEPTION '% rows cannot be deleted; archive them with a reason', TG_TABLE_NAME;\nEND "
+    },
+    {
+      "table": "task_events",
+      "name": "s0_no_truncate",
+      "definition": "CREATE TRIGGER s0_no_truncate BEFORE TRUNCATE ON public.task_events FOR EACH STATEMENT EXECUTE FUNCTION f1_append_only()",
+      "enabled": "O",
+      "function": "f1_append_only",
+      "body": "\nBEGIN\n  RAISE EXCEPTION '% is append-only', TG_TABLE_NAME;\nEND "
+    },
+    {
+      "table": "task_events",
+      "name": "task_events_append_only",
+      "definition": "CREATE TRIGGER task_events_append_only BEFORE DELETE OR UPDATE ON public.task_events FOR EACH ROW EXECUTE FUNCTION f1_append_only()",
+      "enabled": "O",
+      "function": "f1_append_only",
+      "body": "\nBEGIN\n  RAISE EXCEPTION '% is append-only', TG_TABLE_NAME;\nEND "
+    },
+    {
+      "table": "tasks",
+      "name": "tasks_no_delete",
+      "definition": "CREATE TRIGGER tasks_no_delete BEFORE DELETE ON public.tasks FOR EACH ROW EXECUTE FUNCTION f1_no_hard_delete()",
+      "enabled": "O",
+      "function": "f1_no_hard_delete",
+      "body": "\nBEGIN\n  RAISE EXCEPTION '% rows cannot be deleted; archive them with a reason', TG_TABLE_NAME;\nEND "
+    },
+    {
+      "table": "work_item_events",
+      "name": "s0_no_truncate",
+      "definition": "CREATE TRIGGER s0_no_truncate BEFORE TRUNCATE ON public.work_item_events FOR EACH STATEMENT EXECUTE FUNCTION f1_append_only()",
+      "enabled": "O",
+      "function": "f1_append_only",
+      "body": "\nBEGIN\n  RAISE EXCEPTION '% is append-only', TG_TABLE_NAME;\nEND "
+    },
+    {
+      "table": "work_item_events",
+      "name": "work_item_events_append_only",
+      "definition": "CREATE TRIGGER work_item_events_append_only BEFORE DELETE OR UPDATE ON public.work_item_events FOR EACH ROW EXECUTE FUNCTION f1_append_only()",
+      "enabled": "O",
+      "function": "f1_append_only",
+      "body": "\nBEGIN\n  RAISE EXCEPTION '% is append-only', TG_TABLE_NAME;\nEND "
+    },
+    {
+      "table": "work_items",
+      "name": "work_items_no_delete",
+      "definition": "CREATE TRIGGER work_items_no_delete BEFORE DELETE ON public.work_items FOR EACH ROW EXECUTE FUNCTION f1_no_hard_delete()",
+      "enabled": "O",
+      "function": "f1_no_hard_delete",
+      "body": "\nBEGIN\n  RAISE EXCEPTION '% rows cannot be deleted; archive them with a reason', TG_TABLE_NAME;\nEND "
+    }
+  ],
+  "permissions": [
+    {
+      "key": "access.manage",
+      "resource": "access",
+      "action": "W",
+      "description": "Edit roles, permissions and field privacy",
+      "owner_only": true
+    },
+    {
+      "key": "access.read",
+      "resource": "access",
+      "action": "R",
+      "description": "View the role and permission matrix",
+      "owner_only": false
+    },
+    {
+      "key": "audit.read",
+      "resource": "audit",
+      "action": "R",
+      "description": "Search the audit trail",
+      "owner_only": false
+    },
+    {
+      "key": "automation.disable",
+      "resource": "automation",
+      "action": "W",
+      "description": "Turn automation switches OFF",
+      "owner_only": false
+    },
+    {
+      "key": "automation.enable",
+      "resource": "automation",
+      "action": "W",
+      "description": "Turn automation switches ON or change rollout stage",
+      "owner_only": true
+    },
+    {
+      "key": "automation.read",
+      "resource": "automation",
+      "action": "R",
+      "description": "View automation switches",
+      "owner_only": false
+    },
+    {
+      "key": "collections.approve",
+      "resource": "collections",
+      "action": "A",
+      "description": "Confirm receipts and authorise payments",
+      "owner_only": false
+    },
+    {
+      "key": "collections.read",
+      "resource": "collections",
+      "action": "R",
+      "description": "View invoice references, receipts and collections",
+      "owner_only": false
+    },
+    {
+      "key": "collections.write",
+      "resource": "collections",
+      "action": "W",
+      "description": "Record collections and receipts",
+      "owner_only": false
+    },
+    {
+      "key": "contracts.approve",
+      "resource": "contracts",
+      "action": "A",
+      "description": "Approve customer-specific rate contracts independently",
+      "owner_only": false
+    },
+    {
+      "key": "contracts.manage",
+      "resource": "contracts",
+      "action": "W",
+      "description": "Record fixed customer-specific rate contracts",
+      "owner_only": false
+    },
+    {
+      "key": "customers.approve",
+      "resource": "customers",
+      "action": "A",
+      "description": "Approve new customers for billing and merges",
+      "owner_only": false
+    },
+    {
+      "key": "customers.controls",
+      "resource": "customers",
+      "action": "W",
+      "description": "Set customer restrictions and credit exemption",
+      "owner_only": true
+    },
+    {
+      "key": "customers.create",
+      "resource": "customers",
+      "action": "W",
+      "description": "Create customers",
+      "owner_only": false
+    },
+    {
+      "key": "customers.credit_exempt",
+      "resource": "customers",
+      "action": "W",
+      "description": "Set the credit-exempt flag",
+      "owner_only": true
+    },
+    {
+      "key": "customers.do_not_quote",
+      "resource": "customers",
+      "action": "W",
+      "description": "Set or clear Do Not Quote",
+      "owner_only": false
+    },
+    {
+      "key": "customers.dues.read",
+      "resource": "customers",
+      "action": "F",
+      "description": "See customer dues and balances",
+      "owner_only": false
+    },
+    {
+      "key": "customers.duplicates",
+      "resource": "customers",
+      "action": "R",
+      "description": "Run duplicate checks",
+      "owner_only": false
+    },
+    {
+      "key": "customers.read",
+      "resource": "customers",
+      "action": "R",
+      "description": "View customers",
+      "owner_only": false
+    },
+    {
+      "key": "customers.update",
+      "resource": "customers",
+      "action": "W",
+      "description": "Edit customers",
+      "owner_only": false
+    },
+    {
+      "key": "dashboard.read",
+      "resource": "dashboard",
+      "action": "R",
+      "description": "View dashboards",
+      "owner_only": false
+    },
+    {
+      "key": "enquiries.create",
+      "resource": "enquiries",
+      "action": "W",
+      "description": "Create enquiries",
+      "owner_only": false
+    },
+    {
+      "key": "enquiries.read",
+      "resource": "enquiries",
+      "action": "R",
+      "description": "View enquiries",
+      "owner_only": false
+    },
+    {
+      "key": "enquiries.update",
+      "resource": "enquiries",
+      "action": "W",
+      "description": "Edit and assign enquiries",
+      "owner_only": false
+    },
+    {
+      "key": "exceptions.decide",
+      "resource": "exceptions",
+      "action": "A",
+      "description": "Approve or reject exceptions",
+      "owner_only": false
+    },
+    {
+      "key": "exceptions.raise",
+      "resource": "exceptions",
+      "action": "W",
+      "description": "Raise exceptions and backdating requests",
+      "owner_only": false
+    },
+    {
+      "key": "exceptions.read",
+      "resource": "exceptions",
+      "action": "R",
+      "description": "View the exception queue",
+      "owner_only": false
+    },
+    {
+      "key": "items.create",
+      "resource": "items",
+      "action": "W",
+      "description": "Create items",
+      "owner_only": false
+    },
+    {
+      "key": "items.list_price.read",
+      "resource": "items",
+      "action": "F",
+      "description": "See list price and discount (internal only)",
+      "owner_only": false
+    },
+    {
+      "key": "items.read",
+      "resource": "items",
+      "action": "R",
+      "description": "View items and price lists",
+      "owner_only": false
+    },
+    {
+      "key": "items.update",
+      "resource": "items",
+      "action": "W",
+      "description": "Edit items and price lists",
+      "owner_only": false
+    },
+    {
+      "key": "logistics.assignment.manage",
+      "resource": "logistics",
+      "action": "W",
+      "description": "Assign or revoke store staff access to an order",
+      "owner_only": false
+    },
+    {
+      "key": "logistics.dispatch.manage",
+      "resource": "logistics",
+      "action": "W",
+      "description": "Dispatch approved orders and confirm delivery",
+      "owner_only": false
+    },
+    {
+      "key": "logistics.evidence.write",
+      "resource": "logistics",
+      "action": "W",
+      "description": "Append photos and item-code observations on GRN and dispatch",
+      "owner_only": false
+    },
+    {
+      "key": "logistics.grn.manage",
+      "resource": "logistics",
+      "action": "W",
+      "description": "Create GRN with receipt quantities",
+      "owner_only": false
+    },
+    {
+      "key": "logistics.grn.post",
+      "resource": "logistics",
+      "action": "A",
+      "description": "Independently post non-financial GRN review",
+      "owner_only": false
+    },
+    {
+      "key": "logistics.grn.read",
+      "resource": "logistics",
+      "action": "R",
+      "description": "Read GRN and receiving lines without prices",
+      "owner_only": false
+    },
+    {
+      "key": "logistics.orders.assigned",
+      "resource": "logistics",
+      "action": "R",
+      "description": "Read only explicitly assigned orders",
+      "owner_only": false
+    },
+    {
+      "key": "logistics.orders.read",
+      "resource": "logistics",
+      "action": "R",
+      "description": "Read orders without financial fields",
+      "owner_only": false
+    },
+    {
+      "key": "logistics.read",
+      "resource": "logistics",
+      "action": "R",
+      "description": "Open the operational logistics workspace",
+      "owner_only": false
+    },
+    {
+      "key": "operations.approve",
+      "resource": "operations",
+      "action": "A",
+      "description": "Approve sensitive support decisions",
+      "owner_only": true
+    },
+    {
+      "key": "operations.read",
+      "resource": "operations",
+      "action": "R",
+      "description": "View customer support and incoming messages",
+      "owner_only": false
+    },
+    {
+      "key": "operations.write",
+      "resource": "operations",
+      "action": "W",
+      "description": "Create and progress customer support and intake",
+      "owner_only": false
+    },
+    {
+      "key": "orders.create",
+      "resource": "orders",
+      "action": "W",
+      "description": "Create sales orders",
+      "owner_only": false
+    },
+    {
+      "key": "orders.credit.review",
+      "resource": "orders",
+      "action": "A",
+      "description": "Approve credit exceptions",
+      "owner_only": true
+    },
+    {
+      "key": "orders.dispatch",
+      "resource": "orders",
+      "action": "W",
+      "description": "Dispatch and confirm delivery",
+      "owner_only": false
+    },
+    {
+      "key": "orders.read",
+      "resource": "orders",
+      "action": "R",
+      "description": "View sales orders",
+      "owner_only": false
+    },
+    {
+      "key": "orders.review",
+      "resource": "orders",
+      "action": "A",
+      "description": "Review held sales orders",
+      "owner_only": false
+    },
+    {
+      "key": "orders.update",
+      "resource": "orders",
+      "action": "W",
+      "description": "Edit and verify sales orders",
+      "owner_only": false
+    },
+    {
+      "key": "outbound.approve",
+      "resource": "outbound",
+      "action": "A",
+      "description": "Approve outbound drafts",
+      "owner_only": false
+    },
+    {
+      "key": "outbound.checklist.manage",
+      "resource": "outbound",
+      "action": "W",
+      "description": "Tick the customer/category checklist",
+      "owner_only": true
+    },
+    {
+      "key": "outbound.read",
+      "resource": "outbound",
+      "action": "R",
+      "description": "View outbound drafts",
+      "owner_only": false
+    },
+    {
+      "key": "purchasing.approve",
+      "resource": "purchasing",
+      "action": "A",
+      "description": "Approve purchasing records",
+      "owner_only": false
+    },
+    {
+      "key": "purchasing.read",
+      "resource": "purchasing",
+      "action": "R",
+      "description": "View purchasing",
+      "owner_only": false
+    },
+    {
+      "key": "purchasing.write",
+      "resource": "purchasing",
+      "action": "W",
+      "description": "Edit purchasing records",
+      "owner_only": false
+    },
+    {
+      "key": "quotations.approve",
+      "resource": "quotations",
+      "action": "A",
+      "description": "Approve quotations",
+      "owner_only": false
+    },
+    {
+      "key": "quotations.cost.manage",
+      "resource": "quotations",
+      "action": "W",
+      "description": "Enter item costs",
+      "owner_only": true
+    },
+    {
+      "key": "quotations.cost.read",
+      "resource": "quotations",
+      "action": "F",
+      "description": "See cost and margin",
+      "owner_only": false
+    },
+    {
+      "key": "quotations.create",
+      "resource": "quotations",
+      "action": "W",
+      "description": "Create quotations",
+      "owner_only": false
+    },
+    {
+      "key": "quotations.policy.manage",
+      "resource": "quotations",
+      "action": "W",
+      "description": "Edit quotation policy and letterhead",
+      "owner_only": true
+    },
+    {
+      "key": "quotations.read",
+      "resource": "quotations",
+      "action": "R",
+      "description": "View quotations",
+      "owner_only": false
+    },
+    {
+      "key": "quotations.send",
+      "resource": "quotations",
+      "action": "W",
+      "description": "Send approved quotations",
+      "owner_only": false
+    },
+    {
+      "key": "quotations.status",
+      "resource": "quotations",
+      "action": "W",
+      "description": "Record quotation outcomes",
+      "owner_only": false
+    },
+    {
+      "key": "quotations.update",
+      "resource": "quotations",
+      "action": "W",
+      "description": "Revise and submit quotations",
+      "owner_only": false
+    },
+    {
+      "key": "rules.manage",
+      "resource": "rules",
+      "action": "W",
+      "description": "Edit business rules",
+      "owner_only": true
+    },
+    {
+      "key": "rules.read",
+      "resource": "rules",
+      "action": "R",
+      "description": "View business rules",
+      "owner_only": false
+    },
+    {
+      "key": "tally.connector.manage",
+      "resource": "tally",
+      "action": "W",
+      "description": "Pair and revoke Tally connectors",
+      "owner_only": true
+    },
+    {
+      "key": "tally.read",
+      "resource": "tally",
+      "action": "R",
+      "description": "View stored Tally data",
+      "owner_only": false
+    },
+    {
+      "key": "tally.sync",
+      "resource": "tally",
+      "action": "W",
+      "description": "Request a Tally read",
+      "owner_only": false
+    },
+    {
+      "key": "tally.write.approve",
+      "resource": "tally_write",
+      "action": "A",
+      "description": "Independently approve an eligible queued Tally create",
+      "owner_only": false
+    },
+    {
+      "key": "tally.write.manage",
+      "resource": "tally_write",
+      "action": "W",
+      "description": "Owner-only write configuration and field mappings",
+      "owner_only": true
+    },
+    {
+      "key": "tally.write.read",
+      "resource": "tally_write",
+      "action": "F",
+      "description": "View Tally create XML, responses and write-side events",
+      "owner_only": false
+    },
+    {
+      "key": "tasks.assign",
+      "resource": "tasks",
+      "action": "A",
+      "description": "Assign tasks to other users",
+      "owner_only": false
+    },
+    {
+      "key": "tasks.read",
+      "resource": "tasks",
+      "action": "R",
+      "description": "View tasks",
+      "owner_only": false
+    },
+    {
+      "key": "tasks.write",
+      "resource": "tasks",
+      "action": "W",
+      "description": "Create, update and forward tasks",
+      "owner_only": false
+    },
+    {
+      "key": "users.create",
+      "resource": "users",
+      "action": "W",
+      "description": "Create users",
+      "owner_only": true
+    },
+    {
+      "key": "users.read",
+      "resource": "users",
+      "action": "R",
+      "description": "View users",
+      "owner_only": false
+    },
+    {
+      "key": "users.update",
+      "resource": "users",
+      "action": "W",
+      "description": "Edit users, reset passwords and MFA",
+      "owner_only": true
+    },
+    {
+      "key": "work.read",
+      "resource": "work",
+      "action": "R",
+      "description": "View owned work and SLA",
+      "owner_only": false
+    },
+    {
+      "key": "work.reassign",
+      "resource": "work",
+      "action": "W",
+      "description": "Reassign open work",
+      "owner_only": false
+    }
+  ],
+  "endpoints": [
+    {
+      "method": "GET",
+      "path": "/api/v1/automation",
+      "permission": "automation.read",
+      "idempotency": null,
+      "mfaExempt": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/customers/:id/message-checklist",
+      "permission": "outbound.read",
+      "idempotency": null,
+      "mfaExempt": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/exceptions",
+      "permission": "exceptions.read",
+      "idempotency": null,
+      "mfaExempt": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/exceptions/:id",
+      "permission": "exceptions.read",
+      "idempotency": null,
+      "mfaExempt": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/me/work",
+      "permission": "work.read",
+      "idempotency": null,
+      "mfaExempt": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/messages/drafts",
+      "permission": "outbound.read",
+      "idempotency": null,
+      "mfaExempt": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/messages/drafts/:id",
+      "permission": "outbound.read",
+      "idempotency": null,
+      "mfaExempt": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks",
+      "permission": "tasks.read",
+      "idempotency": null,
+      "mfaExempt": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks/:id",
+      "permission": "tasks.read",
+      "idempotency": null,
+      "mfaExempt": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/work-items/:id",
+      "permission": "work.read",
+      "idempotency": null,
+      "mfaExempt": false
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/automation/:key",
+      "permission": "automation.read",
+      "idempotency": null,
+      "mfaExempt": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/approvals/:id/decide",
+      "permission": "exceptions.decide",
+      "idempotency": null,
+      "mfaExempt": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/exceptions",
+      "permission": "exceptions.raise",
+      "idempotency": "optional",
+      "mfaExempt": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/messages/drafts",
+      "permission": "outbound.read",
+      "idempotency": "optional",
+      "mfaExempt": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/messages/drafts/:id/approve",
+      "permission": "outbound.approve",
+      "idempotency": null,
+      "mfaExempt": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/messages/drafts/:id/reject",
+      "permission": "outbound.approve",
+      "idempotency": null,
+      "mfaExempt": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/messages/send",
+      "permission": "outbound.approve",
+      "idempotency": null,
+      "mfaExempt": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/tasks",
+      "permission": "tasks.write",
+      "idempotency": "optional",
+      "mfaExempt": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/tasks/:id/archive",
+      "permission": "tasks.write",
+      "idempotency": null,
+      "mfaExempt": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/tasks/:id/forward",
+      "permission": "tasks.write",
+      "idempotency": "optional",
+      "mfaExempt": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/tasks/:id/status",
+      "permission": "tasks.write",
+      "idempotency": null,
+      "mfaExempt": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/work-items/:id/reassign",
+      "permission": "work.reassign",
+      "idempotency": null,
+      "mfaExempt": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/work-items/:id/status",
+      "permission": "work.read",
+      "idempotency": null,
+      "mfaExempt": false
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/customers/:id/message-checklist/:category",
+      "permission": "outbound.checklist.manage",
+      "idempotency": null,
+      "mfaExempt": false
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/messages/drafts/:id",
+      "permission": "outbound.read",
+      "idempotency": null,
+      "mfaExempt": false
+    }
+  ]
+}

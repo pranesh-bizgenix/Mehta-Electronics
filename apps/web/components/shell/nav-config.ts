@@ -8,6 +8,7 @@ export interface NavItem {
   icon: IconName;
   /** UI hint only; the server enforces access. */
   permission: string;
+  ownerOnly?: boolean;
   badge?: BadgeKey;
   badgeTone?: 'danger' | 'warning';
   keywords?: string;
@@ -28,6 +29,7 @@ export const NAV: NavGroup[] = [
     { href: '/messages', label: 'Outbound drafts', icon: 'mail', permission: 'outbound.read', badge: 'draftsAwaitingApproval', keywords: 'email approval' }
   ] },
   { label: 'Supply', items: [
+    { href: '/logistics', label: 'Logistics & store', icon: 'truck', permission: 'logistics.read', keywords: 'grn dispatch photos assigned orders store' },
     { href: '/items', label: 'Items & price lists', icon: 'items', permission: 'items.read', keywords: 'sku products stock' },
     { href: '/purchasing', label: 'Purchasing', icon: 'cart', permission: 'purchasing.read', keywords: 'rfq supplier po grn vendor' }
   ] },
@@ -38,9 +40,15 @@ export const NAV: NavGroup[] = [
   ] },
   { label: 'Tally', items: [
     { href: '/tally', label: 'Tally & reconciliation', icon: 'ledger', permission: 'tally.read', keywords: 'ledgers stock groups' },
-    { href: '/tally/connector', label: 'Tally connector', icon: 'plug', permission: 'tally.connector.manage', keywords: 'pairing sync' }
+    { href: '/tally/conflicts', label: 'Tally conflicts', icon: 'ledger', permission: 'tally.read', keywords: 'differences recovery reconciliation' },
+    { href: '/tally/monitor', label: 'Sync monitor', icon: 'plug', permission: 'tally.read', keywords: 'sync jobs queue delivery indexing retry' },
+    { href: '/tally/financial', label: 'Receipts & outstanding', icon: 'ledger', permission: 'customers.dues.read', keywords: 'payments cheques bills financial' },
+    { href: '/tally/connector', label: 'Tally connector', icon: 'plug', permission: 'tally.connector.manage', keywords: 'pairing sync' },
+    { href: '/tally/write', label: 'Tally write operations', icon: 'sliders', permission: 'tally.write.manage', ownerOnly: true, keywords: 'write create outbox mapping dry run approval kill switch' }
   ] },
   { label: 'Admin', items: [
+    { href: '/setup', label: 'Setup checklist', icon: 'tasks', permission: 'users.read', ownerOnly: true, keywords: 'readiness onboarding backup configuration' },
+    { href: '/decisions', label: 'Business decisions', icon: 'tasks', permission: 'rules.manage', ownerOnly: true, keywords: 'prem confirmation questions blocked workflows decision sheet' },
     { href: '/users', label: 'Users & roles', icon: 'shield', permission: 'users.read', keywords: 'permissions matrix' },
     { href: '/rules', label: 'Rules & switches', icon: 'sliders', permission: 'rules.read', keywords: 'automation sla discount margin' },
     { href: '/audit', label: 'Audit trail', icon: 'audit', permission: 'audit.read', keywords: 'history log' },

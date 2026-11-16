@@ -2,6 +2,9 @@ namespace TallyConnector.Core.Models;
 
 public sealed class TallySnapshot
 {
+    public VoucherCheckpoint? VoucherCheckpoint { get; set; }
+    public List<string> ReadRequestIds { get; set; } = [];
+    public Dictionary<string, Dictionary<string, object?>> CollectionMetadata { get; set; } = new(StringComparer.Ordinal);
     public string CompanyName { get; set; } = "";
 
     public string? CompanyGuid { get; set; }

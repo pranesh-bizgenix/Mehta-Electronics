@@ -1,0 +1,3 @@
+import fs from 'node:fs/promises';import {getConfig} from '../../src/config.js';import {createDatabase} from '../../src/postgres.js';import {parseStructuredVouchers} from '../../src/tally-import.js';
+const db=createDatabase(getConfig());try{const before=await db.prepare("SELECT id,length(content) AS bytes,content FROM tally_raw_payloads WHERE dataset='vouchersXml' ORDER BY received_at").all();const report=before.map(p=>{try{return {payloadId:p.id,bytes:p.bytes,structuredVouchers:parseStructuredVouchers(p.content).length};}catch{return {payloadId:p.id,bytes:p.bytes,parseError:true};}});await fs.writeFile('docs/tally-sales-original-payload-audit.json',JSON.stringify(report,null,2));console.log(JSON.stringify(report));}finally{await db.close();}
+

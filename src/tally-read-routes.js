@@ -8,7 +8,7 @@ export function storedTallyRoutes({ db, config, route, json, readJson }) {
       json(res,200,await readStoredTally(db,kind,url,{financial:config.tallyFinancialRoles.includes(user.role)}));
     })),
     route('GET',`${prefix}/read-companies`,'authenticated',async({res,user}) => {
-      if (!hasPermission(user,'customers.read') && !hasPermission(user,'items.read')) throw Object.assign(new Error('Permission denied.'),{status:403});
+      if (!hasPermission(user,'customers.read') && !hasPermission(user,'items.read') && !hasPermission(user,'logistics.orders.read')) throw Object.assign(new Error('Permission denied.'),{status:403});
       const rows = await db.prepare('SELECT id,name FROM tally_companies ORDER BY name,id').all();
       json(res,200,{data:rows.map(row => ({...row,display_name:companyDisplayName(row.name)}))});
     }),

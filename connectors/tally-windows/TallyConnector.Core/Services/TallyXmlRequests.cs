@@ -18,6 +18,10 @@ public static class TallyXmlRequests
         "ALLLEDGERENTRIES.LIST.ISDEEMEDPOSITIVE",
         "ALLLEDGERENTRIES.LIST.AMOUNT",
         "ALLLEDGERENTRIES.LIST.BILLALLOCATIONS.LIST",
+        "ALLLEDGERENTRIES.LIST.BANKALLOCATIONS.LIST",
+        "LEDGERENTRIES.LIST.BANKALLOCATIONS.LIST",
+        "BANKALLOCATIONS.LIST", "INSTRUMENTNUMBER", "INSTRUMENTDATE",
+        "PARTYLEDGERID", "PARTYLEDGERGUID",
         "ALLLEDGERENTRIES.LIST.COSTCENTREALLOCATIONS.LIST",
         "ALLINVENTORYENTRIES.LIST",
         "ALLINVENTORYENTRIES.LIST.STOCKITEMNAME",
@@ -25,6 +29,10 @@ public static class TallyXmlRequests
         "ALLINVENTORYENTRIES.LIST.BILLEDQTY",
         "ALLINVENTORYENTRIES.LIST.RATE",
         "ALLINVENTORYENTRIES.LIST.AMOUNT",
+        "BASICSHIPPEDBY", "BASICSHIPDOCUMENTNO", "BASICSHIPVESSELNO",
+        "ALLINVENTORYENTRIES.LIST.BATCHALLOCATIONS.LIST",
+        "INVENTORYENTRIES.LIST.BATCHALLOCATIONS.LIST",
+        "INVENTORYENTRIESIN.LIST", "INVENTORYENTRIESOUT.LIST",
     ];
 
     private static readonly string[] CompanyFetch =
@@ -163,6 +171,20 @@ public static class TallyXmlRequests
             "<FILTER>GISVoucherDateFilter</FILTER>",
             "<SYSTEM TYPE=\"Formulae\" NAME=\"GISVoucherDateFilter\">$Date &gt;= ##SVFromDate AND $Date &lt;= ##SVToDate</SYSTEM>");
 
+    public static string VoucherAlterationProbe(DateOnly from, DateOnly to, string company) =>
+        CollectionRequest("GISVoucherAlterations", "Voucher", ["GUID", "MASTERID", "ALTERID"], from, to, company,
+            "<FILTER>GISVoucherDateFilter</FILTER>",
+            "<SYSTEM TYPE=\"Formulae\" NAME=\"GISVoucherDateFilter\">$Date &gt;= ##SVFromDate AND $Date &lt;= ##SVToDate</SYSTEM>");
+
+    public static string IncrementalVouchersRequest(DateOnly from, DateOnly to, string company, string after, string through)
+    {
+        foreach (string id in new[] { after, through })
+            if (id.Length == 0 || id.Length > 30 || id.Any(c => c < '0' || c > '9')) throw new ArgumentException("Invalid alteration checkpoint.");
+        return CollectionRequest("GISChangedVouchers", "Voucher", VoucherFetch, from, to, company,
+            "<FILTER>GISChangedVoucherFilter</FILTER>",
+            $"<SYSTEM TYPE=\"Formulae\" NAME=\"GISChangedVoucherFilter\">$Date &gt;= ##SVFromDate AND $Date &lt;= ##SVToDate AND $AlterID &gt; {after} AND $AlterID &lt;= {through}</SYSTEM>");
+    }
+
     public static string LedgersRequest(DateOnly from, DateOnly to, string company) =>
         CollectionRequest(
             "GISLedgers",
@@ -182,6 +204,29 @@ public static class TallyXmlRequests
             "$VoucherTypeName = &quot;Quotation&quot; OR $VoucherTypeName = &quot;Enquiry&quot; OR " +
             "$VoucherTypeName = &quot;Inquiry&quot; OR ($VoucherTypeName = &quot;Sales Order&quot; AND $IsOptional)" +
             "</SYSTEM>");
+
+    public static string SalesOrdersRequest(DateOnly from, DateOnly to, string company) =>
+        OrderDocumentsRequest("GISSalesOrders", "Sales Order", from, to, company);
+
+    public static string PurchaseOrdersRequest(DateOnly from, DateOnly to, string company) =>
+        OrderDocumentsRequest("GISPurchaseOrders", "Purchase Order", from, to, company);
+
+    // A full books-start snapshot each cycle also refreshes unchanged historical movements.
+    // No stock balance is inferred from this movement collection.
+    public static string LogisticsDocumentsRequest(DateOnly from, DateOnly to, string company) =>
+        CollectionRequest("GISLogisticsDocuments", "Voucher", ["*", .. VoucherFetch], from, to, company,
+            "<FILTER>GISLogisticsFilter</FILTER>",
+            "<SYSTEM TYPE=\"Formulae\" NAME=\"GISLogisticsFilter\">" +
+            "$Date &gt;= ##SVFromDate AND $Date &lt;= ##SVToDate AND (" +
+            "$VoucherTypeName = &quot;Delivery Note&quot; OR $VoucherTypeName = &quot;Receipt Note&quot; OR " +
+            "$VoucherTypeName = &quot;Stock Journal&quot; OR $VoucherTypeName = &quot;Physical Stock&quot; OR " +
+            "$VoucherTypeName = &quot;Rejections In&quot; OR $VoucherTypeName = &quot;Rejections Out&quot;)" +
+            "</SYSTEM>");
+
+    private static string OrderDocumentsRequest(string collection, string voucherType, DateOnly from, DateOnly to, string company) =>
+        CollectionRequest(collection, "Voucher", ["*", .. VoucherFetch], from, to, company,
+            $"<FILTER>{collection}Filter</FILTER>",
+            $"<SYSTEM TYPE=\"Formulae\" NAME=\"{collection}Filter\">$VoucherTypeName = &quot;{voucherType}&quot;</SYSTEM>");
 
     public static string GroupsRequest(DateOnly from, DateOnly to, string company) =>
         CollectionRequest(

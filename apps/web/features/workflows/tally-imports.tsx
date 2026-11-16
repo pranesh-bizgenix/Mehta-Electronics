@@ -1,6 +1,8 @@
 'use client';
 
 import Link from 'next/link';
+import {tallyRecordHref} from '../../../../public/crm-navigation.js';
+import {FreshnessBadge,type DatasetFreshness} from './tally-freshness';
 import {TallySalesDocuments} from './tally-sales-documents';
 import { useEffect, useId, useState, type ReactNode } from 'react';
 import { useApi } from '@/lib/api/provider';
@@ -11,13 +13,16 @@ import { Avatar, Badge, Button, Card, CardSkeleton, DataTable, Drawer, EmptyStat
 import { TALLY_ENTITY_DESCRIPTORS, describeTallyField, formatTallyField } from '../../../../public/tally-entity-descriptors.js';
 
 interface ImportedRow { id: string; record_key: string; name: string; display_name?: string; parent_name?: string; fields: Record<string, unknown> }
-interface Listing { data: ImportedRow[]; pagination: Pagination; lastUpdated: string | null; emptyReason: string }
+interface Listing { freshness:DatasetFreshness[]; data: ImportedRow[]; pagination: Pagination; lastUpdated: string | null; emptyReason: string }
 interface Overview { counts: { entity: string; count: number }[]; sync: { status: string; completed_at?: string }[]; warnings: number; quarantine: number }
 const time = (value?: string | null) => value ? new Date(value).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) : 'No completed import recorded';
+const usefulValue = (value: unknown) => value != null && String(value).trim() !== '' && !['not applicable', 'not delivered', 'not supplied', '-'].includes(String(value).trim().toLowerCase());
+const friendlyLabel = (label: string) => label.replace(/^XML\s*\/\s*/i, '').replaceAll('_', ' ').replaceAll('/', ' · ').replace(/\s+/g, ' ').replace(/\b\w/g, char => char.toUpperCase());
 
 /** Explicit sources prevent imported masters being mistaken for editable CRM records. */
-export function RecordWorkspace({ kind, children }: { kind: 'customers' | 'items' | 'quotations' | 'enquiries'; children: ReactNode }) {
-  const [source, setSource] = useState('tally');
+export function RecordWorkspace({ kind, children, preferredSource }: { kind: 'customers' | 'items' | 'quotations' | 'enquiries'; children: ReactNode; preferredSource?:'crm'|'tally' }) {
+  const [source, setSource] = useState<string>(preferredSource??'tally');
+  useEffect(()=>{if(preferredSource)setSource(preferredSource);},[preferredSource]);
   const id = useId();
   return <section className="record-workspace">
     <div className="record-source-bar">
@@ -33,7 +38,8 @@ export function RecordWorkspace({ kind, children }: { kind: 'customers' | 'items
   </section>;
 }
 
-export function TallyImports({ kind }: { kind: 'customers' | 'items' }) {
+export function TallyImports({kind}:{kind:'customers'|'items'}){const {companyId}=useScope();return companyId?<CompanyTallyImports key={companyId} kind={kind}/>:<EmptyState title="Select a company">Choose an imported company in the header.</EmptyState>;}
+function CompanyTallyImports({ kind }: { kind: 'customers' | 'items' }) {
   const api = useApi(), { companyId } = useScope(), { can } = useSession();
   const [page, setPage] = useState(1), [search, setSearch] = useState(''), [version, setVersion] = useState(0);
   const [data, setData] = useState<Listing>(), [error, setError] = useState<unknown>(), [loading, setLoading] = useState(true);
@@ -72,10 +78,18 @@ export function TallyImports({ kind }: { kind: 'customers' | 'items' }) {
       ]}
       empty={<EmptyState title={search ? 'No imported records match' : 'No imported records available'}>{search ? 'Try another name or clear the search.' : data?.emptyReason || 'Waiting for a completed Tally import.'}</EmptyState>} />
     <Drawer open={Boolean(selected)} title={selected?.display_name || selected?.name || 'Imported details'} onClose={() => setSelected(undefined)}>
-      {selected && <div className="stack"><Badge tone="neutral">Tally / Read only</Badge><p>Imported details available to your role.</p><TextField label="Find a field" value={fieldSearch} onChange={e => setFieldSearch(e.target.value)} placeholder="Search GSTIN, address, stock" /><Link href={`/tally?entity=${kind}&companyId=${companyId || ''}`}>Open history and CRM linking</Link><dl className="stack">{Object.entries(selected.fields).filter(([key, value]) => `${key} ${String(value ?? '')}`.toLowerCase().includes(fieldSearch.toLowerCase())).map(([key, value]) => {
-        const descriptor = describeTallyField(key, kind);
-        return <div key={key}><dt>{descriptor.label}</dt><dd style={{ overflowWrap: 'anywhere' }}>{formatTallyField(value, descriptor, selected.fields)}</dd></div>;
-      })}</dl></div>}
+      {selected && <div className="import-record-detail">{data?.freshness&&<FreshnessBadge data={data.freshness}/>}
+        <section className="import-record-hero"><div><span className="workspace-eyebrow">{kind === 'items' ? 'STOCK ITEM' : 'CUSTOMER'}</span><h3>{selected.display_name || selected.name || 'Unnamed record'}</h3><p>{selected.parent_name || 'Imported from Tally'}</p></div><Badge tone="neutral">Tally · Read only</Badge></section>
+        <section className="import-record-section"><h4>{kind === 'items' ? 'Stock details' : 'Contact & registration'}</h4><dl className="import-record-grid">{Object.entries(selected.fields).filter(([key, value]) => key.startsWith('/stored/') && key !== '/stored/id' && usefulValue(value)).map(([key, value]) => {
+          const descriptor = describeTallyField(key, kind);
+          return <div key={key}><dt>{friendlyLabel(descriptor.label)}</dt><dd>{formatTallyField(value, descriptor, selected.fields)}</dd></div>;
+        })}</dl></section>
+        <Link href={tallyRecordHref(kind,companyId!,selected.record_key)}>Open import history and CRM linking</Link>
+        <details className="import-record-advanced"><summary>Original Tally fields</summary><p>Imported XML and source values. Empty fields are hidden.</p><TextField label="Find a field" value={fieldSearch} onChange={e => setFieldSearch(e.target.value)} placeholder="Search GSTIN, address, stock" /><dl className="import-record-grid">{Object.entries(selected.fields).filter(([key, value]) => usefulValue(value) && `${key} ${String(value)}`.toLowerCase().includes(fieldSearch.toLowerCase())).map(([key, value]) => {
+          const descriptor = describeTallyField(key, kind);
+          return <div key={key}><dt title={key}>{friendlyLabel(descriptor.label)}</dt><dd title={key}>{formatTallyField(value, descriptor, selected.fields)}</dd></div>;
+        })}</dl></details>
+      </div>}
     </Drawer>
   </section>;
 }

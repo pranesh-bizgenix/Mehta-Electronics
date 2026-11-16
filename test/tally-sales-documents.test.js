@@ -3,8 +3,7 @@ import crypto from 'node:crypto';
 import {test} from 'node:test';
 import {tallySalesDocumentKind,mapTallySalesDocument,sumDeliveredAmounts} from '../src/tally-sales-documents.js';
 import {parseCollection,importTallySession} from '../src/tally-import.js';
-import {temporaryDatabase} from '../test-support/postgres.js';
-import {createDatabase} from '../src/postgres.js';
+import {withTestTransaction} from '../test-support/transaction.js';
 import {TallyVisibilityService} from '../src/tally-visibility-service.js';
 const voucher=(extra='')=>`<VOUCHER VCHTYPE="Sales Quotation"><GUID>quote-guid</GUID><MASTERID>42</MASTERID><ALTERID>1</ALTERID><DATE>20260402</DATE><VOUCHERTYPENAME>Sales Quotation</VOUCHERTYPENAME><VOUCHERNUMBER>Q/1</VOUCHERNUMBER><PARTYLEDGERNAME>Fixture Customer</PARTYLEDGERNAME><PARTYGSTIN>27ABCDE1234F1Z5</PARTYGSTIN><ISOPTIONAL>Yes</ISOPTIONAL><ISCANCELLED>No</ISCANCELLED><ALLINVENTORYENTRIES.LIST><STOCKITEMNAME>SWITCH</STOCKITEMNAME><STOCKITEMGUID>item-guid</STOCKITEMGUID><BASICUSERDESCRIPTION.LIST><BASICUSERDESCRIPTION>Two pole switch</BASICUSERDESCRIPTION></BASICUSERDESCRIPTION.LIST><ACTUALQTY>2 NOS</ACTUALQTY><BILLEDQTY>2 NOS</BILLEDQTY><RATE>100.00/NOS</RATE><DISCOUNT>10</DISCOUNT><AMOUNT>180.00</AMOUNT><RATEDETAILS.LIST><GSTRATEDUTYHEAD>CGST</GSTRATEDUTYHEAD><GSTRATE>9</GSTRATE></RATEDETAILS.LIST></ALLINVENTORYENTRIES.LIST><ALLLEDGERENTRIES.LIST><LEDGERNAME>Fixture Customer</LEDGERNAME><ISPARTYLEDGER>Yes</ISPARTYLEDGER><AMOUNT>-212.40</AMOUNT></ALLLEDGERENTRIES.LIST><ALLLEDGERENTRIES.LIST><LEDGERNAME>CGST</LEDGERNAME><AMOUNT>16.20</AMOUNT></ALLLEDGERENTRIES.LIST><ALLLEDGERENTRIES.LIST><LEDGERNAME>SGST</LEDGERNAME><AMOUNT>16.20</AMOUNT></ALLLEDGERENTRIES.LIST>${extra}</VOUCHER>`;
 const envelope=body=>`<ENVELOPE><BODY><DATA><COLLECTION>${body}</COLLECTION></DATA></BODY></ENVELOPE>`;
@@ -21,8 +20,7 @@ test('maps original items, ledgers, tax/discount and exact signed amounts withou
  assert.equal(sumDeliveredAmounts(['9007199254740993.12','0.01']),'9007199254740993.13');assert.equal(sumDeliveredAmounts(['180.00','16.20','16.20']),'212.40');assert.equal(sumDeliveredAmounts([null,'1']),null);
  assert.throws(()=>parseCollection('<ENVELOPE><broken>','VOUCHER'));assert.throws(()=>parseCollection('<ENVELOPE><LINEERROR>Denied</LINEERROR></ENVELOPE>','VOUCHER'));
 });
-test('full import persists, retries, updates, cancellations, source filters, company isolation and empty enquiries',async()=>{
- const temporary=await temporaryDatabase('tallysales'),db=createDatabase({databaseUrl:temporary.databaseUrl});
+test('full import persists, retries, updates, cancellations, source filters, company isolation and empty enquiries',()=>withTestTransaction(async db=>{
  try{
   const connector=crypto.randomUUID();await db.sql`INSERT INTO tally_connectors(id,profile_name,expected_company_name,token_hash) VALUES(${connector},'test sales','test sales','unused')`;
   const load=async(content,company='test sales')=>{const session=crypto.randomUUID();await db.sql`INSERT INTO tally_upload_sessions(id,connector_id,company_name,sync_from,sync_to,status) VALUES(${session},${connector},${company},'2023-04-01','2026-11-02','receiving')`;await db.sql`INSERT INTO tally_upload_chunks(session_id,field_name,sequence,content) VALUES(${session},'salesDocumentsXml',0,${content})`;const result=await importTallySession(db,session,{requiredDatasets:['salesDocumentsXml']});return {session,result};};
@@ -43,5 +41,5 @@ test('full import persists, retries, updates, cancellations, source filters, com
   await load(envelope(''));const missing=await service.salesSummary('quotations',url,owner);assert.equal(missing.notSeenInLatest,1);assert.equal(missing.sourceCount,0);assert.equal((await service.list('quotations',url,owner)).pagination.total,1,'absent record history is retained');
   const noId=await load(envelope(voucher().replace('<GUID>quote-guid</GUID>','').replace('<MASTERID>42</MASTERID>','')));assert.equal(noId.result.status,'partial');assert.equal(noId.result.quarantined,1);
   const broken=await load('<ENVELOPE><broken>');assert.equal(broken.result.status,'failed');
- }finally{await db.close();await temporary.close();}
-});
+ }finally{}
+}));

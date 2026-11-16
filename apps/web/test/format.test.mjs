@@ -2,6 +2,16 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { formatMoney, formatMoneyCompact, formatQty, formatPercent, groupIndian, titleCase } from '../lib/format.ts';
 
+test('compact dashboard money uses shared exact arithmetic at half-up and large-value boundaries',()=>{
+ assert.equal(formatMoneyCompact('100499.999999'),'₹1.00 L');
+ assert.equal(formatMoneyCompact('100500.000000'),'₹1.01 L');
+ assert.equal(formatMoneyCompact('-100500.000000'),'−₹1.01 L');
+ assert.equal(formatMoneyCompact('99999999999999.999999'),'₹10000000.00 Cr');
+ assert.equal(formatMoney(0.1),'—');assert.equal(formatMoneyCompact(0.1),'—');
+ assert.equal(formatMoney(Number.MAX_SAFE_INTEGER+1),'—');
+ assert.equal(formatMoney('0.1'),'₹0.10');
+});
+
 test('money uses Indian grouping, exact decimal rounding and no floats', () => {
   assert.equal(groupIndian('1234567'), '12,34,567');
   assert.equal(formatMoney('1234567'), '₹12,34,567.00');

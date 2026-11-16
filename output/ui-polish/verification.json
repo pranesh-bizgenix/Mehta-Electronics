@@ -1,0 +1,23 @@
+{
+  "fixturePreview": true,
+  "screens": [
+    "customers",
+    "items",
+    "dashboard"
+  ],
+  "viewports": [
+    1440,
+    390
+  ],
+  "themes": [
+    "light",
+    "dark"
+  ],
+  "checks": [
+    "no horizontal overflow",
+    "keyboard source tabs",
+    "drawer field search",
+    "expand collection coverage"
+  ],
+  "errors": []
+}

@@ -1,16 +1,18 @@
-import { hashPassword, normalizeKey } from './security.js';
+import { normalizeKey } from './security.js';
 import { createDatabase } from './postgres.js';
 import { applyMigrations } from './migrations.js';
+import {legacyTotals} from '../public/money.js';
 
 export async function openDatabase(config) {
   const db = createDatabase(config);
   try {
+    await db.ready();
     await applyMigrations(db.sql);
     await db.withConnection(async () => {
       await db.exec('BEGIN');
       try {
         await db.exec('LOCK TABLE users IN EXCLUSIVE MODE');
-        await seedOwner(db, config);
+        await assertActiveOwner(db);
         await backfillDocumentRevisions(db);
         await db.exec('COMMIT');
       } catch (error) { await db.exec('ROLLBACK'); throw error; }
@@ -19,11 +21,12 @@ export async function openDatabase(config) {
   } catch (error) { await db.close(); throw error; }
 }
 
-async function seedOwner(db, config) {
-  const count = (await db.prepare('SELECT COUNT(*) AS count FROM users').get()).count;
-  if (count) return;
-  (await db.prepare(`INSERT INTO users (name,email,role,status,password_hash,must_change_password)
-              VALUES (?,?,?,?,?,1)`).run('System Owner', config.seedOwnerEmail.toLowerCase(), 'OWNER', 'ACTIVE', hashPassword(config.seedOwnerPassword)));
+/** Startup checks existing access only; first-account provisioning is never implicit. */
+export async function assertActiveOwner(db) {
+  const owner = await db.prepare(`SELECT u.id FROM users u JOIN roles r ON r.key=u.role
+    WHERE u.role='OWNER' AND u.status='ACTIVE' AND r.status='ACTIVE' ORDER BY u.id LIMIT 1`).get();
+  if (!owner) throw Object.assign(new Error('ControlDesk startup refused: no existing active Owner account in an active Owner role. Obtain an explicitly approved account provisioning or recovery procedure before restarting. No account or password was created.'), { code: 'ACTIVE_OWNER_REQUIRED' });
+  return owner.id;
 }
 
 export async function writeAudit(db, { userId, entity, recordId, action, oldValue = null, newValue = null, reason = null, ipAddress = null }) {
@@ -39,13 +42,16 @@ export async function customerView(db, id) {
   return customer;
 }
 
-export async function replaceContacts(db, customerId, contacts = []) {
+export async function replaceContacts(db, customerId, contacts = [], reason) {
   const old=await db.prepare('SELECT * FROM customer_contacts WHERE customer_id=? AND NOT is_deleted').all(customerId);
   const actor=(await db.prepare('SELECT updated_by FROM customers WHERE id=?').get(customerId)).updated_by;
-  await db.prepare("UPDATE customer_contacts SET status='ARCHIVED',is_deleted=true,updated_at=now() WHERE customer_id=? AND NOT is_deleted").run(customerId);
-  for(const row of old)await writeAudit(db,{userId:actor,entity:'CUSTOMER_CONTACT',recordId:row.id,action:'ARCHIVE',oldValue:row,newValue:{...row,status:'ARCHIVED',is_deleted:true},reason:'Contact list revised through existing customer route'});
-  const add = db.prepare(`INSERT INTO customer_contacts(customer_id,name,designation,phone,email,is_primary) VALUES(?,?,?,?,?,?)`);
-  for (const contact of contacts) {const result=await add.run(customerId, contact.name, contact.designation || null, contact.phone || null, contact.email?.toLowerCase() || null, (contact.isPrimary ?? contact.is_primary) ? 1 : 0);await writeAudit(db,{userId:actor,entity:'CUSTOMER_CONTACT',recordId:result.insertedId,action:'CREATE',newValue:contact,reason:'Contact list revised through existing customer route'});}
+  const why=typeof reason==='string'?reason.trim():'';
+  if(old.length&&why.length<3)throw Object.assign(new Error('A reason of at least three characters is required before replacing existing contacts.'),{status:422});
+  const auditReason=why||'Contact list created through customer route';
+  await db.prepare("UPDATE customer_contacts SET status='ARCHIVED',is_deleted=true,deleted_by=?,delete_reason=?,updated_by=?,updated_at=now() WHERE customer_id=? AND NOT is_deleted").run(actor,auditReason,actor,customerId);
+  for(const row of old)await writeAudit(db,{userId:actor,entity:'CUSTOMER_CONTACT',recordId:row.id,action:'ARCHIVE',oldValue:row,newValue:{...row,status:'ARCHIVED',is_deleted:true},reason:auditReason});
+  const add = db.prepare(`INSERT INTO customer_contacts(customer_id,name,designation,phone,email,is_primary,created_by,updated_by) VALUES(?,?,?,?,?,?,?,?)`);
+  for (const contact of contacts) {const result=await add.run(customerId, contact.name, contact.designation || null, contact.phone || null, contact.email?.toLowerCase() || null, (contact.isPrimary ?? contact.is_primary) ? 1 : 0,actor,actor);await writeAudit(db,{userId:actor,entity:'CUSTOMER_CONTACT',recordId:result.insertedId,action:'CREATE',newValue:contact,reason:auditReason});}
 }
 
 export async function enquiryView(db, id) {
@@ -63,11 +69,9 @@ export async function quotationView(db, id) {
     (SELECT email FROM customer_contacts cc WHERE cc.customer_id=c.id AND NOT cc.is_deleted ORDER BY cc.is_primary DESC,cc.id LIMIT 1) AS contact_email
     FROM quotations q JOIN customers c ON c.id=q.customer_id LEFT JOIN enquiries e ON e.id=q.enquiry_id WHERE q.id=?`).get(id));
   if (!row) return null;
-  row.lines = (await db.prepare(`SELECT l.*,i.part_code FROM quotation_lines l LEFT JOIN items i ON i.id=l.item_id
+  row.lines = (await db.prepare(`SELECT l.*,l.quantity::text AS quantity,l.unit_price::text AS unit_price,l.discount_percent::text AS discount_percent,l.tax_percent::text AS tax_percent,i.part_code FROM quotation_lines l LEFT JOIN items i ON i.id=l.item_id
     WHERE l.quotation_id=? AND NOT l.is_deleted ORDER BY l.position,l.id`).all(id));
-  row.subtotal = row.lines.reduce((sum, line) => sum + line.quantity * line.unit_price * (1 - line.discount_percent / 100), 0);
-  row.tax_total = row.lines.reduce((sum, line) => { const base=line.quantity*line.unit_price*(1-line.discount_percent/100); return sum+base*line.tax_percent/100; }, 0);
-  row.total = row.subtotal + row.tax_total;
+  Object.assign(row,legacyTotals(row.lines));
   return row;
 }
 
@@ -106,11 +110,9 @@ export async function salesOrderView(db, id) {
   const row = (await db.prepare(`SELECT o.*,c.name AS customer_name,q.quotation_number
     FROM sales_orders o JOIN customers c ON c.id=o.customer_id LEFT JOIN quotations q ON q.id=o.quotation_id WHERE o.id=?`).get(id));
   if (!row) return null;
-  row.lines = (await db.prepare(`SELECT l.*,i.part_code FROM sales_order_lines l LEFT JOIN items i ON i.id=l.item_id
+  row.lines = (await db.prepare(`SELECT l.*,l.ordered_quantity::text AS ordered_quantity,l.unit_price::text AS unit_price,l.discount_percent::text AS discount_percent,l.tax_percent::text AS tax_percent,i.part_code FROM sales_order_lines l LEFT JOIN items i ON i.id=l.item_id
     WHERE l.sales_order_id=? AND NOT l.is_deleted ORDER BY l.position,l.id`).all(id));
-  row.subtotal = row.lines.reduce((sum,line)=>sum+line.ordered_quantity*line.unit_price*(1-line.discount_percent/100),0);
-  row.tax_total = row.lines.reduce((sum,line)=>{const base=line.ordered_quantity*line.unit_price*(1-line.discount_percent/100);return sum+base*line.tax_percent/100;},0);
-  row.total = row.subtotal + row.tax_total;
+  Object.assign(row,legacyTotals(row.lines,'ordered_quantity'));
   return row;
 }
 

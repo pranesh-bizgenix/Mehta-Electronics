@@ -1,0 +1,204 @@
+{
+  "scope": "Typed operational quantities and prices only. Raw/source accounting amounts, credit-note values, balances and round-off remain signed. Nullable parsed fields remain unknown until reviewed; no zero default or data backfill.",
+  "newChecks": [
+    {
+      "table": "price_list_items",
+      "column": "list_price",
+      "minimum": "0",
+      "allowNull": true,
+      "constraint": "s0_nonnegative_list_price"
+    },
+    {
+      "table": "price_list_items",
+      "column": "net_price",
+      "minimum": "0",
+      "allowNull": true,
+      "constraint": "s0_nonnegative_net_price"
+    },
+    {
+      "table": "supplier_po_lines",
+      "column": "quantity",
+      "minimum": "0",
+      "allowNull": true,
+      "constraint": "s0_nonnegative_quantity"
+    },
+    {
+      "table": "supplier_po_lines",
+      "column": "unit_price",
+      "minimum": "0",
+      "allowNull": true,
+      "constraint": "s0_nonnegative_unit_price"
+    },
+    {
+      "table": "supplier_po_schedules",
+      "column": "quantity",
+      "minimum": "0",
+      "allowNull": true,
+      "constraint": "s0_nonnegative_quantity"
+    },
+    {
+      "table": "purchase_request_lines",
+      "column": "quantity",
+      "minimum": "0",
+      "allowNull": true,
+      "constraint": "s0_nonnegative_quantity"
+    },
+    {
+      "table": "rfq_vendor_reply_lines",
+      "column": "quantity",
+      "minimum": "0",
+      "allowNull": true,
+      "constraint": "s0_nonnegative_quantity"
+    },
+    {
+      "table": "rfq_vendor_reply_lines",
+      "column": "quoted_unit_price",
+      "minimum": "0",
+      "allowNull": true,
+      "constraint": "s0_nonnegative_quoted_unit_price"
+    },
+    {
+      "table": "acceptance_lines",
+      "column": "quantity",
+      "minimum": "0",
+      "allowNull": true,
+      "constraint": "s0_nonnegative_quantity"
+    },
+    {
+      "table": "acceptance_lines",
+      "column": "net_price",
+      "minimum": "0",
+      "allowNull": true,
+      "constraint": "s0_nonnegative_net_price"
+    },
+    {
+      "table": "goods_receipt_lines",
+      "column": "received_quantity",
+      "minimum": "0",
+      "allowNull": true,
+      "constraint": "s0_nonnegative_received_quantity"
+    },
+    {
+      "table": "goods_receipt_lines",
+      "column": "accepted_quantity",
+      "minimum": "0",
+      "allowNull": true,
+      "constraint": "s0_nonnegative_accepted_quantity"
+    },
+    {
+      "table": "goods_receipt_lines",
+      "column": "rejected_quantity",
+      "minimum": "0",
+      "allowNull": true,
+      "constraint": "s0_nonnegative_rejected_quantity"
+    },
+    {
+      "table": "goods_receipt_lines",
+      "column": "actual_unit_price",
+      "minimum": "0",
+      "allowNull": true,
+      "constraint": "s0_nonnegative_actual_unit_price"
+    },
+    {
+      "table": "supply_allocations",
+      "column": "allocated_quantity",
+      "minimum": "0",
+      "allowNull": false,
+      "constraint": "s0_nonnegative_allocated_quantity"
+    },
+    {
+      "table": "dispatch_lines",
+      "column": "quantity",
+      "minimum": "0",
+      "allowNull": true,
+      "constraint": "s0_nonnegative_quantity"
+    }
+  ],
+  "crossFieldChecks": [
+    {
+      "table": "goods_receipt_lines",
+      "constraint": "s0_received_disposition",
+      "expression": "accepted_quantity + rejected_quantity <= received_quantity",
+      "note": "Only enforced when all three facts are known; incomplete extraction remains NULL."
+    }
+  ],
+  "nullability": {
+    "quotation_lines": [
+      "quotation_id",
+      "quantity",
+      "unit_price",
+      "discount_percent",
+      "tax_percent"
+    ],
+    "sales_order_lines": [
+      "sales_order_id",
+      "ordered_quantity",
+      "fulfilled_quantity",
+      "unit_price"
+    ],
+    "customer_po_lines": [
+      "customer_po_id",
+      "line_number",
+      "quantity",
+      "unit_price",
+      "original_part_number",
+      "uom"
+    ],
+    "supplier_po_lines": [
+      "supplier_po_id",
+      "line_number"
+    ],
+    "supplier_po_schedules": [
+      "supplier_po_line_id",
+      "schedule_number",
+      "version"
+    ],
+    "purchase_request_lines": [
+      "purchase_request_id"
+    ],
+    "rfq_vendor_reply_lines": [
+      "reply_id"
+    ],
+    "acceptance_lines": [
+      "acceptance_id"
+    ],
+    "goods_receipt_lines": [
+      "goods_receipt_id"
+    ],
+    "supply_allocations": [
+      "sales_order_line_id",
+      "supplier_po_line_id",
+      "allocated_quantity"
+    ],
+    "dispatch_lines": [
+      "dispatch_id"
+    ],
+    "bank_statement_lines": [
+      "import_id",
+      "bank_account_id",
+      "source_line_key",
+      "transaction_date",
+      "direction",
+      "amount"
+    ],
+    "packing_box_items": [
+      "box_id",
+      "sales_order_id",
+      "order_line_id",
+      "quantity"
+    ]
+  },
+  "nullableReviewFields": "Unreviewed supplier replies, acceptances, source invoices and source schedules may omit parsed quantities/rates. Their typed values stay NULL, not zero. Required row/parent identities remain NOT NULL. Confirmation/activation endpoints must reject missing fields in their stage-specific workflows.",
+  "signedExceptions": {
+    "customer_po_lines.source_rate": "Unmodified original source rate retained for mismatch review; normalized unit_price is separately nonnegative.",
+    "customer_po_lines.source_line_total": "Unmodified original line amount retained for review, including credits or malformed source evidence.",
+    "supplier_acceptances.source_total": "Original supplier total is evidence, not a normalized approval amount.",
+    "supplier_acceptances.round_off": "Round-off may be positive or negative.",
+    "bank_statement_lines.balance": "Bank account balance may be negative.",
+    "stock_check_log.free_quantity": "Calculated shortage/free-stock result may be negative; clamp only at the workflow display boundary if explicitly required.",
+    "invoice_lines.quantity": "Tally/source invoice line evidence may represent returns or credits; invoice authority is not inferred.",
+    "invoice_lines.unit_price": "Original source credit/invoice evidence must preserve its sign.",
+    "invoice_lines.supplied_line_total": "Original source amount may include credit or reversal entries.",
+    "invoice_lines.calculated_line_total": "Recalculated amount preserves source line sign for reconciliation."
+  }
+}

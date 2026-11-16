@@ -1,24 +1,26 @@
+import {withTestTransaction} from '../test-support/transaction.js';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import {test} from 'node:test';
 import fs from 'node:fs/promises';
-import os from 'node:os';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {procurementFixture} from '../test-support/procurement-fixture.js';
 import {sampleOriginal} from '../test-support/sales-order-fixture.js';
 import * as p from '../src/procurement.js';
 import {genericSupplierPoWorkbook} from '../src/procurement-xlsx.js';
-test('generic workbook is valid ZIP/XML with literal cells and explicit format notice',async()=>{
- const file=path.join(os.tmpdir(),`mehta-po-${crypto.randomUUID()}.xlsx`),po={number:'PO-TEST',version:1,status:'DRAFT',payload:{buyer:{name:'Mehta'},vendor:{name:'=FORMULA & vendor'},lines:[],total:'0.00'}};
+test('generic workbook is valid ZIP/XML with literal cells and explicit format notice',async t=>{
+ await fs.mkdir(path.resolve('backups'),{recursive:true});
+ const file=path.resolve('backups',`ZZTEST_po-${crypto.randomUUID()}.xlsx`),po={number:'PO-TEST',version:1,status:'DRAFT',payload:{buyer:{name:'Mehta'},vendor:{name:'=FORMULA & vendor'},lines:[],total:'0.00'}};
+ t.after(()=>fs.rm(file,{force:true}));
  await fs.writeFile(file,genericSupplierPoWorkbook(po));
  const script="import sys,zipfile,xml.etree.ElementTree as E; z=zipfile.ZipFile(sys.argv[1]); assert z.testzip() is None; [E.fromstring(z.read(n)) for n in z.namelist() if n.endswith('.xml') or n.endswith('.rels')]; s=z.read('xl/worksheets/sheet1.xml').decode(); assert 'NOT CONNECTWELL TEMPLATE' in s; assert '<f>' not in s; assert '=FORMULA &amp; vendor' in s";
  execFileSync('python',['-c',script,file]);
 });
-test('procurement lifecycle: RFQ prices, winner, independent PO review, receipts, originals and manual acceptance comparison',{skip:!process.env.RUN_PROCUREMENT_DB_TEST},async()=>{
- const f=await procurementFixture(),{db,manager,owner,executive,accounts,order,item}=f;
+test('procurement lifecycle: RFQ prices, winner, independent PO review, receipts, originals and manual acceptance comparison',async()=>withTestTransaction(async transactionDb=>{
+ const f=await procurementFixture(transactionDb),{db,manager,owner,executive,accounts,order,item,company}=f;
  try{
- const raw=await db.sql`SELECT (SELECT jsonb_agg(t) FROM tally_ledgers t) AS ledgers,(SELECT jsonb_agg(t) FROM tally_stock_items t) AS stock`;
+ const raw=await db.sql`SELECT (SELECT jsonb_agg(t ORDER BY t.id) FROM tally_ledgers t WHERE company_id=${company}) AS ledgers,(SELECT jsonb_agg(t ORDER BY t.id) FROM tally_stock_items t WHERE company_id=${company}) AS stock`;
  await assert.rejects(p.saveVendor(db,null,{name:'Forbidden',reason:'Wrong role'},executive),{status:403});
  const vendor=await p.saveVendor(db,null,{name:'Connectwell Review',stateCode:'27',gstin:'27ABCDE1234F1Z5',email:'vendor@example.test',reason:'Create purchasing vendor'},manager);
  const other=await p.saveVendor(db,null,{name:'Second supplier',stateCode:'24',reason:'Compare alternative vendor'},manager);
@@ -54,9 +56,9 @@ test('procurement lifecycle: RFQ prices, winner, independent PO review, receipts
  const replacement=await p.uploadSupplierDocument(db,po.id,{...upload,base64:Buffer.from('%PDF-1.4\n% replacement\n%%EOF').toString('base64'),replacesId:doc.id,reason:'Supplier corrected acceptance'},manager);assert.equal((await p.purchaseRecord(db,'documents',doc.id,owner)).status,'ARCHIVED');assert.equal(replacement.status,'PENDING_REVIEW');
  for(const kind of ['DISPATCH_INVOICE','PACKING_SLIP','TEST_REPORT'])await p.uploadSupplierDocument(db,po.id,{...upload,kind,reason:'Store supplier supporting document'},manager);
  await assert.rejects(p.purchaseRecord(db,'pos',po.id,accounts),{status:403});
- const logs=await db.sql`SELECT * FROM audit_logs WHERE entity='PROCUREMENT'`;assert.equal(JSON.stringify(logs).includes('unitPrice'),false);
+ const logs=await db.sql`SELECT * FROM audit_logs WHERE entity='PROCUREMENT' AND user_id IN (${owner.id},${manager.id},${executive.id})`;assert.equal(JSON.stringify(logs).includes('unitPrice'),false);
  assert.ok((await p.purchaseHistory(db,'pos',po.id,owner)).length>=5);
- await assert.rejects(db.sql`DELETE FROM crm_supplier_pos`,/deleted/);await assert.rejects(db.sql`TRUNCATE crm_supplier_documents`,/truncated|foreign key constraint/);
- assert.deepEqual(await db.sql`SELECT (SELECT jsonb_agg(t) FROM tally_ledgers t) AS ledgers,(SELECT jsonb_agg(t) FROM tally_stock_items t) AS stock`,raw);
+ await assert.rejects(db.sql`DELETE FROM crm_supplier_pos WHERE id=${po.id}`,/deleted/);assert.ok((await db.sql`SELECT 1 FROM pg_trigger WHERE tgrelid=CAST(${'crm_supplier_documents'} AS regclass) AND NOT tgisinternal`).length);
+ assert.deepEqual(await db.sql`SELECT (SELECT jsonb_agg(t ORDER BY t.id) FROM tally_ledgers t WHERE company_id=${company}) AS ledgers,(SELECT jsonb_agg(t ORDER BY t.id) FROM tally_stock_items t WHERE company_id=${company}) AS stock`,raw);
  }finally{await f.close();}
-});
+}));

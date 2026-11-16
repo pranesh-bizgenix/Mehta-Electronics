@@ -1,0 +1,1901 @@
+{
+  "checkedAt": "2026-11-05T07:08:05.765Z",
+  "database": "mehta_electronics_local",
+  "readOnly": true,
+  "ranking": "Ten highest estimated planner costs among 32 representative generated Tally list/count queries. Not an observed production runtime ranking; pg_stat_statements is not installed.",
+  "queries": [
+    {
+      "entity": "ledgers",
+      "role": "OWNER",
+      "mode": "default",
+      "kind": "count",
+      "totalCost": 2168.94,
+      "nodes": [
+        {
+          "type": "Aggregate",
+          "index": null,
+          "estimatedRows": 1,
+          "totalCost": 2168.94
+        },
+        {
+          "type": "Index Only Scan",
+          "index": "tally_current_state",
+          "estimatedRows": 4462,
+          "totalCost": 2113.15
+        }
+      ]
+    },
+    {
+      "entity": "ledgers",
+      "role": "OWNER",
+      "mode": "default",
+      "kind": "page",
+      "totalCost": 5425.62,
+      "nodes": [
+        {
+          "type": "Nested Loop",
+          "index": null,
+          "estimatedRows": 25,
+          "totalCost": 5425.62
+        },
+        {
+          "type": "Limit",
+          "index": null,
+          "estimatedRows": 25,
+          "totalCost": 5208.18
+        },
+        {
+          "type": "Sort",
+          "index": null,
+          "estimatedRows": 4462,
+          "totalCost": 5219.27
+        },
+        {
+          "type": "WindowAgg",
+          "index": null,
+          "estimatedRows": 4462,
+          "totalCost": 5082.2
+        },
+        {
+          "type": "Sort",
+          "index": null,
+          "estimatedRows": 4462,
+          "totalCost": 5004.12
+        },
+        {
+          "type": "Seq Scan",
+          "index": null,
+          "estimatedRows": 4462,
+          "totalCost": 4722.49
+        },
+        {
+          "type": "Index Scan",
+          "index": "tally_visibility_records_pkey",
+          "estimatedRows": 1,
+          "totalCost": 8.43
+        }
+      ]
+    },
+    {
+      "entity": "ledgers",
+      "role": "OWNER",
+      "mode": "search",
+      "kind": "count",
+      "totalCost": 2588.63,
+      "nodes": [
+        {
+          "type": "Aggregate",
+          "index": null,
+          "estimatedRows": 1,
+          "totalCost": 2588.63
+        },
+        {
+          "type": "Bitmap Heap Scan",
+          "index": null,
+          "estimatedRows": 90,
+          "totalCost": 2587.5
+        },
+        {
+          "type": "BitmapAnd",
+          "index": null,
+          "estimatedRows": 90,
+          "totalCost": 2264.22
+        },
+        {
+          "type": "Bitmap Index Scan",
+          "index": "tally_current_state",
+          "estimatedRows": 4462,
+          "totalCost": 80.91
+        },
+        {
+          "type": "Bitmap Index Scan",
+          "index": "tally_current_financial_search",
+          "estimatedRows": 335,
+          "totalCost": 2183.01
+        }
+      ]
+    },
+    {
+      "entity": "ledgers",
+      "role": "OWNER",
+      "mode": "search",
+      "kind": "page",
+      "totalCost": 2812.26,
+      "nodes": [
+        {
+          "type": "Nested Loop",
+          "index": null,
+          "estimatedRows": 25,
+          "totalCost": 2812.26
+        },
+        {
+          "type": "Limit",
+          "index": null,
+          "estimatedRows": 25,
+          "totalCost": 2594.82
+        },
+        {
+          "type": "Sort",
+          "index": null,
+          "estimatedRows": 90,
+          "totalCost": 2594.98
+        },
+        {
+          "type": "WindowAgg",
+          "index": null,
+          "estimatedRows": 90,
+          "totalCost": 2592.22
+        },
+        {
+          "type": "Sort",
+          "index": null,
+          "estimatedRows": 90,
+          "totalCost": 2590.64
+        },
+        {
+          "type": "Bitmap Heap Scan",
+          "index": null,
+          "estimatedRows": 90,
+          "totalCost": 2587.5
+        },
+        {
+          "type": "BitmapAnd",
+          "index": null,
+          "estimatedRows": 90,
+          "totalCost": 2264.22
+        },
+        {
+          "type": "Bitmap Index Scan",
+          "index": "tally_current_state",
+          "estimatedRows": 4462,
+          "totalCost": 80.91
+        },
+        {
+          "type": "Bitmap Index Scan",
+          "index": "tally_current_financial_search",
+          "estimatedRows": 335,
+          "totalCost": 2183.01
+        },
+        {
+          "type": "Index Scan",
+          "index": "tally_visibility_records_pkey",
+          "estimatedRows": 1,
+          "totalCost": 8.43
+        }
+      ]
+    },
+    {
+      "entity": "ledgers",
+      "role": "OWNER",
+      "mode": "group",
+      "kind": "count",
+      "totalCost": 72.76,
+      "nodes": [
+        {
+          "type": "Aggregate",
+          "index": null,
+          "estimatedRows": 1,
+          "totalCost": 72.76
+        },
+        {
+          "type": "Index Only Scan",
+          "index": "tally_current_parent",
+          "estimatedRows": 97,
+          "totalCost": 71.53
+        }
+      ]
+    },
+    {
+      "entity": "ledgers",
+      "role": "OWNER",
+      "mode": "group",
+      "kind": "page",
+      "totalCost": 416.72,
+      "nodes": [
+        {
+          "type": "Nested Loop",
+          "index": null,
+          "estimatedRows": 25,
+          "totalCost": 416.72
+        },
+        {
+          "type": "Limit",
+          "index": null,
+          "estimatedRows": 25,
+          "totalCost": 199.29
+        },
+        {
+          "type": "Sort",
+          "index": null,
+          "estimatedRows": 97,
+          "totalCost": 199.47
+        },
+        {
+          "type": "WindowAgg",
+          "index": null,
+          "estimatedRows": 97,
+          "totalCost": 196.49
+        },
+        {
+          "type": "Sort",
+          "index": null,
+          "estimatedRows": 97,
+          "totalCost": 194.79
+        },
+        {
+          "type": "Index Scan",
+          "index": "tally_current_parent",
+          "estimatedRows": 97,
+          "totalCost": 191.34
+        },
+        {
+          "type": "Index Scan",
+          "index": "tally_visibility_records_pkey",
+          "estimatedRows": 1,
+          "totalCost": 8.43
+        }
+      ]
+    },
+    {
+      "entity": "ledgers",
+      "role": "OWNER",
+      "mode": "filter",
+      "kind": "count",
+      "totalCost": 4805.61,
+      "nodes": [
+        {
+          "type": "Aggregate",
+          "index": null,
+          "estimatedRows": 1,
+          "totalCost": 4805.61
+        },
+        {
+          "type": "Seq Scan",
+          "index": null,
+          "estimatedRows": 22,
+          "totalCost": 4805.32
+        }
+      ]
+    },
+    {
+      "entity": "ledgers",
+      "role": "OWNER",
+      "mode": "filter",
+      "kind": "page",
+      "totalCost": 4998.14,
+      "nodes": [
+        {
+          "type": "Nested Loop",
+          "index": null,
+          "estimatedRows": 22,
+          "totalCost": 4998.14
+        },
+        {
+          "type": "Limit",
+          "index": null,
+          "estimatedRows": 22,
+          "totalCost": 4806.8
+        },
+        {
+          "type": "Sort",
+          "index": null,
+          "estimatedRows": 22,
+          "totalCost": 4806.8
+        },
+        {
+          "type": "WindowAgg",
+          "index": null,
+          "estimatedRows": 22,
+          "totalCost": 4806.25
+        },
+        {
+          "type": "Sort",
+          "index": null,
+          "estimatedRows": 22,
+          "totalCost": 4805.87
+        },
+        {
+          "type": "Seq Scan",
+          "index": null,
+          "estimatedRows": 22,
+          "totalCost": 4805.32
+        },
+        {
+          "type": "Index Scan",
+          "index": "tally_visibility_records_pkey",
+          "estimatedRows": 1,
+          "totalCost": 8.43
+        }
+      ]
+    },
+    {
+      "entity": "ledgers",
+      "role": "MANAGER",
+      "mode": "default",
+      "kind": "count",
+      "totalCost": 2168.94,
+      "nodes": [
+        {
+          "type": "Aggregate",
+          "index": null,
+          "estimatedRows": 1,
+          "totalCost": 2168.94
+        },
+        {
+          "type": "Index Only Scan",
+          "index": "tally_current_state",
+          "estimatedRows": 4462,
+          "totalCost": 2113.15
+        }
+      ]
+    },
+    {
+      "entity": "ledgers",
+      "role": "MANAGER",
+      "mode": "default",
+      "kind": "page",
+      "totalCost": 5642.68,
+      "nodes": [
+        {
+          "type": "Nested Loop",
+          "index": null,
+          "estimatedRows": 25,
+          "totalCost": 5642.68
+        },
+        {
+          "type": "Nested Loop",
+          "index": null,
+          "estimatedRows": 25,
+          "totalCost": 5419.24
+        },
+        {
+          "type": "Limit",
+          "index": null,
+          "estimatedRows": 25,
+          "totalCost": 5208.18
+        },
+        {
+          "type": "Sort",
+          "index": null,
+          "estimatedRows": 4462,
+          "totalCost": 5219.27
+        },
+        {
+          "type": "WindowAgg",
+          "index": null,
+          "estimatedRows": 4462,
+          "totalCost": 5082.2
+        },
+        {
+          "type": "Sort",
+          "index": null,
+          "estimatedRows": 4462,
+          "totalCost": 5004.12
+        },
+        {
+          "type": "Seq Scan",
+          "index": null,
+          "estimatedRows": 4462,
+          "totalCost": 4722.49
+        },
+        {
+          "type": "Index Scan",
+          "index": "tally_visibility_records_pkey",
+          "estimatedRows": 1,
+          "totalCost": 8.43
+        },
+        {
+          "type": "Index Scan",
+          "index": "tally_visibility_public_fields_pkey",
+          "estimatedRows": 1,
+          "totalCost": 8.43
+        }
+      ]
+    },
+    {
+      "entity": "ledgers",
+      "role": "MANAGER",
+      "mode": "search",
+      "kind": "count",
+      "totalCost": 1683.73,
+      "nodes": [
+        {
+          "type": "Aggregate",
+          "index": null,
+          "estimatedRows": 1,
+          "totalCost": 1683.73
+        },
+        {
+          "type": "Bitmap Heap Scan",
+          "index": null,
+          "estimatedRows": 180,
+          "totalCost": 1681.47
+        },
+        {
+          "type": "BitmapAnd",
+          "index": null,
+          "estimatedRows": 180,
+          "totalCost": 1075.93
+        },
+        {
+          "type": "Bitmap Index Scan",
+          "index": "tally_current_state",
+          "estimatedRows": 4462,
+          "totalCost": 80.91
+        },
+        {
+          "type": "Bitmap Index Scan",
+          "index": "tally_current_public_search",
+          "estimatedRows": 669,
+          "totalCost": 994.69
+        }
+      ]
+    },
+    {
+      "entity": "ledgers",
+      "role": "MANAGER",
+      "mode": "search",
+      "kind": "page",
+      "totalCost": 2131.45,
+      "nodes": [
+        {
+          "type": "Nested Loop",
+          "index": null,
+          "estimatedRows": 25,
+          "totalCost": 2131.45
+        },
+        {
+          "type": "Nested Loop",
+          "index": null,
+          "estimatedRows": 25,
+          "totalCost": 1908.01
+        },
+        {
+          "type": "Limit",
+          "index": null,
+          "estimatedRows": 25,
+          "totalCost": 1696.95
+        },
+        {
+          "type": "Sort",
+          "index": null,
+          "estimatedRows": 180,
+          "totalCost": 1697.34
+        },
+        {
+          "type": "WindowAgg",
+          "index": null,
+          "estimatedRows": 180,
+          "totalCost": 1691.81
+        },
+        {
+          "type": "Sort",
+          "index": null,
+          "estimatedRows": 180,
+          "totalCost": 1688.66
+        },
+        {
+          "type": "Bitmap Heap Scan",
+          "index": null,
+          "estimatedRows": 180,
+          "totalCost": 1681.47
+        },
+        {
+          "type": "BitmapAnd",
+          "index": null,
+          "estimatedRows": 180,
+          "totalCost": 1075.93
+        },
+        {
+          "type": "Bitmap Index Scan",
+          "index": "tally_current_state",
+          "estimatedRows": 4462,
+          "totalCost": 80.91
+        },
+        {
+          "type": "Bitmap Index Scan",
+          "index": "tally_current_public_search",
+          "estimatedRows": 669,
+          "totalCost": 994.69
+        },
+        {
+          "type": "Index Scan",
+          "index": "tally_visibility_records_pkey",
+          "estimatedRows": 1,
+          "totalCost": 8.43
+        },
+        {
+          "type": "Index Scan",
+          "index": "tally_visibility_public_fields_pkey",
+          "estimatedRows": 1,
+          "totalCost": 8.43
+        }
+      ]
+    },
+    {
+      "entity": "ledgers",
+      "role": "MANAGER",
+      "mode": "group",
+      "kind": "count",
+      "totalCost": 72.76,
+      "nodes": [
+        {
+          "type": "Aggregate",
+          "index": null,
+          "estimatedRows": 1,
+          "totalCost": 72.76
+        },
+        {
+          "type": "Index Only Scan",
+          "index": "tally_current_parent",
+          "estimatedRows": 97,
+          "totalCost": 71.53
+        }
+      ]
+    },
+    {
+      "entity": "ledgers",
+      "role": "MANAGER",
+      "mode": "group",
+      "kind": "page",
+      "totalCost": 633.79,
+      "nodes": [
+        {
+          "type": "Nested Loop",
+          "index": null,
+          "estimatedRows": 25,
+          "totalCost": 633.79
+        },
+        {
+          "type": "Nested Loop",
+          "index": null,
+          "estimatedRows": 25,
+          "totalCost": 410.35
+        },
+        {
+          "type": "Limit",
+          "index": null,
+          "estimatedRows": 25,
+          "totalCost": 199.29
+        },
+        {
+          "type": "Sort",
+          "index": null,
+          "estimatedRows": 97,
+          "totalCost": 199.47
+        },
+        {
+          "type": "WindowAgg",
+          "index": null,
+          "estimatedRows": 97,
+          "totalCost": 196.49
+        },
+        {
+          "type": "Sort",
+          "index": null,
+          "estimatedRows": 97,
+          "totalCost": 194.79
+        },
+        {
+          "type": "Index Scan",
+          "index": "tally_current_parent",
+          "estimatedRows": 97,
+          "totalCost": 191.34
+        },
+        {
+          "type": "Index Scan",
+          "index": "tally_visibility_records_pkey",
+          "estimatedRows": 1,
+          "totalCost": 8.43
+        },
+        {
+          "type": "Index Scan",
+          "index": "tally_visibility_public_fields_pkey",
+          "estimatedRows": 1,
+          "totalCost": 8.43
+        }
+      ]
+    },
+    {
+      "entity": "ledgers",
+      "role": "MANAGER",
+      "mode": "filter",
+      "kind": "count",
+      "totalCost": 4805.61,
+      "nodes": [
+        {
+          "type": "Aggregate",
+          "index": null,
+          "estimatedRows": 1,
+          "totalCost": 4805.61
+        },
+        {
+          "type": "Seq Scan",
+          "index": null,
+          "estimatedRows": 22,
+          "totalCost": 4805.32
+        }
+      ]
+    },
+    {
+      "entity": "ledgers",
+      "role": "MANAGER",
+      "mode": "filter",
+      "kind": "page",
+      "totalCost": 5189.16,
+      "nodes": [
+        {
+          "type": "Nested Loop",
+          "index": null,
+          "estimatedRows": 22,
+          "totalCost": 5189.16
+        },
+        {
+          "type": "Nested Loop",
+          "index": null,
+          "estimatedRows": 22,
+          "totalCost": 4992.53
+        },
+        {
+          "type": "Limit",
+          "index": null,
+          "estimatedRows": 22,
+          "totalCost": 4806.8
+        },
+        {
+          "type": "Sort",
+          "index": null,
+          "estimatedRows": 22,
+          "totalCost": 4806.8
+        },
+        {
+          "type": "WindowAgg",
+          "index": null,
+          "estimatedRows": 22,
+          "totalCost": 4806.25
+        },
+        {
+          "type": "Sort",
+          "index": null,
+          "estimatedRows": 22,
+          "totalCost": 4805.87
+        },
+        {
+          "type": "Seq Scan",
+          "index": null,
+          "estimatedRows": 22,
+          "totalCost": 4805.32
+        },
+        {
+          "type": "Index Scan",
+          "index": "tally_visibility_records_pkey",
+          "estimatedRows": 1,
+          "totalCost": 8.43
+        },
+        {
+          "type": "Index Scan",
+          "index": "tally_visibility_public_fields_pkey",
+          "estimatedRows": 1,
+          "totalCost": 8.43
+        }
+      ]
+    },
+    {
+      "entity": "items",
+      "role": "OWNER",
+      "mode": "default",
+      "kind": "count",
+      "totalCost": 3717.99,
+      "nodes": [
+        {
+          "type": "Aggregate",
+          "index": null,
+          "estimatedRows": 1,
+          "totalCost": 3717.99
+        },
+        {
+          "type": "Index Only Scan",
+          "index": "tally_current_state",
+          "estimatedRows": 11808,
+          "totalCost": 3570.38
+        }
+      ]
+    },
+    {
+      "entity": "items",
+      "role": "OWNER",
+      "mode": "default",
+      "kind": "page",
+      "totalCost": 6308.03,
+      "nodes": [
+        {
+          "type": "Nested Loop",
+          "index": null,
+          "estimatedRows": 25,
+          "totalCost": 6308.03
+        },
+        {
+          "type": "Limit",
+          "index": null,
+          "estimatedRows": 25,
+          "totalCost": 6090.59
+        },
+        {
+          "type": "Sort",
+          "index": null,
+          "estimatedRows": 11808,
+          "totalCost": 6120.05
+        },
+        {
+          "type": "WindowAgg",
+          "index": null,
+          "estimatedRows": 11808,
+          "totalCost": 5757.31
+        },
+        {
+          "type": "Sort",
+          "index": null,
+          "estimatedRows": 11808,
+          "totalCost": 5550.67
+        },
+        {
+          "type": "Seq Scan",
+          "index": null,
+          "estimatedRows": 11808,
+          "totalCost": 4722.49
+        },
+        {
+          "type": "Index Scan",
+          "index": "tally_visibility_records_pkey",
+          "estimatedRows": 1,
+          "totalCost": 8.43
+        }
+      ]
+    },
+    {
+      "entity": "items",
+      "role": "OWNER",
+      "mode": "search",
+      "kind": "count",
+      "totalCost": 3759.52,
+      "nodes": [
+        {
+          "type": "Aggregate",
+          "index": null,
+          "estimatedRows": 1,
+          "totalCost": 3759.52
+        },
+        {
+          "type": "Bitmap Heap Scan",
+          "index": null,
+          "estimatedRows": 477,
+          "totalCost": 3753.55
+        },
+        {
+          "type": "BitmapAnd",
+          "index": null,
+          "estimatedRows": 477,
+          "totalCost": 2365.64
+        },
+        {
+          "type": "Bitmap Index Scan",
+          "index": "tally_current_state",
+          "estimatedRows": 11808,
+          "totalCost": 206.37
+        },
+        {
+          "type": "Bitmap Index Scan",
+          "index": "tally_current_financial_search",
+          "estimatedRows": 669,
+          "totalCost": 2158.78
+        }
+      ]
+    },
+    {
+      "entity": "items",
+      "role": "OWNER",
+      "mode": "search",
+      "kind": "page",
+      "totalCost": 4015.27,
+      "nodes": [
+        {
+          "type": "Nested Loop",
+          "index": null,
+          "estimatedRows": 25,
+          "totalCost": 4015.27
+        },
+        {
+          "type": "Limit",
+          "index": null,
+          "estimatedRows": 25,
+          "totalCost": 3797.83
+        },
+        {
+          "type": "Sort",
+          "index": null,
+          "estimatedRows": 477,
+          "totalCost": 3798.96
+        },
+        {
+          "type": "WindowAgg",
+          "index": null,
+          "estimatedRows": 477,
+          "totalCost": 3784.31
+        },
+        {
+          "type": "Sort",
+          "index": null,
+          "estimatedRows": 477,
+          "totalCost": 3775.96
+        },
+        {
+          "type": "Bitmap Heap Scan",
+          "index": null,
+          "estimatedRows": 477,
+          "totalCost": 3753.55
+        },
+        {
+          "type": "BitmapAnd",
+          "index": null,
+          "estimatedRows": 477,
+          "totalCost": 2365.64
+        },
+        {
+          "type": "Bitmap Index Scan",
+          "index": "tally_current_state",
+          "estimatedRows": 11808,
+          "totalCost": 206.37
+        },
+        {
+          "type": "Bitmap Index Scan",
+          "index": "tally_current_financial_search",
+          "estimatedRows": 669,
+          "totalCost": 2158.78
+        },
+        {
+          "type": "Index Scan",
+          "index": "tally_visibility_records_pkey",
+          "estimatedRows": 1,
+          "totalCost": 8.43
+        }
+      ]
+    },
+    {
+      "entity": "items",
+      "role": "OWNER",
+      "mode": "group",
+      "kind": "count",
+      "totalCost": 177.23,
+      "nodes": [
+        {
+          "type": "Aggregate",
+          "index": null,
+          "estimatedRows": 1,
+          "totalCost": 177.23
+        },
+        {
+          "type": "Index Only Scan",
+          "index": "tally_current_parent",
+          "estimatedRows": 257,
+          "totalCost": 174.01
+        }
+      ]
+    },
+    {
+      "entity": "items",
+      "role": "OWNER",
+      "mode": "group",
+      "kind": "page",
+      "totalCost": 728.81,
+      "nodes": [
+        {
+          "type": "Nested Loop",
+          "index": null,
+          "estimatedRows": 25,
+          "totalCost": 728.81
+        },
+        {
+          "type": "Limit",
+          "index": null,
+          "estimatedRows": 25,
+          "totalCost": 511.37
+        },
+        {
+          "type": "Sort",
+          "index": null,
+          "estimatedRows": 257,
+          "totalCost": 511.95
+        },
+        {
+          "type": "WindowAgg",
+          "index": null,
+          "estimatedRows": 257,
+          "totalCost": 504.06
+        },
+        {
+          "type": "Sort",
+          "index": null,
+          "estimatedRows": 257,
+          "totalCost": 499.56
+        },
+        {
+          "type": "Index Scan",
+          "index": "tally_current_parent",
+          "estimatedRows": 257,
+          "totalCost": 488.63
+        },
+        {
+          "type": "Index Scan",
+          "index": "tally_visibility_records_pkey",
+          "estimatedRows": 1,
+          "totalCost": 8.43
+        }
+      ]
+    },
+    {
+      "entity": "items",
+      "role": "OWNER",
+      "mode": "filter",
+      "kind": "count",
+      "totalCost": 4847.48,
+      "nodes": [
+        {
+          "type": "Aggregate",
+          "index": null,
+          "estimatedRows": 1,
+          "totalCost": 4847.48
+        },
+        {
+          "type": "Seq Scan",
+          "index": null,
+          "estimatedRows": 59,
+          "totalCost": 4846.73
+        }
+      ]
+    },
+    {
+      "entity": "items",
+      "role": "OWNER",
+      "mode": "filter",
+      "kind": "page",
+      "totalCost": 5068.82,
+      "nodes": [
+        {
+          "type": "Nested Loop",
+          "index": null,
+          "estimatedRows": 25,
+          "totalCost": 5068.82
+        },
+        {
+          "type": "Limit",
+          "index": null,
+          "estimatedRows": 25,
+          "totalCost": 4851.38
+        },
+        {
+          "type": "Sort",
+          "index": null,
+          "estimatedRows": 59,
+          "totalCost": 4851.46
+        },
+        {
+          "type": "WindowAgg",
+          "index": null,
+          "estimatedRows": 59,
+          "totalCost": 4849.65
+        },
+        {
+          "type": "Sort",
+          "index": null,
+          "estimatedRows": 59,
+          "totalCost": 4848.62
+        },
+        {
+          "type": "Seq Scan",
+          "index": null,
+          "estimatedRows": 59,
+          "totalCost": 4846.73
+        },
+        {
+          "type": "Index Scan",
+          "index": "tally_visibility_records_pkey",
+          "estimatedRows": 1,
+          "totalCost": 8.43
+        }
+      ]
+    },
+    {
+      "entity": "items",
+      "role": "MANAGER",
+      "mode": "default",
+      "kind": "count",
+      "totalCost": 3717.99,
+      "nodes": [
+        {
+          "type": "Aggregate",
+          "index": null,
+          "estimatedRows": 1,
+          "totalCost": 3717.99
+        },
+        {
+          "type": "Index Only Scan",
+          "index": "tally_current_state",
+          "estimatedRows": 11808,
+          "totalCost": 3570.38
+        }
+      ]
+    },
+    {
+      "entity": "items",
+      "role": "MANAGER",
+      "mode": "default",
+      "kind": "page",
+      "totalCost": 6525.09,
+      "nodes": [
+        {
+          "type": "Nested Loop",
+          "index": null,
+          "estimatedRows": 25,
+          "totalCost": 6525.09
+        },
+        {
+          "type": "Nested Loop",
+          "index": null,
+          "estimatedRows": 25,
+          "totalCost": 6301.65
+        },
+        {
+          "type": "Limit",
+          "index": null,
+          "estimatedRows": 25,
+          "totalCost": 6090.59
+        },
+        {
+          "type": "Sort",
+          "index": null,
+          "estimatedRows": 11808,
+          "totalCost": 6120.05
+        },
+        {
+          "type": "WindowAgg",
+          "index": null,
+          "estimatedRows": 11808,
+          "totalCost": 5757.31
+        },
+        {
+          "type": "Sort",
+          "index": null,
+          "estimatedRows": 11808,
+          "totalCost": 5550.67
+        },
+        {
+          "type": "Seq Scan",
+          "index": null,
+          "estimatedRows": 11808,
+          "totalCost": 4722.49
+        },
+        {
+          "type": "Index Scan",
+          "index": "tally_visibility_records_pkey",
+          "estimatedRows": 1,
+          "totalCost": 8.43
+        },
+        {
+          "type": "Index Scan",
+          "index": "tally_visibility_public_fields_pkey",
+          "estimatedRows": 1,
+          "totalCost": 8.43
+        }
+      ]
+    },
+    {
+      "entity": "items",
+      "role": "MANAGER",
+      "mode": "search",
+      "kind": "count",
+      "totalCost": 2278.08,
+      "nodes": [
+        {
+          "type": "Aggregate",
+          "index": null,
+          "estimatedRows": 1,
+          "totalCost": 2278.08
+        },
+        {
+          "type": "Bitmap Heap Scan",
+          "index": null,
+          "estimatedRows": 358,
+          "totalCost": 2273.6
+        },
+        {
+          "type": "BitmapAnd",
+          "index": null,
+          "estimatedRows": 358,
+          "totalCost": 1174.74
+        },
+        {
+          "type": "Bitmap Index Scan",
+          "index": "tally_current_state",
+          "estimatedRows": 11808,
+          "totalCost": 206.37
+        },
+        {
+          "type": "Bitmap Index Scan",
+          "index": "tally_current_public_search",
+          "estimatedRows": 502,
+          "totalCost": 967.94
+        }
+      ]
+    },
+    {
+      "entity": "items",
+      "role": "MANAGER",
+      "mode": "search",
+      "kind": "page",
+      "totalCost": 2740.61,
+      "nodes": [
+        {
+          "type": "Nested Loop",
+          "index": null,
+          "estimatedRows": 25,
+          "totalCost": 2740.61
+        },
+        {
+          "type": "Nested Loop",
+          "index": null,
+          "estimatedRows": 25,
+          "totalCost": 2517.17
+        },
+        {
+          "type": "Limit",
+          "index": null,
+          "estimatedRows": 25,
+          "totalCost": 2306.11
+        },
+        {
+          "type": "Sort",
+          "index": null,
+          "estimatedRows": 358,
+          "totalCost": 2306.94
+        },
+        {
+          "type": "WindowAgg",
+          "index": null,
+          "estimatedRows": 358,
+          "totalCost": 2295.94
+        },
+        {
+          "type": "Sort",
+          "index": null,
+          "estimatedRows": 358,
+          "totalCost": 2289.68
+        },
+        {
+          "type": "Bitmap Heap Scan",
+          "index": null,
+          "estimatedRows": 358,
+          "totalCost": 2273.6
+        },
+        {
+          "type": "BitmapAnd",
+          "index": null,
+          "estimatedRows": 358,
+          "totalCost": 1174.74
+        },
+        {
+          "type": "Bitmap Index Scan",
+          "index": "tally_current_state",
+          "estimatedRows": 11808,
+          "totalCost": 206.37
+        },
+        {
+          "type": "Bitmap Index Scan",
+          "index": "tally_current_public_search",
+          "estimatedRows": 502,
+          "totalCost": 967.94
+        },
+        {
+          "type": "Index Scan",
+          "index": "tally_visibility_records_pkey",
+          "estimatedRows": 1,
+          "totalCost": 8.43
+        },
+        {
+          "type": "Index Scan",
+          "index": "tally_visibility_public_fields_pkey",
+          "estimatedRows": 1,
+          "totalCost": 8.43
+        }
+      ]
+    },
+    {
+      "entity": "items",
+      "role": "MANAGER",
+      "mode": "group",
+      "kind": "count",
+      "totalCost": 177.23,
+      "nodes": [
+        {
+          "type": "Aggregate",
+          "index": null,
+          "estimatedRows": 1,
+          "totalCost": 177.23
+        },
+        {
+          "type": "Index Only Scan",
+          "index": "tally_current_parent",
+          "estimatedRows": 257,
+          "totalCost": 174.01
+        }
+      ]
+    },
+    {
+      "entity": "items",
+      "role": "MANAGER",
+      "mode": "group",
+      "kind": "page",
+      "totalCost": 945.88,
+      "nodes": [
+        {
+          "type": "Nested Loop",
+          "index": null,
+          "estimatedRows": 25,
+          "totalCost": 945.88
+        },
+        {
+          "type": "Nested Loop",
+          "index": null,
+          "estimatedRows": 25,
+          "totalCost": 722.44
+        },
+        {
+          "type": "Limit",
+          "index": null,
+          "estimatedRows": 25,
+          "totalCost": 511.37
+        },
+        {
+          "type": "Sort",
+          "index": null,
+          "estimatedRows": 257,
+          "totalCost": 511.95
+        },
+        {
+          "type": "WindowAgg",
+          "index": null,
+          "estimatedRows": 257,
+          "totalCost": 504.06
+        },
+        {
+          "type": "Sort",
+          "index": null,
+          "estimatedRows": 257,
+          "totalCost": 499.56
+        },
+        {
+          "type": "Index Scan",
+          "index": "tally_current_parent",
+          "estimatedRows": 257,
+          "totalCost": 488.63
+        },
+        {
+          "type": "Index Scan",
+          "index": "tally_visibility_records_pkey",
+          "estimatedRows": 1,
+          "totalCost": 8.43
+        },
+        {
+          "type": "Index Scan",
+          "index": "tally_visibility_public_fields_pkey",
+          "estimatedRows": 1,
+          "totalCost": 8.43
+        }
+      ]
+    },
+    {
+      "entity": "items",
+      "role": "MANAGER",
+      "mode": "filter",
+      "kind": "count",
+      "totalCost": 4847.48,
+      "nodes": [
+        {
+          "type": "Aggregate",
+          "index": null,
+          "estimatedRows": 1,
+          "totalCost": 4847.48
+        },
+        {
+          "type": "Seq Scan",
+          "index": null,
+          "estimatedRows": 59,
+          "totalCost": 4846.73
+        }
+      ]
+    },
+    {
+      "entity": "items",
+      "role": "MANAGER",
+      "mode": "filter",
+      "kind": "page",
+      "totalCost": 5285.88,
+      "nodes": [
+        {
+          "type": "Nested Loop",
+          "index": null,
+          "estimatedRows": 25,
+          "totalCost": 5285.88
+        },
+        {
+          "type": "Nested Loop",
+          "index": null,
+          "estimatedRows": 25,
+          "totalCost": 5062.44
+        },
+        {
+          "type": "Limit",
+          "index": null,
+          "estimatedRows": 25,
+          "totalCost": 4851.38
+        },
+        {
+          "type": "Sort",
+          "index": null,
+          "estimatedRows": 59,
+          "totalCost": 4851.46
+        },
+        {
+          "type": "WindowAgg",
+          "index": null,
+          "estimatedRows": 59,
+          "totalCost": 4849.65
+        },
+        {
+          "type": "Sort",
+          "index": null,
+          "estimatedRows": 59,
+          "totalCost": 4848.62
+        },
+        {
+          "type": "Seq Scan",
+          "index": null,
+          "estimatedRows": 59,
+          "totalCost": 4846.73
+        },
+        {
+          "type": "Index Scan",
+          "index": "tally_visibility_records_pkey",
+          "estimatedRows": 1,
+          "totalCost": 8.43
+        },
+        {
+          "type": "Index Scan",
+          "index": "tally_visibility_public_fields_pkey",
+          "estimatedRows": 1,
+          "totalCost": 8.43
+        }
+      ]
+    }
+  ],
+  "companyId": "222bd4ab-7dd2-4278-b33b-bf2a8b77f0f3",
+  "topTen": [
+    {
+      "entity": "items",
+      "role": "MANAGER",
+      "mode": "default",
+      "kind": "page",
+      "totalCost": 6525.09,
+      "nodes": [
+        {
+          "type": "Nested Loop",
+          "index": null,
+          "estimatedRows": 25,
+          "totalCost": 6525.09
+        },
+        {
+          "type": "Nested Loop",
+          "index": null,
+          "estimatedRows": 25,
+          "totalCost": 6301.65
+        },
+        {
+          "type": "Limit",
+          "index": null,
+          "estimatedRows": 25,
+          "totalCost": 6090.59
+        },
+        {
+          "type": "Sort",
+          "index": null,
+          "estimatedRows": 11808,
+          "totalCost": 6120.05
+        },
+        {
+          "type": "WindowAgg",
+          "index": null,
+          "estimatedRows": 11808,
+          "totalCost": 5757.31
+        },
+        {
+          "type": "Sort",
+          "index": null,
+          "estimatedRows": 11808,
+          "totalCost": 5550.67
+        },
+        {
+          "type": "Seq Scan",
+          "index": null,
+          "estimatedRows": 11808,
+          "totalCost": 4722.49
+        },
+        {
+          "type": "Index Scan",
+          "index": "tally_visibility_records_pkey",
+          "estimatedRows": 1,
+          "totalCost": 8.43
+        },
+        {
+          "type": "Index Scan",
+          "index": "tally_visibility_public_fields_pkey",
+          "estimatedRows": 1,
+          "totalCost": 8.43
+        }
+      ]
+    },
+    {
+      "entity": "items",
+      "role": "OWNER",
+      "mode": "default",
+      "kind": "page",
+      "totalCost": 6308.03,
+      "nodes": [
+        {
+          "type": "Nested Loop",
+          "index": null,
+          "estimatedRows": 25,
+          "totalCost": 6308.03
+        },
+        {
+          "type": "Limit",
+          "index": null,
+          "estimatedRows": 25,
+          "totalCost": 6090.59
+        },
+        {
+          "type": "Sort",
+          "index": null,
+          "estimatedRows": 11808,
+          "totalCost": 6120.05
+        },
+        {
+          "type": "WindowAgg",
+          "index": null,
+          "estimatedRows": 11808,
+          "totalCost": 5757.31
+        },
+        {
+          "type": "Sort",
+          "index": null,
+          "estimatedRows": 11808,
+          "totalCost": 5550.67
+        },
+        {
+          "type": "Seq Scan",
+          "index": null,
+          "estimatedRows": 11808,
+          "totalCost": 4722.49
+        },
+        {
+          "type": "Index Scan",
+          "index": "tally_visibility_records_pkey",
+          "estimatedRows": 1,
+          "totalCost": 8.43
+        }
+      ]
+    },
+    {
+      "entity": "ledgers",
+      "role": "MANAGER",
+      "mode": "default",
+      "kind": "page",
+      "totalCost": 5642.68,
+      "nodes": [
+        {
+          "type": "Nested Loop",
+          "index": null,
+          "estimatedRows": 25,
+          "totalCost": 5642.68
+        },
+        {
+          "type": "Nested Loop",
+          "index": null,
+          "estimatedRows": 25,
+          "totalCost": 5419.24
+        },
+        {
+          "type": "Limit",
+          "index": null,
+          "estimatedRows": 25,
+          "totalCost": 5208.18
+        },
+        {
+          "type": "Sort",
+          "index": null,
+          "estimatedRows": 4462,
+          "totalCost": 5219.27
+        },
+        {
+          "type": "WindowAgg",
+          "index": null,
+          "estimatedRows": 4462,
+          "totalCost": 5082.2
+        },
+        {
+          "type": "Sort",
+          "index": null,
+          "estimatedRows": 4462,
+          "totalCost": 5004.12
+        },
+        {
+          "type": "Seq Scan",
+          "index": null,
+          "estimatedRows": 4462,
+          "totalCost": 4722.49
+        },
+        {
+          "type": "Index Scan",
+          "index": "tally_visibility_records_pkey",
+          "estimatedRows": 1,
+          "totalCost": 8.43
+        },
+        {
+          "type": "Index Scan",
+          "index": "tally_visibility_public_fields_pkey",
+          "estimatedRows": 1,
+          "totalCost": 8.43
+        }
+      ]
+    },
+    {
+      "entity": "ledgers",
+      "role": "OWNER",
+      "mode": "default",
+      "kind": "page",
+      "totalCost": 5425.62,
+      "nodes": [
+        {
+          "type": "Nested Loop",
+          "index": null,
+          "estimatedRows": 25,
+          "totalCost": 5425.62
+        },
+        {
+          "type": "Limit",
+          "index": null,
+          "estimatedRows": 25,
+          "totalCost": 5208.18
+        },
+        {
+          "type": "Sort",
+          "index": null,
+          "estimatedRows": 4462,
+          "totalCost": 5219.27
+        },
+        {
+          "type": "WindowAgg",
+          "index": null,
+          "estimatedRows": 4462,
+          "totalCost": 5082.2
+        },
+        {
+          "type": "Sort",
+          "index": null,
+          "estimatedRows": 4462,
+          "totalCost": 5004.12
+        },
+        {
+          "type": "Seq Scan",
+          "index": null,
+          "estimatedRows": 4462,
+          "totalCost": 4722.49
+        },
+        {
+          "type": "Index Scan",
+          "index": "tally_visibility_records_pkey",
+          "estimatedRows": 1,
+          "totalCost": 8.43
+        }
+      ]
+    },
+    {
+      "entity": "items",
+      "role": "MANAGER",
+      "mode": "filter",
+      "kind": "page",
+      "totalCost": 5285.88,
+      "nodes": [
+        {
+          "type": "Nested Loop",
+          "index": null,
+          "estimatedRows": 25,
+          "totalCost": 5285.88
+        },
+        {
+          "type": "Nested Loop",
+          "index": null,
+          "estimatedRows": 25,
+          "totalCost": 5062.44
+        },
+        {
+          "type": "Limit",
+          "index": null,
+          "estimatedRows": 25,
+          "totalCost": 4851.38
+        },
+        {
+          "type": "Sort",
+          "index": null,
+          "estimatedRows": 59,
+          "totalCost": 4851.46
+        },
+        {
+          "type": "WindowAgg",
+          "index": null,
+          "estimatedRows": 59,
+          "totalCost": 4849.65
+        },
+        {
+          "type": "Sort",
+          "index": null,
+          "estimatedRows": 59,
+          "totalCost": 4848.62
+        },
+        {
+          "type": "Seq Scan",
+          "index": null,
+          "estimatedRows": 59,
+          "totalCost": 4846.73
+        },
+        {
+          "type": "Index Scan",
+          "index": "tally_visibility_records_pkey",
+          "estimatedRows": 1,
+          "totalCost": 8.43
+        },
+        {
+          "type": "Index Scan",
+          "index": "tally_visibility_public_fields_pkey",
+          "estimatedRows": 1,
+          "totalCost": 8.43
+        }
+      ]
+    },
+    {
+      "entity": "ledgers",
+      "role": "MANAGER",
+      "mode": "filter",
+      "kind": "page",
+      "totalCost": 5189.16,
+      "nodes": [
+        {
+          "type": "Nested Loop",
+          "index": null,
+          "estimatedRows": 22,
+          "totalCost": 5189.16
+        },
+        {
+          "type": "Nested Loop",
+          "index": null,
+          "estimatedRows": 22,
+          "totalCost": 4992.53
+        },
+        {
+          "type": "Limit",
+          "index": null,
+          "estimatedRows": 22,
+          "totalCost": 4806.8
+        },
+        {
+          "type": "Sort",
+          "index": null,
+          "estimatedRows": 22,
+          "totalCost": 4806.8
+        },
+        {
+          "type": "WindowAgg",
+          "index": null,
+          "estimatedRows": 22,
+          "totalCost": 4806.25
+        },
+        {
+          "type": "Sort",
+          "index": null,
+          "estimatedRows": 22,
+          "totalCost": 4805.87
+        },
+        {
+          "type": "Seq Scan",
+          "index": null,
+          "estimatedRows": 22,
+          "totalCost": 4805.32
+        },
+        {
+          "type": "Index Scan",
+          "index": "tally_visibility_records_pkey",
+          "estimatedRows": 1,
+          "totalCost": 8.43
+        },
+        {
+          "type": "Index Scan",
+          "index": "tally_visibility_public_fields_pkey",
+          "estimatedRows": 1,
+          "totalCost": 8.43
+        }
+      ]
+    },
+    {
+      "entity": "items",
+      "role": "OWNER",
+      "mode": "filter",
+      "kind": "page",
+      "totalCost": 5068.82,
+      "nodes": [
+        {
+          "type": "Nested Loop",
+          "index": null,
+          "estimatedRows": 25,
+          "totalCost": 5068.82
+        },
+        {
+          "type": "Limit",
+          "index": null,
+          "estimatedRows": 25,
+          "totalCost": 4851.38
+        },
+        {
+          "type": "Sort",
+          "index": null,
+          "estimatedRows": 59,
+          "totalCost": 4851.46
+        },
+        {
+          "type": "WindowAgg",
+          "index": null,
+          "estimatedRows": 59,
+          "totalCost": 4849.65
+        },
+        {
+          "type": "Sort",
+          "index": null,
+          "estimatedRows": 59,
+          "totalCost": 4848.62
+        },
+        {
+          "type": "Seq Scan",
+          "index": null,
+          "estimatedRows": 59,
+          "totalCost": 4846.73
+        },
+        {
+          "type": "Index Scan",
+          "index": "tally_visibility_records_pkey",
+          "estimatedRows": 1,
+          "totalCost": 8.43
+        }
+      ]
+    },
+    {
+      "entity": "ledgers",
+      "role": "OWNER",
+      "mode": "filter",
+      "kind": "page",
+      "totalCost": 4998.14,
+      "nodes": [
+        {
+          "type": "Nested Loop",
+          "index": null,
+          "estimatedRows": 22,
+          "totalCost": 4998.14
+        },
+        {
+          "type": "Limit",
+          "index": null,
+          "estimatedRows": 22,
+          "totalCost": 4806.8
+        },
+        {
+          "type": "Sort",
+          "index": null,
+          "estimatedRows": 22,
+          "totalCost": 4806.8
+        },
+        {
+          "type": "WindowAgg",
+          "index": null,
+          "estimatedRows": 22,
+          "totalCost": 4806.25
+        },
+        {
+          "type": "Sort",
+          "index": null,
+          "estimatedRows": 22,
+          "totalCost": 4805.87
+        },
+        {
+          "type": "Seq Scan",
+          "index": null,
+          "estimatedRows": 22,
+          "totalCost": 4805.32
+        },
+        {
+          "type": "Index Scan",
+          "index": "tally_visibility_records_pkey",
+          "estimatedRows": 1,
+          "totalCost": 8.43
+        }
+      ]
+    },
+    {
+      "entity": "items",
+      "role": "OWNER",
+      "mode": "filter",
+      "kind": "count",
+      "totalCost": 4847.48,
+      "nodes": [
+        {
+          "type": "Aggregate",
+          "index": null,
+          "estimatedRows": 1,
+          "totalCost": 4847.48
+        },
+        {
+          "type": "Seq Scan",
+          "index": null,
+          "estimatedRows": 59,
+          "totalCost": 4846.73
+        }
+      ]
+    },
+    {
+      "entity": "items",
+      "role": "MANAGER",
+      "mode": "filter",
+      "kind": "count",
+      "totalCost": 4847.48,
+      "nodes": [
+        {
+          "type": "Aggregate",
+          "index": null,
+          "estimatedRows": 1,
+          "totalCost": 4847.48
+        },
+        {
+          "type": "Seq Scan",
+          "index": null,
+          "estimatedRows": 59,
+          "totalCost": 4846.73
+        }
+      ]
+    }
+  ]
+}

@@ -1,23 +1,26 @@
+import {withTestTransaction} from '../test-support/transaction.js';
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import crypto from 'node:crypto';
 import {salesOrderFixture,sampleOriginal} from '../test-support/sales-order-fixture.js';
 import {saveOrder,orderDetail,orderAction,uploadOriginal,downloadOriginal,dispatchOrder,markDelivered,logisticsSearch,orderHistory,validateOriginal} from '../src/sales-orders.js';
 import {saveQuoteCost,duplicateQuote,quoteAction} from '../src/quotation-workflow.js';
-import {saveCustomer} from '../src/crm-modules.js';
+import {saveCustomer,decideCustomerOnboarding} from '../src/crm-modules.js';
+import {orderStockReceipt} from '../test-support/order-stock-fixture.js';
+import {StockConsumptionService} from '../src/modules/stock/fulfillment.js';
 test('original validation rejects unsafe paths, invalid content, malformed base64 and oversize files',()=>{
  const valid={name:'customer-po.pdf',base64:sampleOriginal.toString('base64')};assert.equal(validateOriginal(valid).mime,'application/pdf');
  assert.throws(()=>validateOriginal({...valid,name:'../bad.pdf'}),{status:422});assert.throws(()=>validateOriginal({...valid,base64:'not base64'}),{status:422});
  assert.throws(()=>validateOriginal({...valid,base64:Buffer.from('<html>bad</html>').toString('base64')}),{status:422});
  assert.throws(()=>validateOriginal({...valid,base64:Buffer.alloc(10485761).toString('base64')}),{status:422});
 });
-test('sales orders and dispatch enforce review, retain originals, exact comparisons, credit and stock, partial delivery and read-only Tally',{skip:!process.env.RUN_SALES_ORDER_DB_TEST},async()=>{
- const f=await salesOrderFixture(),{db,owner,manager,executive,accounts,item,customer,body}=f;
+test('sales orders and dispatch enforce review, retain originals, exact comparisons, credit and stock, partial delivery and read-only Tally',async()=>withTestTransaction(async transactionDb=>{
+ const f=await salesOrderFixture(transactionDb),{db,owner,manager,executive,accounts,customerReviewer,item,customer,body,company}=f;
  try{
- const raw=await db.sql`SELECT (SELECT jsonb_agg(t) FROM tally_ledgers t) AS ledgers,(SELECT jsonb_agg(t) FROM tally_stock_items t) AS stock`;
+ const raw=await db.sql`SELECT (SELECT jsonb_agg(t ORDER BY t.id) FROM tally_ledgers t WHERE company_id=${company}) AS ledgers,(SELECT jsonb_agg(t ORDER BY t.id) FROM tally_stock_items t WHERE company_id=${company}) AS stock`;
  let o=await saveOrder(db,null,body,executive);assert.equal(o.total,'1180.00');assert.ok(o.verification.flags.includes('MISSING_PO_FILE'));assert.equal(o.verification.pricing,undefined);assert.equal(o.verification.credit.exposure,undefined);
  const normalizedPo=await db.prepare('SELECT p.legal_name,po.po_number,po.source_total::text AS source_total,po.calculated_total::text AS calculated_total,po.version FROM sales_orders o JOIN customer_pos po ON po.id=o.customer_po_id JOIN parties p ON p.id=po.customer_party_id WHERE o.id=?').get(o.id);
- assert.equal(normalizedPo.legal_name,'Quotation Customer');assert.equal(normalizedPo.po_number,body.poNumber);assert.equal(normalizedPo.source_total,'1180.000000');assert.equal(normalizedPo.calculated_total,'1180.000000');assert.equal(normalizedPo.version,1);
+ assert.equal(normalizedPo.legal_name,'ZZTEST_Quotation Customer');assert.equal(normalizedPo.po_number,body.poNumber);assert.equal(normalizedPo.source_total,'1180.000000');assert.equal(normalizedPo.calculated_total,'1180.000000');assert.equal(normalizedPo.version,1);
  const normalizedLine=await db.prepare("SELECT p.original_part_number,p.quantity::text AS quantity,p.uom,p.legacy_sales_order_line_id FROM customer_po_lines p WHERE p.customer_po_id=(SELECT customer_po_id FROM sales_orders WHERE id=?) AND p.status='ACTIVE'").get(o.id);
  assert.equal(normalizedLine.original_part_number,body.lines[0].partCode);assert.equal(normalizedLine.quantity,'10.000000');assert.equal(normalizedLine.uom,'NOS');assert.ok(normalizedLine.legacy_sales_order_line_id);
  assert.equal((await db.prepare("SELECT count(*) AS n FROM party_roles r JOIN party_external_mappings m ON m.party_id=r.party_id WHERE r.role='CUSTOMER' AND m.source_system='CRM' AND m.entity_type='CUSTOMER' AND m.external_id=?").get(String(customer.id))).n,1);
@@ -28,7 +31,7 @@ test('sales orders and dispatch enforce review, retain originals, exact comparis
  const upload={name:'customer-po.pdf',base64:sampleOriginal.toString('base64'),version:o.version,reason:'Retain original PO'};
  const doc=await uploadOriginal(db,o.id,upload,executive);assert.equal(doc.version,2);assert.deepEqual((await downloadOriginal(db,doc.id,accounts)).original_bytes,sampleOriginal);
  await assert.rejects(uploadOriginal(db,o.id,{...upload,version:2},executive),{status:409});
- o=await orderAction(db,o.id,{action:'VERIFY',version:2,reason:'Compare PO and quote'},executive);assert.equal(o.status,'HELD');assert.deepEqual(o.verification.flags,[]);assert.equal(o.verification.stock[0].quantity,'24 NOS');
+ o=await orderAction(db,o.id,{action:'VERIFY',version:2,reason:'Compare PO and quote'},executive);assert.equal(o.status,'HELD');assert.deepEqual(o.verification.flags,[]);assert.equal(o.verification.stock[0].stockInHand,'24.000000');
  await assert.rejects(orderAction(db,o.id,{action:'APPROVE',version:1,reason:'Stale review'},manager),{status:409});
  await assert.rejects(orderAction(db,o.id,{action:'APPROVE',version:2,reason:'Wrong role'},executive),{status:403});
  o=await orderAction(db,o.id,{action:'APPROVE',version:2,reason:'Independent order approval'},manager);assert.equal(o.status,'APPROVED');
@@ -42,11 +45,17 @@ test('sales orders and dispatch enforce review, retain originals, exact comparis
  const first=await dispatchOrder(db,o.id,send,manager);assert.equal(first.order.status,'PARTIALLY_DISPATCHED');assert.equal(first.order.lines[0].fulfilledQuantity,'4.000000');
  const replay=await dispatchOrder(db,o.id,send,manager);assert.equal(replay.shipmentId,first.shipmentId);assert.equal(replay.replayed,true);assert.equal(replay.order.lines[0].fulfilledQuantity,'4.000000');
  await assert.rejects(dispatchOrder(db,o.id,{...send,lrNumber:'ALTERED'},manager),{status:409});
- assert.equal(first.order.verification.stock[0].availableAfterCrmDispatch,'20.000000');
+ assert.equal(first.order.verification.stock[0].pendingConsumptionCount,1);assert.ok(first.order.verification.flags.includes('STOCK_CONSUMPTION_REVIEW_REQUIRED'));
  await assert.rejects(saveOrder(db,o.id,{...body,version:2,reason:'Alter dispatched PO'},executive),{status:409});
  await assert.rejects(markDelivered(db,first.shipmentId,{version:2,reason:'No proof'},manager),{status:422});
  await uploadOriginal(db,o.id,{...upload,version:2,reason:'Delivery receipt photo'},manager,first.shipmentId);
  await markDelivered(db,first.shipmentId,{version:2,reason:'First batch received'},manager);
+ await assert.rejects(dispatchOrder(db,o.id,{...send,requestKey:crypto.randomUUID(),lrNumber:'LR-TEST-002',lines:[{lineId:o.lines[0].id,quantity:'6'}]},manager),{status:409});
+ // Simulate a later retained connector receipt explicitly. An import alone does
+ // not reconcile the earlier dispatch; an independent Owner records evidence.
+ await orderStockReceipt(db,f,{onHand:'20'});const reconciliation=new StockConsumptionService({db}),[pending]=await reconciliation.list(owner,company),preview=await reconciliation.preview(owner,pending.id);
+ assert.equal(preview.canReview,true);await reconciliation.review(owner,pending.id,{requestKey:crypto.randomUUID(),reason:'ZZTEST_ independent partial-dispatch review',evidenceReference:'ZZTEST_ later source movement independently checked',attestedInTally:true,sourceFingerprint:preview.fingerprint});
+ await orderAction(db,o.id,{action:'VERIFY',version:2,reason:'Recheck later stock evidence'},executive);await orderAction(db,o.id,{action:'APPROVE',version:2,reason:'Review remaining batch'},manager);
  const second=await dispatchOrder(db,o.id,{...send,requestKey:crypto.randomUUID(),lrNumber:'LR-TEST-002',lines:[{lineId:o.lines[0].id,quantity:'6'}]},manager);assert.equal(second.order.status,'DISPATCHED');
  await assert.rejects(orderAction(db,o.id,{action:'VERIFY',version:2,reason:'Already fully dispatched'},manager),{status:409});
  await uploadOriginal(db,o.id,{...upload,version:2,reason:'Second receipt'},manager,second.shipmentId);
@@ -57,7 +66,7 @@ test('sales orders and dispatch enforce review, retain originals, exact comparis
  const managerHistory=await orderHistory(db,o.id,manager);assert.equal(JSON.stringify(managerHistory).includes('12500.25'),false);
  assert.ok(h.events.some(v=>v.action==='DISPATCHED'));assert.ok(h.events.some(v=>v.action==='DELIVERED'));
  // Manual PO with exact Rs 1 tolerance, unknown code and financial exceptions.
- await saveCustomer(db,customer.id,{creditLimit:'1',reason:'Tighten credit limit'},owner);
+ const tightened=await saveCustomer(db,customer.id,{creditLimit:'1',reason:'Tighten credit limit'},owner);await decideCustomerOnboarding(db,customer.id,{decision:'APPROVE',version:tightened.onboarding.version,reason:'ZZTEST approve tightened credit terms'},customerReviewer);
  let manual=await saveOrder(db,null,{...body,quotationId:null,poNumber:'MANUAL-002',poTotal:'119.00',lines:[{...body.lines[0],partCode:'UNFAMILIAR-PO-CODE',quantity:'1',unitPrice:'100'}],reason:'Manual PO entry'},executive);
  assert.ok(manual.verification.flags.includes('UNKNOWN_PART_CODE'));assert.ok(manual.verification.flags.includes('CREDIT_EXCEEDED'));assert.equal(manual.verification.flags.includes('PO_TOTAL_DIFFERENCE_OVER_1'),false);
  const replacement=Buffer.from('%PDF-1.4\n% Amended original\n%%EOF');await uploadOriginal(db,manual.id,{...upload,version:1,reason:'Manual original'},executive);await uploadOriginal(db,manual.id,{...upload,base64:replacement.toString('base64'),version:2,reason:'Customer amended PO'},executive);
@@ -68,7 +77,7 @@ test('sales orders and dispatch enforce review, retain originals, exact comparis
  manual=await orderAction(db,manual.id,{action:'APPROVE',version:3,reason:'Owner accepts documented credit exceptions',acceptExceptions:true},owner);assert.equal(manual.status,'APPROVED');
  await assert.rejects(db.prepare("UPDATE sales_orders SET status='DISPATCHED' WHERE id=?").run(manual.id),/workflow/);
  manual=await orderAction(db,manual.id,{action:'CANCEL',version:3,reason:'Customer withdrew requirement'},manager);assert.equal(manual.status,'CANCELLED');
- await saveCustomer(db,customer.id,{creditLimit:'100000',reason:'Restore usual credit limit'},owner);
+ const restored=await saveCustomer(db,customer.id,{creditLimit:'100000',reason:'Restore usual credit limit'},owner);await decideCustomerOnboarding(db,customer.id,{decision:'APPROVE',version:restored.onboarding.version,reason:'ZZTEST approve restored credit terms'},customerReviewer);
  let source=await duplicateQuote(db,f.quote.id,{reason:'Second requirement',validUntil:'2099-12-31'},executive);
  source=await quoteAction(db,source.id,{action:'SUBMIT',version:source.version,reason:'Review second source'},executive);
  source=await quoteAction(db,source.id,{action:'APPROVE',version:source.version,reason:'Approve second source'},manager);
@@ -82,7 +91,8 @@ test('sales orders and dispatch enforce review, retain originals, exact comparis
  await uploadOriginal(db,self.id,{...upload,version:1,reason:'Manager retained original'},manager);
  self=await orderAction(db,self.id,{action:'VERIFY',version:2,reason:'Manager checked order'},manager);
  await assert.rejects(orderAction(db,self.id,{action:'APPROVE',version:2,reason:'Attempt self review',acceptExceptions:true},manager),{status:403});
- await assert.rejects(db.sql`DELETE FROM crm_order_workflows`,/deleted/);await assert.rejects(db.sql`TRUNCATE crm_order_documents`,/truncated/);
- assert.deepEqual(await db.sql`SELECT (SELECT jsonb_agg(t) FROM tally_ledgers t) AS ledgers,(SELECT jsonb_agg(t) FROM tally_stock_items t) AS stock`,raw);
+ await assert.rejects(db.sql`DELETE FROM crm_order_workflows WHERE sales_order_id=${o.id}`,/deleted/);assert.ok((await db.sql`SELECT 1 FROM pg_trigger WHERE tgrelid=CAST(${'crm_order_documents'} AS regclass) AND NOT tgisinternal`).length);
+ const retained=await db.sql`SELECT (SELECT jsonb_agg(t ORDER BY t.id) FROM tally_ledgers t WHERE company_id=${company}) AS ledgers,(SELECT jsonb_agg(t ORDER BY t.id) FROM tally_stock_items t WHERE company_id=${company}) AS stock`;
+ assert.deepEqual(retained[0].ledgers,raw[0].ledgers);assert.deepEqual(retained[0].stock.filter(row=>raw[0].stock.some(original=>original.id===row.id)),raw[0].stock,'Application workflows never modify retained source rows; only the explicit later synthetic connector receipt was added.');
  }finally{await f.close();}
-});
+}));

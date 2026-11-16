@@ -1,10 +1,15 @@
 import {quotePolicy,saveQuotePolicy,quoteCost,saveQuoteCost,quoteList,quoteDetail,saveQuote,quoteAction,quoteHistory,duplicateQuote,pricingHistory,quoteForDocument,quotationEnquiry} from './quotation-workflow.js';
 import {quotationPdf,quotationPrintHtml} from './quotation-document.js';
+import {importQuoteCosts} from './quotation-workflow.js';
+import {previewQuoteCosts} from './quotation-cost-import.js';
+import {usableSetting} from './modules/decisions/service.js';
 export function quotationWorkflowRoutes({db,route,json,readJson}){
  const save=(fn,code=200)=>async({req,res,params,user})=>{const b=await readJson(req);if(!b||Array.isArray(b)||typeof b!=='object')throw Object.assign(new Error('Provide a JSON object.'),{status:422});json(res,code,{data:await fn(params,b,user)});};
  return [
+ route('POST','/api/crm/quotation-cost-import/preview','quotations.cost.manage',save((p,b,u)=>previewQuoteCosts(db,b,u))),
+ route('POST','/api/crm/quotation-cost-import/commit','quotations.cost.manage',save((p,b,u)=>importQuoteCosts(db,b,u,previewQuoteCosts))),
  route('GET','/api/crm/quotation-enquiries/:id','quotations.create',async({res,params,user})=>json(res,200,{data:await quotationEnquiry(db,params.id,user)})),
- route('GET','/api/crm/quotation-policy','quotations.read',async({res,user})=>{const p=await quotePolicy(db);json(res,200,{data:p?{seller_state:p.seller_state,letterhead:p.letterhead,revision:p.revision,...(['OWNER','MANAGER'].includes(user.role)?{floor_percent:p.floor_percent,margin_basis:p.margin_basis}:{})}:null});}),
+ route('GET','/api/crm/quotation-policy','quotations.read',async({res,user})=>{const p=await quotePolicy(db);json(res,200,{data:p?{seller_state:p.seller_state,letterhead:p.letterhead,revision:p.revision,confirmed:Boolean(await usableSetting(db,'margin.floor_percent')),...(['OWNER','MANAGER'].includes(user.role)?{floor_percent:p.floor_percent,margin_basis:p.margin_basis}:{})}:null});}),
  route('PUT','/api/crm/quotation-policy','quotations.policy.manage',save((p,b,u)=>saveQuotePolicy(db,b,u))),
  route('GET','/api/crm/quotation-policy/history','quotations.cost.read',async({res,user})=>json(res,200,{data:await pricingHistory(db,null,user)})),
  route('GET','/api/crm/quotation-costs/:id','quotations.cost.read',async({res,params,user})=>json(res,200,{data:await quoteCost(db,params.id,user)})),

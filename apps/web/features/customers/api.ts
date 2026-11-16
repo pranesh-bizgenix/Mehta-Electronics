@@ -5,19 +5,22 @@ export interface CustomerRow { id: number; name: string; customer_code: string |
 export interface Contact { id?: number; name: string; designation?: string | null; phone?: string | null; email?: string | null; is_primary?: number | boolean; isPrimary?: boolean }
 export interface PartMapping { id: number; item_id: number; part_code: string; customer_part_number: string; status: 'ACTIVE' | 'INACTIVE' | 'ARCHIVED' }
 export interface Customer extends CustomerRow {
-  billing_address: string | null; owner_id: number | null; created_at: string;
-  profile: { state_code?: string | null; payment_terms?: string | null; company_id?: string | null; tally_ledger_name?: string | null };
+  pan: string | null; billing_address: string | null; shipping_address: string | null; city: string | null; state: string | null; pincode: string | null; notes: string | null;
+  owner_id: number | null; owner_name: string | null; created_at: string;
+  profile: { state_code?: string | null; payment_terms?: string | null; company_id?: string | null; tally_ledger_name?: string | null; backup_owner_id?: number | null; backup_owner_name?: string | null; territory?: string | null; dealership?: string | null; brand_relationships?: string[] | null };
   contacts: Contact[]; partMappings: PartMapping[];
+  onboarding: null | { status: 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED'; version: number; submitted_by: number; submitted_by_name: string; submitted_at: string; decided_by: number | null; decided_by_name: string | null; decided_at: string | null; decision_reason: string | null; duplicate_snapshot: { id: number; name: string; matchedFields?: string[] }[] | null };
   tally: { linked: boolean; matchCount: number; companyId: string | null; name: string | null };
   dues: { available: boolean; financialAccess: boolean; closingBalance?: string; drCr?: string; fetchedAt?: string; note: string };
 }
-export interface HistoryRow { id: number; number: string; status: string; created_at: string; updated_at: string }
+export interface HistoryRow { id: number; number: string; status: string; created_at: string; updated_at: string; managed?:boolean; href?:string }
 export interface CustomerInput {
-  name: string; customerCode?: string | null; gstin?: string | null; stateCode?: string | null; paymentTerms?: string | null; creditDays: number; creditLimit: string;
-  billingAddress?: string | null; status: CustomerStatus; ownerId?: number | null; companyId?: string | null; tallyName?: string | null;
-  contacts: { id?: number; name: string; designation?: string | null; phone?: string | null; email?: string | null; isPrimary: boolean }[]; reason?: string;
+  name: string; customerCode?: string | null; gstin?: string | null; pan?: string | null; stateCode?: string | null; paymentTerms?: string | null; creditDays: number; creditLimit: string;
+  billingAddress?: string | null; shippingAddress?: string | null; city?: string | null; state?: string | null; pincode?: string | null; notes?: string | null;
+  status: CustomerStatus; ownerId?: number | null; backupOwnerId?: number | null; territory?: string | null; dealership?: string | null; brandRelationships?: string[] | null; companyId?: string | null; tallyName?: string | null;
+  contacts: { id?: number; name: string; designation?: string | null; phone?: string | null; email?: string | null; isPrimary: boolean }[]; reason?: string; duplicateReviewReason?: string;
 }
-export interface Duplicate { id: number; name: string; gstin: string | null; customer_code: string | null; matched_on?: string[] }
+export interface Duplicate { id: number; name: string; gstin: string | null; customer_code: string | null; matchedFields?: string[] }
 
 /** Typed access to the customer endpoints (unchanged existing contracts). */
 export const customersApi = (client: ApiClient) => ({
@@ -25,9 +28,10 @@ export const customersApi = (client: ApiClient) => ({
   get: (id: number | string, signal?: AbortSignal) => client.data<Customer>('GET', `/api/crm/customers/${id}`, undefined, { signal }),
   create: (body: CustomerInput, idempotencyKey: string) => client.data<Customer>('POST', '/api/crm/customers', body, { idempotencyKey }),
   update: (id: number, body: Partial<CustomerInput> & { reason: string }) => client.data<Customer>('PATCH', `/api/crm/customers/${id}`, body),
+  decideOnboarding: (id: number, body: { decision: 'APPROVE' | 'REJECT'; version: number; reason: string }) => client.data<NonNullable<Customer['onboarding']>>('POST', `/api/crm/customers/${id}/onboarding-decision`, body),
   history: (id: number | string, tab: 'enquiries' | 'quotes' | 'orders' | 'invoices', signal?: AbortSignal) =>
     client.get<{ data: HistoryRow[]; available?: boolean; reason?: string }>(`/api/crm/customers/${id}/history/${tab}`, { signal }),
-  duplicates: (body: { name?: string; gstin?: string | null; excludeId?: number }) => client.data<Duplicate[]>('POST', '/api/customers/duplicates', body),
+  duplicates: (body: { name?: string; gstin?: string | null; pan?: string | null; contacts?: { name: string; phone?: string | null; email?: string | null }[]; excludeId?: number }) => client.data<Duplicate[]>('POST', '/api/customers/duplicates', body),
   savePart: (customerId: number, mappingId: number | null, body: { itemId: number; customerPartNumber: string; status: PartMapping['status']; reason?: string }) =>
     mappingId ? client.data('PATCH', `/api/crm/customers/${customerId}/part-mappings/${mappingId}`, body) : client.data('POST', `/api/crm/customers/${customerId}/part-mappings`, body),
   owners: () => client.data<{ id: number; name: string }[]>('GET', '/api/crm/owners'),

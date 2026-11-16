@@ -1,8 +1,7 @@
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import { test } from 'node:test';
-import { temporaryDatabase } from '../test-support/postgres.js';
-import { openDatabase } from '../src/db.js';
+import { withTestTransaction } from '../test-support/transaction.js';
 import { getConfig } from '../src/config.js';
 import { overviewContext,tallyOverview } from '../src/overview.js';
 import { overviewMoney } from '../public/overview.js';
@@ -14,9 +13,8 @@ test('formats signed decimal money without losing precision or replacing missing
   assert.equal(overviewMoney(null),'Not provided');assert.equal(overviewMoney('0.00'),'₹0.00');
 });
 
-test('overview totals stay company-scoped, preserve negative stock values, and disclose absent values',async()=>{
-  const temporary=await temporaryDatabase(),config=getConfig({databaseUrl:temporary.databaseUrl});
-  const db=await openDatabase(config);
+test('overview totals stay company-scoped, preserve negative stock values, and disclose absent values',()=>withTestTransaction(async db=>{
+  const config=getConfig();
   try{
     const company=crypto.randomUUID(),other=crypto.randomUUID(),connector=crypto.randomUUID(),session=crypto.randomUUID();
     await db.sql`INSERT INTO tally_companies(id,name) VALUES(${company},'Overview test'),(${other},'Other test')`;
@@ -31,7 +29,7 @@ test('overview totals stay company-scoped, preserve negative stock values, and d
     assert.equal(result.stock.missingValue,1);assert.equal(result.stock.negativeQuantity,1);
     assert.equal(result.stock.unclassifiedQuantity,1);assert.equal(result.parity.status,'not_checked');
     assert.equal(result.coverage.find(row=>row.dataset==='billsPayableXml').state,'not_provided');
-    await assert.rejects(overviewContext(db,config,new URL(`http://test/?companyId=${crypto.randomUUID()}`)),{status:422});
+    await assert.rejects(overviewContext(db,config,new URL(`http://test/?companyId=${crypto.randomUUID()}`)),{status:404});
     await assert.rejects(overviewContext(db,config,new URL(`http://test/?companyId=${company}&periodId=${crypto.randomUUID()}`)),{status:422});
-  }finally{await db.close();await temporary.close()}
-});
+  }finally{}
+}));

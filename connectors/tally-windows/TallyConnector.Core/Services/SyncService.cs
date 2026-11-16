@@ -157,13 +157,14 @@ public sealed class SyncService
 
             ApplyHistoryWindowPolicy(configuration, state);
 
-            if (companyAvailable && pendingCount == 0 && ShouldCollectSnapshot(configuration, state, becameAvailable || becameCompanyAvailable))
+            if (companyAvailable && pendingCount == 0 && ShouldCollectSnapshot(configuration, state, becameAvailable || becameCompanyAvailable || state.PendingReadRequestIds.Count > 0))
             {
                 if (becameAvailable || becameCompanyAvailable)
                 {
                     _logger.LogInformation("Tally company became available again; collecting a fresh snapshot immediately.");
                 }
 
+                List<string> readRequestIds = state.PendingReadRequestIds.ToList();
                 state.LastAttemptAt = DateTimeOffset.UtcNow;
                 TallyService.PreparedSyncContext prepared = await _tallyService.PrepareSyncAsync(configuration, state, cancellationToken);
                 selectedCompany = prepared.CompanyName;
@@ -196,6 +197,7 @@ public sealed class SyncService
                                 progress.Message,
                                 progressCancellationToken);
                         });
+                    snapshot.ReadRequestIds = readRequestIds;
                     await _queueService.EnqueueAsync(CreatePackage(snapshot, syncId, syncJobId), cancellationToken);
                     pendingCount = await _queueService.CountPendingAsync(cancellationToken);
                 }
@@ -283,8 +285,9 @@ public sealed class SyncService
             try
             {
                 current = await _apiService.UploadPackageAsync(current, package, cancellationToken);
-                await _queueService.MarkSucceededAsync(package.PackageId, cancellationToken);
                 state.LastSuccessfulSyncAt = DateTimeOffset.UtcNow;
+                state.VoucherCheckpoint = package.VoucherCheckpoint;
+                state.PendingReadRequestIds = state.PendingReadRequestIds.Except(package.ReadRequestIds, StringComparer.Ordinal).ToList();
                 state.LastCompanyGuid = package.CompanyGuid;
                 state.LastCompanyName = package.CompanyName;
                 state.LastSyncId = package.SyncId;
@@ -298,6 +301,8 @@ public sealed class SyncService
                 }
 
                 state.LastError = null;
+                await _syncStateService.SaveAsync(state, cancellationToken);
+                await _queueService.MarkSucceededAsync(package.PackageId, cancellationToken);
                 _logger.LogInformation(
                     "Uploaded sync package {PackageId} for {CompanyName} ({VoucherCount} vouchers).",
                     package.PackageId,
@@ -585,6 +590,9 @@ public sealed class SyncService
         new()
         {
             PackageId = Guid.NewGuid().ToString(),
+            VoucherCheckpoint = snapshot.VoucherCheckpoint,
+            ReadRequestIds = snapshot.ReadRequestIds,
+            CollectionMetadata = snapshot.CollectionMetadata,
             SyncId = syncId,
             SyncJobId = string.IsNullOrWhiteSpace(syncJobId) ? null : syncJobId,
             CompanyName = snapshot.CompanyName,

@@ -1,0 +1,12 @@
+#!/usr/bin/env node
+import { getConfig } from '../src/config.js';
+import { createMigrationBackup } from '../src/migration-backup.js';
+
+try {
+  if (process.argv.length !== 2) throw new Error('Usage: node scripts/backup-db (no database or destination overrides).');
+  const file = await createMigrationBackup(getConfig().databaseUrl);
+  console.log(`Verified non-empty PostgreSQL backup: ${file}`);
+} catch (error) {
+  console.error(error.code === 'DATABASE_GUARD_REJECTED' ? error.message : `Backup failed: ${error.message}`);
+  process.exitCode = 1;
+}

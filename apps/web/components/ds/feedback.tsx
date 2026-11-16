@@ -67,13 +67,19 @@ export function UnauthorizedState({ message = 'Your role does not include this p
 
 export function ErrorState({ error, onRetry }: { error: unknown; onRetry?: () => void }) {
   if (error instanceof ApiError && error.isForbidden) return <UnauthorizedState message={error.message} />;
+  if (error instanceof ApiError && error.isUnauthorized) return <div className="ds-state" role="alert"><Illustration name="locked"/><h3>Sign-in required</h3><p>{error.message}</p><a className="ds-button" href="/login">Sign in</a></div>;
   const message = error instanceof Error ? error.message : 'Something went wrong.';
   const reference = error instanceof ApiError ? error.correlationId : undefined;
+  const validation = error instanceof ApiError && [409,422].includes(error.status);
+  const review = error instanceof ApiError ? (error.details as {review?:{href?:string;label?:string}}|undefined)?.review : undefined;
+  const reviewHref = review?.href?.startsWith('/') && !review.href.startsWith('//') && !/[\\\r\n]/.test(review.href) ? review.href : undefined;
   return (
     <div className="ds-state" data-tone="danger" role="alert">
       <Illustration name="error" />
-      <h3>We couldn’t load this</h3>
+      <h3>{validation ? 'Review the information below' : 'We couldn’t load this'}</h3>
       <p>{message}</p>
+      {reviewHref && <a className="ds-button" href={reviewHref}>{review?.label||'Review linked record'}</a>}
+      {validation && error instanceof ApiError && error.fields.length > 0 && <ul>{error.fields.map((field,index)=><li key={`${field.path}:${index}`}>{field.path}: {field.message}</li>)}</ul>}
       {reference && <p className="subtle mono">Reference {reference}</p>}
       {onRetry && <Button variant="secondary" icon="refresh" onClick={onRetry}>Try again</Button>}
     </div>

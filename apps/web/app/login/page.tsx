@@ -17,7 +17,7 @@ function LoginInner() {
   const { state, refresh, signIn } = useSession();
   const router = useRouter();
   const next = useSearchParams().get('next');
-  const destination = next && next.startsWith('/') && !next.startsWith('//') ? next : '/dashboard';
+  const destination = state.kind === 'ready' && state.user.mustChangePassword ? '/settings' : next && next.startsWith('/') && !next.startsWith('//') ? next : state.kind === 'ready' && ['LOGISTICS_LEAD','STORE_STAFF'].includes(state.user.role) ? '/logistics' : '/dashboard';
   const [step, setStep] = useState<Step>('password');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -46,7 +46,7 @@ function LoginInner() {
 
   const submitPassword = (e: FormEvent) => { e.preventDefault(); void run(async () => {
     const mfa = await signIn(email.trim(), password);
-    if (!mfa.required) { router.replace(destination); return; }
+    if (!mfa.required) return; // The ready-session effect selects the role's landing page.
     setStep(mfa.enrolled ? 'verify' : 'enrol');
   }); };
   const startEnrolment = () => void run(async () => { setSecret((await api.data<{ secret: string }>('POST', '/api/v1/auth/mfa/enroll', {})).secret); });

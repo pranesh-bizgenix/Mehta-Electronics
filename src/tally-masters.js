@@ -1,4 +1,5 @@
 import { escapeLike } from './security.js';
+import {readCompany} from './tally-read-service.js';
 
 const definitions={ledgers:{table:'tally_ledgers',permission:'customers.read',columns:'id,name,parent_name,gstin,pan,phone,email,contact_person',sorts:['name','parent_name','phone','email','closing_balance']},
   items:{table:'tally_stock_items',permission:'items.read',columns:'id,name,parent_name,normalized_part_number,base_unit,closing_quantity_text',sorts:['name','parent_name','normalized_part_number','closing_quantity_text','closing_rate_text','closing_value']},
@@ -7,9 +8,7 @@ export const masterDefinition=kind=>definitions[kind];
 export async function tallyMasterList(db,kind,url,{financial=false}={}) {
   const definition=definitions[kind];
   const page=Math.max(1,parseInt(url.searchParams.get('page'),10)||1),pageSize=Math.min(100,Math.max(1,parseInt(url.searchParams.get('pageSize'),10)||25));
-  const requested=url.searchParams.get('companyId');
-  const company=requested?await db.prepare('SELECT id,name FROM tally_companies WHERE id=?').get(requested):await db.prepare('SELECT id,name FROM tally_companies ORDER BY name LIMIT 1').get();
-  if(!company)return {data:[],pagination:{page,pageSize,total:0,pages:0},company:null};
+  const company=await readCompany(db,url);
   const args=[company.id],where=['company_id=?'];
   const search=url.searchParams.get('search')?.trim();
   if(search){where.push("(name ILIKE ? ESCAPE '\\' OR parent_name ILIKE ? ESCAPE '\\')");args.push(`%${escapeLike(search)}%`,`%${escapeLike(search)}%`);}

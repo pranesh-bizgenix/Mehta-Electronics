@@ -19,7 +19,7 @@ export class QuotationPolicyFloorSource {
   async write(actor, value, reason) {
     const policy = await quotePolicy(this.db);
     if (!policy) throw conflict('Set the quotation policy (seller state and letterhead) in Quotations first; the margin floor is part of it.', 'POLICY_NOT_CONFIGURED');
-    const saved = await saveQuotePolicy(this.db, { floorPercent: value, marginBasis: policy.margin_basis, sellerState: policy.seller_state, letterhead: policy.letterhead, reason }, actor);
+    const saved = await saveQuotePolicy(this.db, { floorPercent: value, marginBasis: policy.margin_basis, sellerState: policy.seller_state, letterhead: policy.letterhead, expectedRevision:policy.revision, reason }, actor);
     return { value: saved.floor_percent, version: saved.revision };
   }
 }

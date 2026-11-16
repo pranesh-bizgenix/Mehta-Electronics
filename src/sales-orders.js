@@ -1,10 +1,17 @@
+import {orderSyncStates} from './tally-order-sync-state.js';
+import {tallyWriteActive,guardTallyWriteMutation,notifyTallyWrite,requireTallyWriteConfirmation} from './modules/tally-write/module.js';
+import {workflowRule} from './modules/rules/workflow-rules.js';
+import {usableSetting,requireSetting} from './modules/decisions/service.js';
 import crypto from 'node:crypto';
-import {transaction,id,validDate,customerDetail,itemDetail} from './crm-modules.js';
-import {quoteDetail,quoteForDocument,quotePolicy,costAccess} from './quotation-workflow.js';
+import {transaction,id,validDate,customerDetail,itemDetail,requireCustomerBillingApproval} from './crm-modules.js';
+import {quoteDetail,quoteForDocument,quotePolicy,costAccess,requireQuotationApproval} from './quotation-workflow.js';
 import {calculateQuotation,scaled,money} from '../public/quotation-math.js';
 import {hasPermission} from './rbac.js';
+import {isLogisticsRole} from './logistics-policy.js';
+import {logisticsOrderDetail} from './logistics-access.js';
 import {writeAudit} from './db.js';
 import {normalizeKey} from './security.js';
+import {bindOrderStock,orderStockEvidence,publicStockEvidence,checkDispatchStock,retainDispatchConsumption} from './modules/stock/fulfillment.js';
 
 const fail=(status,message)=>{throw Object.assign(new Error(message),{status});};
 const can=(u,p)=>{if(!hasPermission(u,p))fail(403,'Permission denied.');};
@@ -80,11 +87,14 @@ function redactVerification(v,user){const {private:pricing,credit,fingerprint:ig
 }
 export async function orderQuoteSource(db,quoteId,user){can(user,'orders.create');const q=await quoteDetail(db,quoteId,user),doc=await quoteForDocument(db,quoteId,user);
  if(!['APPROVED','SENT','WON'].includes(q.status)||doc.status==='DRAFT')fail(409,'Select a current approved, sent or won quotation.');
+ await requireQuotationApproval(db,quoteId);
  const {pricing,...out}=q;return out;
 }
 async function snapshot(db,b){
  const policy=await quotePolicy(db);if(!policy)fail(409,'The owner must configure quotation pricing policy and seller state first.');
- const customer=await db.prepare("SELECT id,name FROM customers WHERE id=? AND status='ACTIVE'").get(id(b.customerId));if(!customer)fail(422,'Select an active customer.');
+ await requireSetting(db,'margin.floor_percent');
+ const customerId=id(b.customerId);await requireCustomerBillingApproval(db,customerId);
+ const customer=await db.prepare("SELECT id,name FROM customers WHERE id=? AND status='ACTIVE'").get(customerId);if(!customer)fail(422,'Select an active customer.');
  const po=text(b.poNumber??'',100);if(!po)fail(422,'Customer PO number is required.');
  if(!validDate(b.poDate)||b.promisedDate&&!validDate(b.promisedDate))fail(422,'Enter valid PO and promised dates.');
  if(!/^(0[1-9]|[12][0-9]|3[0-8])$/.test(b.placeOfSupply??''))fail(422,'Enter a valid place-of-supply state code.');
@@ -105,9 +115,10 @@ async function snapshot(db,b){
 }
 export async function saveOrder(db,orderId,b,user){can(user,orderId?'orders.update':'orders.create');const reason=why(b);
  return work(db,user,reason,async()=>{
+ if(tallyWriteActive(db,'SALES_ORDER'))await guardTallyWriteMutation(db,'SALES_ORDER',orderId);
  const old=orderId?await row(db,orderId):null;
  if(old){if(b.version!==old.version)fail(409,'Order changed. Reload before editing.');if(['CANCELLED','DELIVERED'].includes(old.status)||await db.prepare('SELECT id FROM crm_shipments WHERE sales_order_id=?').get(old.sales_order_id))fail(409,'Dispatched or terminal orders cannot be revised.');}
- const s=await snapshot(db,b);if(old&&(s.customerId!==old.customer_id||s.poNumber.toUpperCase()!==old.po_key))fail(422,'Customer and PO identity cannot change. Cancel with a reason and create a new order.');
+ const s=await snapshot(db,b);await bindOrderStock(db,b,s,old?.public_snapshot??null,old?.sales_order_id??null);if(old&&(s.customerId!==old.customer_id||s.poNumber.toUpperCase()!==old.po_key))fail(422,'Customer and PO identity cannot change. Cancel with a reason and create a new order.');
  if(!old&&await db.prepare('SELECT id FROM crm_order_workflows WHERE customer_id=? AND po_key=?').get(s.customerId,s.poNumber.toUpperCase()))fail(409,'An order already exists for this customer and PO number. Revise that order instead.');
  if(s.quotationId&&await db.prepare('SELECT id FROM sales_orders WHERE quotation_id=? AND id<>?').get(s.quotationId,old?.sales_order_id??0))fail(409,'This quotation already has an order.');
  let source=null;if(s.quotationId){source=await orderQuoteSource(db,s.quotationId,user);if(source.customerId!==s.customerId)fail(422,'Quotation and order customer must match.');}
@@ -123,7 +134,7 @@ export async function saveOrder(db,orderId,b,user){can(user,orderId?'orders.upda
  const r=await row(db,oid),verification=await verifyOrder(db,r);
  await db.prepare('INSERT INTO crm_order_versions(sales_order_id,version,public_snapshot,private_snapshot,reason,created_by) VALUES(?,?,?::text::jsonb,?::text::jsonb,?,?)').run(oid,r.version,json(s),json(verification.private),reason,user.id);
  await event(db,r,user,old?'REVISED':'CREATED',reason,{version:r.version,quotationId:s.quotationId,total:s.total});return orderDetail(db,oid,user);
- });
+ }).then(async result=>{if(tallyWriteActive(db,'SALES_ORDER'))await notifyTallyWrite(db,'SALES_ORDER',result.id,user);return result;});
 }
 function compareQuote(order,quote){const flags=[],comparisons=[];
  if(!quote)return {flags:['MANUAL_ORDER'],comparisons};
@@ -138,32 +149,27 @@ function compareQuote(order,quote){const flags=[],comparisons=[];
  const delta=cents(order.poTotal)-cents(quote.total);if(delta>100n||delta< -100n)flags.push('QUOTE_TOTAL_DIFFERENCE_OVER_1');
  return {flags,comparisons,quoteTotal:quote.total,quoteDifference:money(delta)};
 }
-function stockNumber(value,uom){const m=String(value??'').trim().match(/^(-?\d{1,12}(?:\.\d{1,6})?)\s+(.+)$/);if(!m||m[2].trim().toUpperCase()!==String(uom).trim().toUpperCase())return null;const n=m[1].startsWith('-');try{return scaled(n?m[1].slice(1):m[1])*(n?-1n:1n);}catch{return null;}}
 const quantity=n=>`${n<0n?'-':''}${(n<0n?-n:n)/1000000n}.${String((n<0n?-n:n)%1000000n).padStart(6,'0')}`;
-export async function verifyOrder(db,r){const s=r.public_snapshot,flags=[],costs={},costInputs={},stock=[];
- const policy=await quotePolicy(db);if(!policy)flags.push('MISSING_POLICY');if(policy&&policy.seller_state!==s.sellerState)flags.push('SELLER_STATE_CHANGED');
- const fulfilled=await db.prepare('SELECT id,fulfilled_quantity::text AS fulfilled FROM sales_order_lines WHERE sales_order_id=? AND NOT is_deleted').all(r.sales_order_id),fulfill=new Map(fulfilled.map(l=>[l.id,scaled(l.fulfilled)]));
- const demanded=new Map();for(const l of s.lines){if(l.itemId)demanded.set(l.itemId,(demanded.get(l.itemId)??0n)+scaled(l.quantity)-(fulfill.get(l.id)??0n));}
+export async function verifyOrder(db,r){const s=r.public_snapshot,flags=[],costs={},costInputs={};
+ const policy=await quotePolicy(db);if(!policy||!await usableSetting(db,'margin.floor_percent'))flags.push('MISSING_POLICY');if(policy&&policy.seller_state!==s.sellerState)flags.push('SELLER_STATE_CHANGED');
  for(const l of s.lines){
  const item=l.itemId?await db.prepare("SELECT id,part_code,uom,status FROM items WHERE id=?").get(l.itemId):null;
  if(!item)flags.push('UNKNOWN_PART_CODE');else if(item.status!=='ACTIVE')flags.push('INACTIVE_ITEM');else if(item.part_code!==l.partCode){const mapping=await db.prepare("SELECT id FROM crm_customer_part_mappings WHERE customer_id=? AND item_id=? AND customer_part_number=? AND status='ACTIVE' AND NOT is_deleted").get(s.customerId,l.itemId,l.partCode);if(!mapping)flags.push('UNKNOWN_PART_CODE');}
  const c=item?await db.prepare('SELECT unit_cost::text AS value FROM crm_quotation_costs WHERE item_id=?').get(l.itemId):null;
  if(item&&item.uom!==l.uom)flags.push('UOM_MISMATCH');
  costs[String(l.itemId)]=item?.uom===l.uom?c?.value??null:null;costInputs[String(l.itemId)]=costs[String(l.itemId)];
- if(item&&!stock.some(x=>x.itemId===item.id)){
- const detail=await itemDetail(db,item.id),v=detail.stock,stored=stockNumber(v.closing_quantity_text,l.uom),required=demanded.get(item.id)??0n;
- const since=v.fetched_at?await db.prepare('SELECT COALESCE(sum(si.quantity),0)::text AS quantity FROM crm_shipment_items si JOIN crm_shipments sh ON sh.id=si.shipment_id JOIN sales_order_lines ol ON ol.id=si.order_line_id WHERE ol.item_id=? AND sh.created_at>?::timestamptz').get(item.id,v.fetched_at):{quantity:'0'};
- const localDispatched=scaled(since.quantity),available=stored===null?null:stored-localDispatched;
- let check='AVAILABLE';if(available===null||item.uom!==l.uom)check='STOCK_UNAVAILABLE';else if(available<required)check='STOCK_SHORT';
- if(check!=='AVAILABLE'&&required>0n)flags.push(check);stock.push({itemId:item.id,partCode:l.partCode,quantity:v.closing_quantity_text??null,crmDispatchedSinceImport:quantity(localDispatched),availableAfterCrmDispatch:available===null?null:quantity(available),uom:l.uom,required:quantity(required),fetchedAt:v.fetched_at??null,check,note:'Stored Tally stock minus CRM dispatches since its fetch time. No live check, reservation, unit conversion or stock write.'});
- }}
+ }
+ const stockEvidence=await orderStockEvidence(db,r),stock=publicStockEvidence(stockEvidence);flags.push(...stockEvidence.flags);
  let pricing;try{pricing=calculateQuotation(s.lines,s.sellerState,s.placeOfSupply,costs,policy?.floor_percent??'0',policy?.margin_basis??'LINE_AND_TOTAL');}catch(e){fail(422,e.message);}
  if(pricing.missingCost)flags.push('MISSING_COST');if(pricing.belowFloor&&!pricing.missingCost)flags.push('MARGIN_BELOW_FLOOR');
  const customer=await customerDetail(db,s.customerId,{financial:true});if(customer.status!=='ACTIVE')flags.push('INACTIVE_CUSTOMER');
  const controls=await db.prepare('SELECT classification,credit_exempt,version FROM crm_customer_controls WHERE customer_id=?').get(s.customerId);
- const creditPolicy=await db.prepare("SELECT version,value,is_cleared FROM business_rule_values WHERE rule_key='credit.validation' ORDER BY version DESC LIMIT 1").get();
- const confirmedCreditPolicy=creditPolicy&&!creditPolicy.is_cleared?creditPolicy.value:null;
+ const creditPolicy=await workflowRule(db,'credit.validation',false);
+ const confirmedCreditPolicy=creditPolicy?.value??null;
  if(!controls?.credit_exempt&&!confirmedCreditPolicy)flags.push('CREDIT_POLICY_NOT_CONFIGURED');
+ const creditRules={tiers:await workflowRule(db,'credit.tiers',false),grace:await workflowRule(db,'credit.grace_days',false)};
+ if(!controls?.credit_exempt&&!creditRules.tiers)flags.push('CREDIT_TIERS_NOT_CONFIGURED');
+ if(!controls?.credit_exempt&&!creditRules.grace)flags.push('CREDIT_GRACE_NOT_CONFIGURED');
  if(controls?.classification==='DO_NOT_QUOTE')flags.push('CUSTOMER_ADMIN_REVIEW');
  const others=await db.prepare("SELECT o.id,w.public_snapshot->>'total' AS total FROM sales_orders o LEFT JOIN crm_order_workflows w ON w.sales_order_id=o.id WHERE o.customer_id=? AND o.id<>? AND o.status NOT IN ('CANCELLED','COMPLETED')").all(s.customerId,r.sales_order_id);
  let exposure=0n;for(const o of confirmedCreditPolicy?.exposureBasis==='DEBIT_BALANCE_ONLY'?[]:others){if(o.total!=null)exposure+=cents(o.total);else{const lines=await db.prepare('SELECT ordered_quantity::text AS quantity,unit_price::text AS rate,discount_percent::text AS discount,tax_percent::text AS tax FROM sales_order_lines WHERE sales_order_id=? AND NOT is_deleted').all(o.id);const calc=calculateQuotation(lines.map(l=>({quantity:l.quantity,unitPrice:l.rate,discountPercent:l.discount,taxPercent:l.tax})),s.sellerState,s.placeOfSupply);exposure+=cents(calc.total);}}
@@ -181,31 +187,34 @@ export async function verifyOrder(db,r){const s=r.public_snapshot,flags=[],costs
  const delta=cents(s.poTotal)-cents(s.total);if(delta>100n||delta< -100n)flags.push('PO_TOTAL_DIFFERENCE_OVER_1');
  const document=await db.prepare("SELECT id,sha256 FROM crm_order_documents WHERE sales_order_id=? AND kind='CUSTOMER_PO' AND status='ACTIVE'").get(r.sales_order_id);if(!document)flags.push('MISSING_PO_FILE');
  const privateData={cost:pricing.missingCost?null:pricing.cost,knownCost:pricing.cost,marginPercent:pricing.marginPercent,missingCost:pricing.missingCost,belowFloor:pricing.belowFloor,floorPercent:policy?.floor_percent??null,lines:pricing.lines.map(l=>({itemId:l.itemId,unitCost:l.unitCost,cost:l.cost,marginPercent:l.marginPercent}))};
- const unique=[...new Set(flags)].sort(),digest=fingerprint({version:r.version,flags:unique,policyRevision:policy?.revision??null,costInputs,creditPolicy:creditPolicy??null,customerControls:controls??null,credit:{balance:credit.closingBalance,limit:credit.limit,other:credit.openOrderExposure},file:document?.sha256??null,quoteVersion:r.source_quote_version});
+ const unique=[...new Set(flags)].sort(),digest=fingerprint({version:r.version,flags:unique,stockEvidence:stockEvidence.fingerprint,policyRevision:policy?.revision??null,costInputs,creditPolicy:creditPolicy??null,creditRules,customerControls:controls??null,credit:{balance:credit.closingBalance,limit:credit.limit,other:credit.openOrderExposure},file:document?.sha256??null,quoteVersion:r.source_quote_version});
  return {flags:unique,held:unique.length>0,comparison,poTotal:s.poTotal,calculatedTotal:s.total,totalDifference:money(delta),stock,credit,private:privateData,fingerprint:digest,reviewValid:r.approved_version===r.version&&r.approval_fingerprint===digest};
 }
-export async function orderDetail(db,orderId,user){can(user,'orders.read');const r=await row(db,orderId),verification=await verifyOrder(db,r);
+export async function orderDetail(db,orderId,user){if(isLogisticsRole(user))return logisticsOrderDetail(db,orderId,user);can(user,'orders.read');const r=await row(db,orderId),verification=await verifyOrder(db,r);
  const lines=await db.prepare('SELECT id,fulfilled_quantity::text AS fulfilled_quantity FROM sales_order_lines WHERE sales_order_id=? AND NOT is_deleted ORDER BY position,id').all(r.sales_order_id);
  const documents=await db.prepare('SELECT id,kind,shipment_id,original_name,mime_type,sha256,byte_count,status,created_at FROM crm_order_documents WHERE sales_order_id=? ORDER BY id DESC').all(r.sales_order_id);
  const shipments=await db.prepare('SELECT * FROM crm_shipments WHERE sales_order_id=? ORDER BY id DESC').all(r.sales_order_id);
  for(const shipment of shipments)shipment.lines=await db.prepare('SELECT order_line_id,quantity::text AS quantity FROM crm_shipment_items WHERE shipment_id=? ORDER BY id').all(shipment.id);
  const terminal=['CANCELLED','DELIVERED','DISPATCHED'].includes(r.status);
- return {...r.public_snapshot,id:r.sales_order_id,version:r.version,status:r.status,effectiveStatus:!terminal&&!verification.reviewValid&&r.approved_version?'HELD':r.status,created_by:r.created_by,lines:r.public_snapshot.lines.map(l=>({...l,fulfilledQuantity:lines.find(x=>x.id===l.id)?.fulfilled_quantity??'0'})),verification:redactVerification(verification,user),documents,shipments};
+ return {tallySync:(await orderSyncStates(db,[r.sales_order_id],user)).get(r.sales_order_id),...r.public_snapshot,id:r.sales_order_id,version:r.version,status:r.status,effectiveStatus:!terminal&&!verification.reviewValid&&r.approved_version?'HELD':r.status,created_by:r.created_by,lines:r.public_snapshot.lines.map(l=>({...l,fulfilledQuantity:lines.find(x=>x.id===l.id)?.fulfilled_quantity??'0'})),verification:redactVerification(verification,user),documents,shipments};
 }
 export async function orderList(db,url,user){can(user,'orders.read');const page=Number(url.searchParams.get('page')||1);if(!Number.isSafeInteger(page)||page<1||page>1000000)fail(422,'Invalid page.');const search=String(url.searchParams.get('search')||'').slice(0,200),status=url.searchParams.get('status')||'';
  const where="WHERE (?='' OR o.order_number ILIKE ? OR c.name ILIKE ? OR o.customer_po_number ILIKE ?) AND (?='' OR w.status=?)",args=[search,'%'+search+'%','%'+search+'%','%'+search+'%',status,status];
  const total=(await db.prepare(`SELECT count(*) AS n FROM crm_order_workflows w JOIN sales_orders o ON o.id=w.sales_order_id JOIN customers c ON c.id=o.customer_id ${where}`).get(...args)).n;
  const data=await db.prepare(`SELECT w.sales_order_id AS id,w.version,w.status,w.public_snapshot->>'order_number' AS order_number,w.public_snapshot->>'customer_name' AS customer_name,w.public_snapshot->>'poNumber' AS poNumber,w.public_snapshot->>'total' AS total,w.updated_at FROM crm_order_workflows w JOIN sales_orders o ON o.id=w.sales_order_id JOIN customers c ON c.id=o.customer_id ${where} ORDER BY w.updated_at DESC,w.id DESC LIMIT 25 OFFSET ?`).all(...args,(page-1)*25);
- return {data,pagination:{page,pageSize:25,total,pages:Math.ceil(total/25)},legacyCount:(await db.prepare('SELECT count(*) AS n FROM sales_orders o WHERE NOT EXISTS(SELECT 1 FROM crm_order_workflows w WHERE w.sales_order_id=o.id)').get()).n};
+ const syncStates=await orderSyncStates(db,data.map(row=>row.id),user);
+ return {data:data.map(row=>({...row,tallySync:syncStates.get(row.id)})),pagination:{page,pageSize:25,total,pages:Math.ceil(total/25)},legacyCount:(await db.prepare('SELECT count(*) AS n FROM sales_orders o WHERE NOT EXISTS(SELECT 1 FROM crm_order_workflows w WHERE w.sales_order_id=o.id)').get()).n};
 }
 export async function orderHistory(db,orderId,user){can(user,'orders.read');await row(db,orderId);const events=await db.prepare('SELECT e.*,u.name AS actor FROM crm_order_events e JOIN users u ON u.id=e.created_by WHERE sales_order_id=? ORDER BY e.id DESC').all(id(orderId)),versions=await db.prepare('SELECT * FROM crm_order_versions WHERE sales_order_id=? ORDER BY version DESC').all(id(orderId));
  return {events:events.map(({private_detail,...r})=>({...r,...(costAccess(user)?{pricing:private_detail?.verification?{verification:redactVerification(private_detail.verification,user)}:private_detail}:{})})),versions:versions.map(({private_snapshot,...r})=>({...r,...(costAccess(user)?{pricing:private_snapshot}:{})}))};
 }
 export async function orderAction(db,orderId,b,user){const reason=why(b),action=b.action;can(user,action==='APPROVE'?'orders.review':'orders.update');
- return work(db,user,reason,async()=>{const r=await row(db,orderId);if(b.version!==r.version)fail(409,'Order changed. Reload.');if(['CANCELLED','DELIVERED','DISPATCHED'].includes(r.status))fail(409,'Terminal or fully dispatched orders cannot be re-verified, approved or cancelled.');
+ return work(db,user,reason,async()=>{if(tallyWriteActive(db,'SALES_ORDER'))await guardTallyWriteMutation(db,'SALES_ORDER',orderId);const r=await row(db,orderId);if(b.version!==r.version)fail(409,'Order changed. Reload.');if(['CANCELLED','DELIVERED','DISPATCHED'].includes(r.status))fail(409,'Terminal or fully dispatched orders cannot be re-verified, approved or cancelled.');
  if(action==='CANCEL'){if(await db.prepare('SELECT id FROM crm_shipments WHERE sales_order_id=?').get(r.sales_order_id))fail(409,'Dispatched orders cannot be cancelled.');await db.prepare("UPDATE crm_order_workflows SET status='CANCELLED' WHERE sales_order_id=?").run(r.sales_order_id);await db.prepare("UPDATE sales_orders SET status='CANCELLED',updated_by=?,updated_at=now() WHERE id=?").run(user.id,r.sales_order_id);}
  else {const v=await verifyOrder(db,r);if(action==='VERIFY'){await db.prepare("UPDATE crm_order_workflows SET status='HELD',approval_fingerprint=NULL,approved_by=NULL,approved_version=NULL WHERE sales_order_id=?").run(r.sales_order_id);}
  else if(action==='APPROVE'){
+ if(v.flags.includes('CREDIT_TIERS_NOT_CONFIGURED'))await workflowRule(db,'credit.tiers');
+ if(v.flags.includes('CREDIT_GRACE_NOT_CONFIGURED'))await workflowRule(db,'credit.grace_days');
  if(v.flags.includes('CUSTOMER_ADMIN_REVIEW'))fail(409,'Customer is Do Not Quote. Admin must resolve this restriction before order approval.');
  if(v.flags.some(flag=>['CREDIT_POLICY_NOT_CONFIGURED','CREDIT_SOURCE_STALE','CREDIT_UNAVAILABLE_REVIEW_DISABLED'].includes(flag)))fail(409,'Confirm the credit policy in Rules and obtain a fresh balance before approving this order.');
  if(r.status!=='HELD')fail(409,'Verify the order before reviewer approval.');
@@ -219,7 +228,7 @@ export async function orderAction(db,orderId,b,user){const reason=why(b),action=
  }else fail(422,'Unknown order action.');
  await event(db,r,user,action,reason,{flags:v.flags,version:r.version},action==='APPROVE'?{verification:v}:{});return orderDetail(db,orderId,user);
  }await event(db,r,user,action,reason,{version:r.version});return orderDetail(db,orderId,user);
- });
+ }).then(async result=>{if(tallyWriteActive(db,'SALES_ORDER'))await notifyTallyWrite(db,'SALES_ORDER',orderId,user);return result;});
 }
 export function validateOriginal(b){const name=text(b.name??'',200);if(!name||/[\x00-\x1f\\/]/.test(name))fail(422,'Provide an original filename without path separators.');
  if(typeof b.base64!=='string'||b.base64.length>13981016||b.base64.length%4!==0||/[^A-Za-z0-9+/=]/.test(b.base64))fail(422,'Provide a valid base64 original, up to 10 MB.');
@@ -228,8 +237,8 @@ export function validateOriginal(b){const name=text(b.name??'',200);if(!name||/[
  let mime;if(bytes.subarray(0,5).toString()==='%PDF-')mime='application/pdf';else if(bytes.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10])))mime='image/png';else if(bytes[0]===255&&bytes[1]===216&&bytes[2]===255&&bytes.at(-2)===255&&bytes.at(-1)===217)mime='image/jpeg';else fail(422,'Only PDF, PNG and JPEG originals are supported.');
  return {name,bytes,mime,sha256:hash(bytes)};
 }
-export async function uploadOriginal(db,orderId,b,user,shipmentId=null){can(user,shipmentId?'orders.dispatch':'orders.update');const reason=why(b),file=validateOriginal(b);
- return work(db,user,reason,async()=>{const r=await row(db,orderId);if(b.version!==r.version)fail(409,'Order changed. Reload before uploading.');if(r.status==='CANCELLED')fail(409,'Cancelled order cannot accept uploads.');
+export async function uploadOriginal(db,orderId,b,user,shipmentId=null){can(user,shipmentId?(isLogisticsRole(user)?'logistics.dispatch.manage':'orders.dispatch'):'orders.update');const reason=why(b),file=validateOriginal(b);
+ return work(db,user,reason,async()=>{if(tallyWriteActive(db,'SALES_ORDER'))await guardTallyWriteMutation(db,'SALES_ORDER',orderId);const r=await row(db,orderId);if(b.version!==r.version)fail(409,'Order changed. Reload before uploading.');if(r.status==='CANCELLED')fail(409,'Cancelled order cannot accept uploads.');
  if(shipmentId){const s=await db.prepare('SELECT id,status FROM crm_shipments WHERE id=? AND sales_order_id=?').get(id(shipmentId),r.sales_order_id);if(!s)fail(404,'Shipment not found.');if(s.status==='DELIVERED')fail(409,'Delivered shipment proof is immutable.');}
  else if(await db.prepare('SELECT id FROM crm_shipments WHERE sales_order_id=?').get(r.sales_order_id))fail(409,'Customer PO is immutable after dispatch.');
  const kind=shipmentId?'DELIVERY_PROOF':'CUSTOMER_PO';
@@ -239,14 +248,14 @@ export async function uploadOriginal(db,orderId,b,user,shipmentId=null){can(user
  const doc=(await db.prepare('INSERT INTO crm_order_documents(sales_order_id,shipment_id,customer_id,po_key,kind,original_name,mime_type,sha256,byte_count,original_bytes,created_by) VALUES(?,?,?,?,?,?,?,?,?,?,?)').run(r.sales_order_id,shipmentId?id(shipmentId):null,r.customer_id,r.po_key,kind,file.name,file.mime,file.sha256,file.bytes.length,file.bytes,user.id)).insertedId;
  if(!shipmentId){await db.prepare("UPDATE crm_order_workflows SET version=version+1,status='DRAFT',approval_fingerprint=NULL,approved_by=NULL,approved_version=NULL WHERE sales_order_id=?").run(r.sales_order_id);const updated=await row(db,orderId),v=await verifyOrder(db,updated);await db.prepare('INSERT INTO crm_order_versions(sales_order_id,version,public_snapshot,private_snapshot,reason,created_by) VALUES(?,?,?::text::jsonb,?::text::jsonb,?,?)').run(updated.sales_order_id,updated.version,json(updated.public_snapshot),json(v.private),reason,user.id);}
  const updated=await row(db,orderId);await event(db,updated,user,'ORIGINAL_UPLOADED',reason,{documentId:doc,kind,sha256:file.sha256,archivedDocumentIds:archived.map(x=>x.id),shipmentId:shipmentId?Number(shipmentId):null});return {id:doc,sha256:file.sha256,version:updated.version};
- });
+ }).then(async result=>{if(tallyWriteActive(db,'SALES_ORDER'))await notifyTallyWrite(db,'SALES_ORDER',orderId,user);return result;});
 }
 export async function downloadOriginal(db,documentId,user){can(user,'orders.read');const d=await db.prepare('SELECT original_name,mime_type,original_bytes,sha256 FROM crm_order_documents WHERE id=?').get(id(documentId));if(!d)fail(404,'Original not found.');return d;}
-export async function dispatchOrder(db,orderId,b,user){can(user,'orders.dispatch');const reason=why(b);
+export async function dispatchOrder(db,orderId,b,user){can(user,isLogisticsRole(user)?'logistics.dispatch.manage':'orders.dispatch');const reason=why(b);
  if(typeof b.requestKey!=='string'||! /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(b.requestKey))fail(422,'A UUID dispatch retry key is required.');
  if(!Array.isArray(b.lines)||!b.lines.length||b.lines.length>100)fail(422,'Select at least one pick-list line.');
  const requestHash=fingerprint({vehicle:text(b.vehicleNumber??'',100),lr:text(b.lrNumber??'',100),transporter:text(b.transporter??'',200),eway:text(b.ewayBillNumber??'',100),notes:text(b.notes??'',2000),lines:b.lines.map(l=>({id:id(l.lineId),quantity:scaled(decimal(l.quantity)).toString()})).sort((a,b)=>a.id-b.id)});
- return work(db,user,reason,async()=>{const r=await row(db,orderId);
+ return work(db,user,reason,async()=>{if(tallyWriteActive(db,'SALES_ORDER'))await requireTallyWriteConfirmation(db,'SALES_ORDER',orderId);const r=await row(db,orderId);
  const receipt=await db.prepare("SELECT public_detail FROM crm_order_events WHERE sales_order_id=? AND action='DISPATCHED' AND public_detail->>'requestKey'=?").get(r.sales_order_id,b.requestKey);
  if(receipt){if(receipt.public_detail.requestHash!==requestHash)fail(409,'This retry key was already used for different dispatch details.');return {shipmentId:receipt.public_detail.shipmentId,replayed:true,order:await orderDetail(db,orderId,user)};}
  if(r.version!==b.version||!['APPROVED','PARTIALLY_DISPATCHED'].includes(r.status))fail(409,'Order must be approved before dispatch.');const v=await verifyOrder(db,r);if(!v.reviewValid)fail(409,'Order verification changed. Verify and obtain review again.');
@@ -255,14 +264,16 @@ export async function dispatchOrder(db,orderId,b,user){can(user,'orders.dispatch
  if(!vehicle||!lr||!transporter)fail(422,'Vehicle, LR number and transporter are required.');
  const picked=[],seen=new Set();for(const l of b.lines){const lid=id(l.lineId);if(seen.has(lid))fail(422,'Duplicate pick-list line.');seen.add(lid);const current=await db.prepare('SELECT *,ordered_quantity::text AS ordered,fulfilled_quantity::text AS fulfilled FROM sales_order_lines WHERE id=? AND sales_order_id=? AND NOT is_deleted FOR UPDATE').get(lid,r.sales_order_id);
  if(!current)fail(422,'Pick-list line does not belong to this order.');const q=scaled(decimal(l.quantity));if(q<=0n||q>scaled(current.ordered)-scaled(current.fulfilled))fail(422,'Dispatch quantity exceeds the remaining order quantity.');picked.push({id:lid,quantity:String(l.quantity),fulfilled:quantity(scaled(current.fulfilled)+q)});}
+ const stockEvidence=await checkDispatchStock(db,r,picked);
  const shipment=(await db.prepare('INSERT INTO crm_shipments(sales_order_id,vehicle_number,lr_number,transporter,eway_bill_number,notes,created_by) VALUES(?,?,?,?,?,?,?)').run(r.sales_order_id,vehicle,lr,transporter,eway||null,text(b.notes??'',2000),user.id)).insertedId;
  for(const l of picked){await db.prepare('INSERT INTO crm_shipment_items(shipment_id,order_line_id,quantity,created_by) VALUES(?,?,?,?)').run(shipment,l.id,l.quantity,user.id);await db.prepare('UPDATE sales_order_lines SET fulfilled_quantity=? WHERE id=?').run(l.fulfilled,l.id);}
+ await retainDispatchConsumption(db,r,shipment,picked,stockEvidence,user,reason);
  const remaining=await db.prepare('SELECT id FROM sales_order_lines WHERE sales_order_id=? AND NOT is_deleted AND fulfilled_quantity<ordered_quantity LIMIT 1').get(r.sales_order_id);
  const next=remaining?'PARTIALLY_DISPATCHED':'DISPATCHED';await db.prepare('UPDATE crm_order_workflows SET status=? WHERE sales_order_id=?').run(next,r.sales_order_id);await db.prepare('UPDATE sales_orders SET status=?,updated_by=?,updated_at=now() WHERE id=?').run(next,user.id,r.sales_order_id);
  await event(db,r,user,'DISPATCHED',reason,{shipmentId:shipment,lrNumber:lr,requestKey:b.requestKey,requestHash,lines:picked.map(l=>({lineId:l.id,quantity:l.quantity}))});return {shipmentId:shipment,order:await orderDetail(db,orderId,user)};
  });
 }
-export async function markDelivered(db,shipmentId,b,user){can(user,'orders.dispatch');const reason=why(b);
+export async function markDelivered(db,shipmentId,b,user){can(user,isLogisticsRole(user)?'logistics.dispatch.manage':'orders.dispatch');const reason=why(b);
  return work(db,user,reason,async()=>{const s=await db.prepare('SELECT * FROM crm_shipments WHERE id=?').get(id(shipmentId));if(!s)fail(404,'Shipment not found.');if(s.status==='DELIVERED')fail(409,'Shipment already delivered.');
  const r=await row(db,s.sales_order_id);if(b.version!==r.version)fail(409,'Order changed. Reload.');if(!await db.prepare("SELECT id FROM crm_order_documents WHERE shipment_id=? AND kind='DELIVERY_PROOF' AND status='ACTIVE'").get(s.id))fail(422,'Upload delivery proof before confirming delivery.');
  await db.prepare("UPDATE crm_shipments SET status='DELIVERED' WHERE id=?").run(s.id);

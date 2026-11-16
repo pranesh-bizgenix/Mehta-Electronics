@@ -5,6 +5,7 @@ import {getConfig} from '../src/config.js';
 import {connectPostgres} from '../src/postgres.js';
 import {applyMigrations} from '../src/migrations.js';
 const sql=connectPostgres(getConfig().databaseUrl);
+await sql.ready();
 try{
  const database=(await sql`SELECT current_database() AS name`)[0].name;assert.equal(database,'mehta_electronics_local');
  const tables=await sql`SELECT tablename FROM pg_tables WHERE schemaname='public' AND (tablename LIKE 'tally_%' OR tablename='connector_upload_chunks') ORDER BY tablename`;

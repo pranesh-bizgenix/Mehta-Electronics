@@ -5,6 +5,7 @@ import { getConfig } from '../src/config.js';
 import { connectPostgres } from '../src/postgres.js';
 import { TALLY_ENTITY_DESCRIPTORS } from '../public/tally-entity-descriptors.js';
 const sql=connectPostgres(getConfig().databaseUrl,{postgresOptions:{max:1,connection:{default_transaction_read_only:'on'}}});
+await sql.ready();
 const builder=new XMLBuilder({ignoreAttributes:false,format:true});
 const report={source:'Anonymized real exported record structures; lists capped at two elements; no source values retained.',entities:[],unavailable:[],companyPricePaths:[]};
 try {

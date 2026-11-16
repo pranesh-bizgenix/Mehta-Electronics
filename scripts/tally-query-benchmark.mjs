@@ -7,6 +7,7 @@ import { TallyVisibilityService } from '../src/tally-visibility-service.js';
 const config=getConfig();
 if(new URL(config.databaseUrl).pathname!=='/mehta_electronics_local')throw new Error('Unexpected database');
 const db=createDatabase(config),report={checkedAt:new Date().toISOString(),readOnly:true,measurements:[]};
+await db.ready();
 try {
  await db.withConnection(async()=>{
   await db.exec('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');

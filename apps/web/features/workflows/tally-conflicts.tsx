@@ -1,0 +1,60 @@
+'use client';
+import Link from 'next/link';
+import {useEffect,useState} from 'react';
+import {useApi} from '@/lib/api/provider';
+import {useSession} from '@/lib/session';
+import type {Company} from '@/lib/scope';
+import type {ApiClient,Paginated} from '@/lib/api/client';
+import {Badge,Button,CardSkeleton,Checkbox,DataTable,Drawer,EmptyState,ErrorState,Notice,PageHeader,SelectField,TextAreaField,useAsync,useToast} from '@/components/ds';
+import {formatDateTime,titleCase} from '@/lib/format';
+interface ConflictRow {id:string;entity_kind:string;external_id:string;status:string;created_at:string;created_by:number;resolution:string|null}
+interface Pair {field:string;tally:string|null;crm:string|null}
+interface Source {pairs:Pair[];fingerprint:string;observedAt:string;crmId:number;identity:string}
+interface Detail {id:string;kind:string;status:string;recordKey:string;createdBy:number;createdAt:string;resolution:string|null;resolutionReason:string|null;winningSource:string|null;policyVersion:number|null;snapshotFingerprint:string|null;current:Source|null;sourceError:string|null;pairs:Pair[];canResolve:boolean;note:string;sourceSnapshot?:unknown;crmSnapshot?:unknown;recovery:{id:string;status:string;created_at:string;completed_at:string|null;error_code:string|null}[]}
+interface LinkedRow {id:string;record_key:string;name:string;crm:{id:number;name:string}|null;reconciliation_status:string;conflicts:{field:string;tally:unknown;crm:unknown}[]}
+export const tallyConflictApi=(api:ApiClient)=>({
+ list:(companyId:string,page:number,status:string,signal:AbortSignal)=>api.get<Paginated<ConflictRow>>('/api/v1/tally/conflicts',{query:{companyId,page,status},signal}),
+ detail:(companyId:string,id:string,signal?:AbortSignal)=>api.get<{data:Detail}>(`/api/v1/tally/conflicts/${encodeURIComponent(id)}`,{query:{companyId},signal}),
+ detect:(companyId:string,kind:string,recordKeys:string[],reason:string)=>api.post<{data:{conflictId:string|null}[]}>('/api/v1/tally/conflicts/detect',{kind,recordKeys,reason},{query:{companyId}}),
+ resolve:(companyId:string,id:string,detail:Detail,reason:string)=>api.post(`/api/v1/tally/conflicts/${encodeURIComponent(id)}/resolve`,{winner:detail.winningSource,policyVersion:detail.policyVersion,fingerprint:detail.current?.fingerprint,reason},{query:{companyId}}),
+ recover:(companyId:string,id:string,reason:string)=>api.post<{status:string;note:string}>(`/api/v1/tally/conflicts/${encodeURIComponent(id)}/recover`,{reason},{query:{companyId}})
+});
+const value=(data:unknown)=>data==null||data===''?'Not supplied':String(data);
+export function TallyConflicts({company}:{company:Company}){
+ const api=useApi(),{can}=useSession(),toast=useToast();
+ const [page,setPage]=useState(1),[status,setStatus]=useState('OPEN'),[selected,setSelected]=useState<string>(),[version,setVersion]=useState(0);
+ const [kind,setKind]=useState('customers'),[sourcePage,setSourcePage]=useState(1),[search,setSearch]=useState(''),[comparing,setComparing]=useState(false),[reason,setReason]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState<unknown>();
+ useEffect(()=>{const params=new URLSearchParams(window.location.search);if(params.get('companyId')===company.id&&params.get('open'))setSelected(params.get('open')!);},[company.id]);
+ const [list,reload]=useAsync(signal=>tallyConflictApi(api).list(company.id,page,status,signal),[api,company.id,page,status,version]);
+ const [sources,reloadSources]=useAsync(signal=>comparing?api.get<Paginated<LinkedRow>>(`/api/v1/tally/inspection/${kind}/reconciliation`,{query:{companyId:company.id,page:sourcePage,search},signal}):Promise.resolve(null),[api,company.id,comparing,kind,sourcePage,search,version]);
+ const compare=async(rows:LinkedRow[])=>{if(rows.some(row=>!row.crm)){setError(new Error('Every selected source needs an explicit CRM link. Open Tally review and linking first.'));return;}setBusy(true);setError(undefined);try{const result=await tallyConflictApi(api).detect(company.id,kind,rows.map(row=>row.record_key),reason);toast('success',`Compared ${result.data.length} selected records. No business values changed.`);setVersion(value=>value+1);setStatus('OPEN');setPage(1);}catch(e){setError(e);}finally{setBusy(false);}};
+ return <section className="stack"><PageHeader title="Tally conflicts" crumbs={[{label:'Tally',href:'/tally'},{label:'Conflicts'}]} description="Review differences against explicitly linked CRM records. No automatic resolution." actions={<Button variant="secondary" onClick={reload}>Refresh</Button>}/>
+  <p><strong>Selected company: {company.display_name||company.name}</strong></p><Notice tone="info">The Owner must confirm a winning source per category in Rules. All resolutions require a reason and an independent reviewer. Retaining CRM does not change Tally.</Notice>
+  <DataTable<ConflictRow> id="tally-conflicts" caption="Recorded conflicts" rows={list.status==='ready'?list.data.data:undefined} rowKey={row=>row.id} loading={list.status==='loading'} error={list.status==='error'?list.error:undefined} onRetry={reload} pagination={list.status==='ready'?list.data.pagination:undefined} onPage={setPage} onRowClick={row=>setSelected(row.id)} filters={<SelectField label="Status" value={status} options={[{value:'OPEN',label:'Open'},{value:'RESOLVED',label:'Resolved'},{value:'ALL',label:'All'}]} onChange={event=>{setStatus(event.target.value);setPage(1);}}/>} columns={[
+   {key:'category',header:'Category',render:row=>titleCase(row.entity_kind)},{key:'source',header:'Stable source reference',render:row=>row.external_id},
+   {key:'status',header:'Status',render:row=><Badge tone={row.status==='OPEN'?'warning':'neutral'}>{titleCase(row.status)}</Badge>},{key:'created',header:'Detected',render:row=>formatDateTime(row.created_at)}
+  ]} empty={<EmptyState title="No recorded conflicts in this view">This does not prove all CRM records have been compared. Compare selected linked records below.</EmptyState>}/>
+  {can('tally.sync')&&<><Button variant="secondary" onClick={()=>setComparing(value=>!value)}>{comparing?'Close comparison':'Compare selected linked records'}</Button>{comparing&&<div className="stack"><SelectField label="Record category" value={kind} options={[{value:'customers',label:'Customers'},{value:'items',label:'Items'},{value:'vendors',label:'Vendors'}]} onChange={event=>{setKind(event.target.value);setSourcePage(1);}}/><TextAreaField label="Comparison reason" value={reason} required onChange={event=>setReason(event.target.value)}/><p>Select the linked records to compare, inspect their current differences, then choose Compare selected. Unlinked sources cannot be compared by name.</p>
+   <DataTable<LinkedRow> key={kind} id={`conflict-sources-${kind}`} caption="Source and CRM differences" rows={sources.status==='ready'?sources.data?.data:undefined} loading={sources.status==='loading'||busy} error={sources.status==='error'?sources.error:undefined} onRetry={reloadSources} rowKey={row=>row.record_key} pagination={sources.status==='ready'?sources.data?.pagination:undefined} onPage={setSourcePage} search={{value:search,onChange:value=>{setSearch(value);setSourcePage(1);},placeholder:'Find a source record'}} bulkActions={[{label:busy?'Comparing…':'Compare selected',onRun:rows=>{if(!busy)void compare(rows);}}]} columns={[{key:'name',header:'Tally source',render:row=>row.name},{key:'crm',header:'Linked CRM',render:row=>row.crm?.name||'Not linked'},{key:'differences',header:'Current differences',render:row=>row.conflicts.length?row.conflicts.map(pair=>`${pair.field}: Tally ${value(pair.tally)} / CRM ${value(pair.crm)}`).join('; '):row.crm?'No compared field differences':'Link first'}]}/>
+  </div>}</>}
+  {Boolean(error)&&<ErrorState error={error}/>} {selected&&<ConflictDrawer key={selected} id={selected} company={company} onClose={()=>setSelected(undefined)} onChanged={()=>setVersion(value=>value+1)}/>}
+ </section>;
+}
+function ConflictDrawer({id,company,onClose,onChanged}:{id:string;company:Company;onClose:()=>void;onChanged:()=>void}){
+ const api=useApi(),{can}=useSession(),toast=useToast(),[reason,setReason]=useState(''),[reviewed,setReviewed]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState<unknown>();
+ const [state,reload]=useAsync(signal=>tallyConflictApi(api).detail(company.id,id,signal),[api,company.id,id]);
+ const detail=state.status==='ready'?state.data.data:null;
+ const run=async(recover:boolean)=>{if(!detail)return;setBusy(true);setError(undefined);try{if(recover){const result=await tallyConflictApi(api).recover(company.id,id,reason);toast('success',result.note||'Read request queued. Await connector delivery.');}else{await tallyConflictApi(api).resolve(company.id,id,detail,reason);toast('success','Resolution saved and audited.');}reload();onChanged();setReviewed(false);}catch(e){setError(e);}finally{setBusy(false);}};
+ return <Drawer open title="Review Tally conflict" onClose={onClose} description={`Source company: ${company.display_name||company.name}`}>
+  {state.status==='error'?<ErrorState error={state.error} onRetry={reload}/>:!detail?<CardSkeleton/>:<div className="stack"><Badge tone={detail.status==='OPEN'?'warning':'neutral'}>{titleCase(detail.status)}</Badge><p>{detail.note}</p>
+   <p><strong>Winning source:</strong> {detail.winningSource||'Not set — resolution blocked'} {can('rules.read')&&<Link href="/rules">Open Rules</Link>}</p>
+   <DataTable<Pair> id="conflict-evidence" caption="Evidence at detection" rows={detail.pairs} rowKey={row=>row.field} columns={[{key:'field',header:'Field',render:row=>titleCase(row.field)},{key:'tally',header:'Tally value',render:row=>value(row.tally)},{key:'crm',header:'CRM value',render:row=>value(row.crm)}]}/>
+   {detail.current&&<><p>Current source observed: {formatDateTime(detail.current.observedAt)}</p><DataTable<Pair> id="conflict-current" caption="Current linked values" rows={detail.current.pairs} rowKey={row=>row.field} columns={[{key:'field',header:'Field',render:row=>titleCase(row.field)},{key:'tally',header:'Tally value',render:row=>value(row.tally)},{key:'crm',header:'CRM value',render:row=>value(row.crm)}]}/>{detail.current.fingerprint!==detail.snapshotFingerprint&&<Notice tone="warning">The source, CRM values or link changed after detection. Compare the selected source again before resolving.</Notice>}</>}
+   {detail.sourceError&&<Notice tone="warning">{detail.sourceError}</Notice>}
+   {detail.sourceSnapshot!==undefined&&<details><summary>Recorded source evidence</summary><pre className="tally-raw-view">{JSON.stringify({tally:detail.sourceSnapshot,crm:detail.crmSnapshot},null,2)}</pre><p>This category requires confirmed mappings before manual resolution is available.</p></details>}
+   {detail.resolution&&<p>{titleCase(detail.resolution)} · {detail.resolutionReason}</p>}
+   {can('tally.sync')&&<><TextAreaField label="Resolution / recovery reason" required value={reason} onChange={event=>setReason(event.target.value)}/>{detail.status==='OPEN'&&<><Checkbox label="I reviewed the current values and confirmed winning-source policy" checked={reviewed} onChange={event=>setReviewed(event.target.checked)}/><Button disabled={busy||!reviewed||!detail.canResolve||!detail.winningSource||!detail.current||detail.current.fingerprint!==detail.snapshotFingerprint} onClick={()=>void run(false)}>Resolve using confirmed source</Button>{!detail.canResolve&&<p>A second eligible reviewer must resolve this conflict; the detector cannot approve it.</p>}</>}<Button variant="secondary" disabled={busy} onClick={()=>void run(true)}>Request fresh Tally read and re-index</Button><p>This queues a company collection refresh through the existing connector. It does not mark the conflict resolved or claim delivery.</p></>}
+   <h3>Recovery requests</h3>{detail.recovery.length?detail.recovery.map(row=><p key={row.id}>{titleCase(row.status)} · {formatDateTime(row.created_at)} {row.error_code?`· ${row.error_code}`:''}</p>):<p>No recovery request recorded.</p>}
+   {Boolean(error)&&<ErrorState error={error}/>}</div>}
+ </Drawer>;
+}

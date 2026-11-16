@@ -3,6 +3,7 @@
 import { recordEnquiryRevision, recordQuotationRevision, writeAudit } from '../../src/db.js';
 
 export async function seedDemoData(db){
+throw new Error('Demo seeding is disabled by MASTER RULES. Never seed invented business records into mehta_electronics_local.');
 const marker=(await db.prepare("SELECT id FROM audit_logs WHERE entity='DEMO_DATA' AND record_id='v1'").get());
 if(marker)return null;
 

@@ -5,13 +5,14 @@ import { useState, type FormEvent } from 'react';
 import { useApi } from '@/lib/api/provider';
 import { useSession } from '@/lib/session';
 import { usePreferences, type ThemeChoice } from '@/lib/preferences';
-import { Button, Card, Facts, Icon, Notice, PageHeader, Switch, TextField, fieldErrors, useToast } from '@/components/ds';
+import { Button, Card, CardSkeleton, Facts, Icon, Notice, PageHeader, Switch, TextField, fieldErrors, useToast } from '@/components/ds';
 import { titleCase } from '@/lib/format';
 
 /** Personal settings: appearance, density and password. */
 export default function SettingsPage() {
   const api = useApi();
-  const { state } = useSession();
+  const { state,refresh } = useSession();
+  const passwordRequired=state.kind==='ready' && state.user.mustChangePassword;
   const { preferences, update } = usePreferences();
   const toast = useToast();
   const [pw, setPw] = useState({ currentPassword: '', newPassword: '', confirm: '' });
@@ -22,17 +23,19 @@ export default function SettingsPage() {
     e.preventDefault();
     if (pw.newPassword !== pw.confirm) { setErrors({ confirm: 'The two new passwords don’t match.' }); return; }
     setBusy(true); setErrors({});
-    try { await api.post('/api/auth/change-password', { currentPassword: pw.currentPassword, newPassword: pw.newPassword }); setPw({ currentPassword: '', newPassword: '', confirm: '' }); toast('success', 'Password changed. Other sessions were signed out.'); }
+    try { await api.post('/api/auth/change-password', { currentPassword: pw.currentPassword, newPassword: pw.newPassword }); setPw({ currentPassword: '', newPassword: '', confirm: '' }); await refresh(); toast('success', 'Password changed. Other sessions were signed out.'); }
     catch (error) { setErrors({ ...fieldErrors(error), form: error instanceof Error ? error.message : 'Could not change the password.' }); }
     finally { setBusy(false); }
   };
   const themes: { id: ThemeChoice; label: string; icon: 'sun' | 'moon' | 'monitor' }[] = [{ id: 'system', label: 'Match system', icon: 'monitor' }, { id: 'light', label: 'Light', icon: 'sun' }, { id: 'dark', label: 'Dark', icon: 'moon' }];
 
+  if(state.kind==='loading')return <CardSkeleton/>;
   return (
     <>
       <PageHeader title="Settings" crumbs={[{ label: 'Admin' }, { label: 'Settings' }]} description="Your account and how ControlDesk looks for you. Saved to your account on every device." />
+      {passwordRequired && <Notice tone="warning">First sign-in: change the temporary password before using ControlDesk. Enter it as your current password, then choose a different personal password.</Notice>}
       <div className="grid-2">
-        <Card title="Appearance">
+        {!passwordRequired && <Card title="Appearance">
           <div className="stack">
             <div role="radiogroup" aria-label="Theme" className="cluster">
               {themes.map((t) => <Button key={t.id} variant={preferences.theme === t.id ? 'primary' : 'secondary'} icon={t.icon} role="radio" aria-checked={preferences.theme === t.id} onClick={() => update({ theme: t.id })}>{t.label}</Button>)}
@@ -41,11 +44,11 @@ export default function SettingsPage() {
             <Switch label="Collapse the sidebar" checked={preferences.sidebarCollapsed} onChange={(e) => update({ sidebarCollapsed: e.target.checked })} />
             <p className="ds-cell-secondary">Tip: press <kbd className="ds-kbd">Ctrl</kbd> <kbd className="ds-kbd">K</kbd> anywhere to search or jump to a screen.</p>
           </div>
-        </Card>
-        <Card title="Account">
+        </Card>}
+        {!passwordRequired && <Card title="Account">
           {state.kind === 'ready' && <Facts items={[{ label: 'Name', value: state.user.name }, { label: 'Email', value: state.user.email }, { label: 'Role', value: titleCase(state.user.role) }, { label: 'Two-factor', value: state.mfa.enrolled ? 'On' : 'Off' }]} />}
           <p className="ds-cell-secondary" style={{ marginTop: 'var(--space-2)' }}><Icon name="info" style={{ display: 'inline', width: 'var(--icon-sm)', height: 'var(--icon-sm)', verticalAlign: 'text-bottom' }} /> Role, department and backup are set by the owner in <Link href="/users">Users &amp; roles</Link>.</p>
-        </Card>
+        </Card>}
         <Card title="Change password">
           <form className="stack" onSubmit={(e) => void changePassword(e)} noValidate>
             <TextField label="Current password" type="password" autoComplete="current-password" required value={pw.currentPassword} onChange={(e) => setPw({ ...pw, currentPassword: e.target.value })} error={errors.currentPassword} />

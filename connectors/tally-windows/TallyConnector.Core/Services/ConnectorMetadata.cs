@@ -50,7 +50,6 @@ public static class ConnectorMetadata
     }
 
     public static string CurrentVersion =>
-        Assembly.GetEntryAssembly()?.GetName().Version?.ToString(3)
-        ?? Assembly.GetExecutingAssembly().GetName().Version?.ToString(3)
-        ?? "1.0.0";
+        typeof(ConnectorMetadata).Assembly.GetName().Version?.ToString(3)
+        ?? "unknown";
 }

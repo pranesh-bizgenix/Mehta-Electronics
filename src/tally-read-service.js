@@ -42,11 +42,11 @@ export function pagination(url) {
 const pageResult = (rows, total, meta) => ({ data: rows, pagination: { ...meta, total, pages: Math.ceil(total / meta.pageSize) } });
 export async function readCompany(db, url) {
   const id = url.searchParams.get('companyId');
-  if (id && !uuid.test(id)) throw fail(422, 'Invalid company identifier.');
-  const row = id ? await db.prepare('SELECT id,name FROM tally_companies WHERE id=?').get(id)
-    : await db.prepare('SELECT id,name FROM tally_companies ORDER BY name,id LIMIT 1').get();
-  if (id && !row) throw fail(404, 'Imported company not found.');
-  return row ? { ...row, display_name: companyDisplayName(row.name) } : null;
+  if(url.searchParams.getAll('companyId').length!==1||!id)throw fail(422,'Select exactly one imported company. companyId is required.');
+  if (!uuid.test(id)) throw fail(422, 'Invalid company identifier.');
+  const row = await db.prepare('SELECT id,name FROM tally_companies WHERE id=?').get(id);
+  if (!row) throw fail(404, 'Imported company not found.');
+  return { ...row, display_name: companyDisplayName(row.name) };
 }
 export async function readSync(db, company) {
   if (!company) return { status: 'not_received', lastSyncAt: null, lastSuccessfulSyncAt: null };

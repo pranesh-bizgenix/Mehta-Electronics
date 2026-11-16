@@ -1,6 +1,7 @@
 /** @interface RuleRepository — append-only versioned rule values. */
 export class RuleRepository {
   constructor(db) { this.db = db; }
+  async knownPermission(key){return Boolean(await this.db.prepare('SELECT key FROM permissions WHERE key=?').get(key));}
   async current(key) {
     return this.db.prepare(`SELECT v.rule_key,v.version,v.value,v.is_cleared,v.reason,v.created_at,u.name AS created_by_name
       FROM business_rule_values v LEFT JOIN users u ON u.id=v.created_by WHERE v.rule_key=? ORDER BY v.version DESC LIMIT 1`).get(key);

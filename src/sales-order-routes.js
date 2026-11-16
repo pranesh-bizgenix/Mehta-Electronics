@@ -1,3 +1,6 @@
+import {OrderReconciliationService} from './tally-order-reconciliation.js';
+import {listTallyOrders} from './tally-order-list.js';
+import {tallyOrderDetail} from './tally-order-detail.js';
 import {orderList,orderDetail,saveOrder,orderAction,orderHistory,uploadOriginal,downloadOriginal,dispatchOrder,markDelivered,logisticsSearch,orderQuoteSource} from './sales-orders.js';
 const fail=(status,message)=>{throw Object.assign(new Error(message),{status});};
 export function salesOrderRoutes({db,route,json,readJson}){
@@ -9,8 +12,13 @@ export function salesOrderRoutes({db,route,json,readJson}){
  let b;try{b=JSON.parse(Buffer.concat(chunks).toString('utf8'));}catch{fail(400,'Invalid upload JSON.');}if(!b||typeof b!=='object'||Array.isArray(b))fail(422,'Provide an upload object.');
  json(res,201,{data:await uploadOriginal(db,params.id,b,user,shipment?params.shipment:null)});
  };
+ const reconciliation=new OrderReconciliationService(db);
  return [
+ route('GET','/api/crm/tally-order-reconciliation','tally.read',async({res,url})=>json(res,200,await reconciliation.read(url))),
+ route('POST','/api/crm/tally-order-reconciliation/compare','tally.read',async({req,res,url})=>json(res,200,await reconciliation.read(url,await body(req)))),
  route('GET','/api/crm/order-quotes/:id','orders.create',async({res,params,user})=>json(res,200,{data:await orderQuoteSource(db,params.id,user)})),
+ route('GET','/api/crm/tally-orders','tally.read',async({res,url})=>json(res,200,await listTallyOrders(db,url))),
+ route('GET','/api/crm/tally-orders/:id','tally.read',async({res,url,params,user})=>json(res,200,await tallyOrderDetail(db,url,params.id,user))),
  route('GET','/api/crm/orders','orders.read',async({res,url,user})=>json(res,200,await orderList(db,url,user))),
  route('POST','/api/crm/orders','orders.create',save((p,b,u)=>saveOrder(db,null,b,u),201)),
  route('GET','/api/crm/orders/:id','orders.read',async({res,params,user})=>json(res,200,{data:await orderDetail(db,params.id,user)})),

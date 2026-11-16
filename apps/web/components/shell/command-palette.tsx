@@ -6,10 +6,12 @@ import { Icon, Kbd, type IconName } from '@/components/ds';
 import type { ApiClient, Paginated } from '@/lib/api/client';
 import { useApi } from '@/lib/api/provider';
 import { useSession } from '@/lib/session';
+import {useScope} from '@/lib/scope';
 import { usePreferences } from '@/lib/preferences';
 import { NAV } from './nav-config';
 
-interface Hit { id: string; group: string; label: string; hint?: string; icon: IconName; run: () => void }
+interface Hit { id: string; group: string; label: string; hint?: string; source?:'Tally'; icon: IconName; run: () => void }
+interface TallyHit {id:string;kind:'customer'|'item';source:'Tally';label:string;hint:string;href:string;companyId:string;recordKey:string}
 
 interface Searchable { group: string; permission: string; icon: IconName; path: string; label: (r: Record<string, unknown>) => string; hint: (r: Record<string, unknown>) => string; href: (r: Record<string, unknown>) => string }
 const SOURCES: Searchable[] = [
@@ -28,13 +30,15 @@ async function searchRecords(api: ApiClient, sources: Searchable[], term: string
 export function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void }) {
   const api = useApi();
   const router = useRouter();
-  const { can } = useSession();
+  const { can, state } = useSession();
+  const {companyId}=useScope();
   const { preferences, update } = usePreferences();
   const dialog = useRef<HTMLDialogElement>(null);
   const input = useRef<HTMLInputElement>(null);
   const listId = useId();
   const [term, setTerm] = useState('');
   const [records, setRecords] = useState<Hit[]>([]);
+  const [recordsKey,setRecordsKey]=useState('');
   const [active, setActive] = useState(0);
   const [searching, setSearching] = useState(false);
 
@@ -51,7 +55,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
   }, [open]);
 
   const staticHits = useMemo<Hit[]>(() => {
-    const pages = NAV.flatMap((g) => g.items.filter((i) => i.permission === 'authenticated' || can(i.permission)).map((i) => ({ id: `nav-${i.href}`, group: 'Go to', label: i.label, hint: i.keywords, icon: i.icon, run: () => go(i.href) })));
+    const pages = NAV.flatMap((g) => g.items.filter((i) => (!i.ownerOnly || state.kind === 'ready' && state.user.role === 'OWNER') && (i.permission === 'authenticated' || can(i.permission))).map((i) => ({ id: `nav-${i.href}`, group: 'Go to', label: i.label, hint: i.keywords, icon: i.icon, run: () => go(i.href) })));
     const actions: Hit[] = [
       ...(can('enquiries.create') ? [{ id: 'a-enquiry', group: 'Actions', label: 'New enquiry', icon: 'plus' as IconName, run: () => go('/enquiries?new=1') }] : []),
       ...(can('quotations.create') ? [{ id: 'a-quote', group: 'Actions', label: 'New quotation', icon: 'plus' as IconName, run: () => go('/quotations/new') }] : []),
@@ -64,22 +68,24 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
   }, [can, preferences.theme]);
 
   useEffect(() => {
-    if (!open || term.trim().length < 2) { setRecords([]); return; }
+    if (!open || term.trim().length < 2) { setRecords([]);setSearching(false); return; }
     const controller = new AbortController();
-    setSearching(true);
+    setSearching(true);setRecords([]);
     const t = setTimeout(() => {
-      searchRecords(api, SOURCES.filter((s) => can(s.permission)), term.trim(), controller.signal)
-        .then((rows) => setRecords(rows.map(({ s, row }) => ({ id: `${s.group}-${String(row.id)}`, group: s.group, label: s.label(row), hint: s.hint(row), icon: s.icon, run: () => go(s.href(row)) }))))
-        .catch(() => setRecords([]))
+      Promise.all([searchRecords(api, SOURCES.filter((s) => can(s.permission)), term.trim(), controller.signal),
+        companyId&&(can('customers.read')||can('items.read'))?api.get<{data:TallyHit[]}>('/api/crm/search/tally',{query:{companyId,search:term.trim()},signal:controller.signal}).then(result=>result.data).catch(()=>[] as TallyHit[]):Promise.resolve([] as TallyHit[])])
+        .then(([rows,tally]) => {if(controller.signal.aborted)return;setRecordsKey(`${companyId??''}:${term.trim()}`);setRecords([...rows.map(({ s, row }) => ({ id: `${s.group}-${String(row.id)}`, group: s.group, label: s.label(row), hint: s.hint(row), icon: s.icon, run: () => go(s.href(row)) })),...tally.map(row=>({id:`tally-${row.kind}-${row.companyId}-${row.recordKey}`,group:row.kind==='customer'?'Linked Tally customers':'Linked Tally items',label:row.label,hint:row.hint,source:'Tally' as const,icon:(row.kind==='customer'?'customers':'items') as IconName,run:()=>go(row.href)}))]);})
+        .catch(() => {if(!controller.signal.aborted)setRecords([]);})
         .finally(() => { if (!controller.signal.aborted) setSearching(false); });
     }, 220);
     return () => { controller.abort(); clearTimeout(t); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [term, open, api, can]);
+  }, [term, open, api, can,companyId]);
 
   const q = term.trim().toLowerCase();
-  const hits = [...staticHits.filter((h) => !q || `${h.label} ${h.hint ?? ''}`.toLowerCase().includes(q)).slice(0, q ? 8 : 12), ...records];
+  const hits = [...staticHits.filter((h) => !q || `${h.label} ${h.hint ?? ''}`.toLowerCase().includes(q)).slice(0, q ? 8 : 12), ...(recordsKey===`${companyId??''}:${term.trim()}`?records:[])];
   useEffect(() => { setActive(0); }, [term, records.length]);
+  useEffect(()=>{if(open&&hits[active])document.getElementById(`cmd-${hits[active].id}`)?.scrollIntoView({block:'nearest'});},[open,active,hits[active]?.id]);
   const groups = [...new Set(hits.map((h) => h.group))];
 
   return (
@@ -91,8 +97,10 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
             <input ref={input} role="combobox" aria-expanded="true" aria-controls={listId} aria-activedescendant={hits[active] ? `cmd-${hits[active].id}` : undefined}
               aria-label="Search screens, actions and records" placeholder="Search customers, quotes, items or type a command…" value={term} onChange={(e) => setTerm(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === 'ArrowDown') { e.preventDefault(); setActive((a) => Math.min(a + 1, hits.length - 1)); }
+                if (e.key === 'ArrowDown') { e.preventDefault(); setActive((a) => Math.max(0,Math.min(a + 1, hits.length - 1))); }
                 if (e.key === 'ArrowUp') { e.preventDefault(); setActive((a) => Math.max(a - 1, 0)); }
+                if (e.key === 'Home') {e.preventDefault();setActive(0);}
+                if (e.key === 'End') {e.preventDefault();setActive(Math.max(0,hits.length-1));}
                 if (e.key === 'Enter') { e.preventDefault(); hits[active]?.run(); }
               }} />
             {searching && <span className="ds-spinner" aria-label="Searching" />}
@@ -107,7 +115,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
                     const index = hits.indexOf(h);
                     return (
                       <li key={h.id} id={`cmd-${h.id}`} role="option" aria-selected={index === active} className="ds-palette-item" onMouseEnter={() => setActive(index)} onClick={h.run}>
-                        <Icon name={h.icon} /><span className="truncate">{h.label}</span>{h.hint && g !== 'Go to' && <small className="truncate">{h.hint}</small>}
+                        <Icon name={h.icon} /><span className="truncate">{h.label}</span>{h.source&&<span className="ds-badge" data-tone="neutral">Source: {h.source}</span>}{h.hint && g !== 'Go to' && <small className="truncate">{h.hint}</small>}
                       </li>
                     );
                   })}

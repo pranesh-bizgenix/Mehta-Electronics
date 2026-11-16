@@ -1,0 +1,14 @@
+export const writeMapping={templateVersion:1,reportName:'Vouchers',voucherType:'ZZTEST Sales Order',numbering:'CRM',idempotencyField:'REFERENCE',idempotencyMethod:'Reference',
+  companyProbe:{collectionType:'Company',currentCompanyFilter:'$Name = ##SVCurrentCompany'},
+  identityProbe:{collectionType:'Voucher',method:'VoucherNumber',voucherTypeMethod:'VoucherTypeName'},
+  readback:{collectionType:'Voucher',fields:[{crm:'total',tally:'AMOUNT',kind:'DECIMAL',sign:'NEGATIVE'},{crm:'partyLedgerName',tally:'PARTYLEDGERNAME',kind:'TEXT'},{crm:'date',tally:'DATE',kind:'TEXT',transform:'ISO_DATE_TO_TALLY'},{crm:'number',tally:'VOUCHERNUMBER',kind:'TEXT'}],inventory:{container:'ALLINVENTORYENTRIES.LIST',item:'STOCKITEMNAME',quantity:'BILLEDQTY',rate:'RATE',discount:'DISCOUNT'}},
+  sourceFields:{date:'poDate',sellerState:'sellerState',placeOfSupply:'placeOfSupply'},unitSourceKeys:{'1':'ZZTEST_unit'},
+  header:{date:'DATE',party:'PARTYLEDGERNAME',voucherType:'VOUCHERTYPENAME',number:'VOUCHERNUMBER'},
+  inventory:{container:'ALLINVENTORYENTRIES.LIST',item:'STOCKITEMNAME',quantity:'BILLEDQTY',rate:'RATE',amount:'AMOUNT',amountSign:'POSITIVE'},
+  batch:{container:'BATCHALLOCATIONS.LIST',godown:'GODOWNNAME',quantity:'BILLEDQTY',amount:'AMOUNT'},units:{'1':'NOS'},godown:'ZZTEST Store',
+  ledgerContainer:'LEDGERENTRIES.LIST',ledgerNameField:'LEDGERNAME',ledgerAmountField:'AMOUNT',
+  ledgerEntries:[{party:true,source:'total',sign:'NEGATIVE'},{name:'ZZTEST Sales',source:'subtotal',sign:'POSITIVE'},{name:'ZZTEST IGST',source:'igst',sign:'POSITIVE'}]};
+export const writeDocument={number:'ZZTEST_1',date:'2026-11-05',partyLedgerName:'ZZTEST A & <B>',sellerState:'27',placeOfSupply:'29',total:'35.40',status:'APPROVED',locked:true,createdBy:1,updatedBy:1,approvedBy:2,
+  lines:[{itemId:1,tallyItemName:'ZZTEST item',uom:'NOS',quantity:'3',unitPrice:'10',discountPercent:'0',taxPercent:'18'}]};
+// Synthetic read-back, deliberately not an issued client document or production mapping.
+export const fixtureReadback=key=>`<ENVELOPE><BODY><DATA><COLLECTION><VOUCHER><GUID>ZZTEST_created_voucher</GUID><REFERENCE>${key}</REFERENCE><AMOUNT>-35.40</AMOUNT><VOUCHERNUMBER>ZZTEST_1</VOUCHERNUMBER><PARTYLEDGERNAME>ZZTEST A &amp; &lt;B&gt;</PARTYLEDGERNAME><DATE>20261105</DATE><ALLINVENTORYENTRIES.LIST><STOCKITEMNAME>ZZTEST item</STOCKITEMNAME><BILLEDQTY>3 NOS</BILLEDQTY><RATE>10/NOS</RATE><AMOUNT>30</AMOUNT><BATCHALLOCATIONS.LIST><GODOWNNAME>ZZTEST Store</GODOWNNAME><BILLEDQTY>3 NOS</BILLEDQTY><AMOUNT>30</AMOUNT></BATCHALLOCATIONS.LIST></ALLINVENTORYENTRIES.LIST><LEDGERENTRIES.LIST><LEDGERNAME>ZZTEST A &amp; &lt;B&gt;</LEDGERNAME><AMOUNT>-35.4</AMOUNT></LEDGERENTRIES.LIST><LEDGERENTRIES.LIST><LEDGERNAME>ZZTEST Sales</LEDGERNAME><AMOUNT>30</AMOUNT></LEDGERENTRIES.LIST><LEDGERENTRIES.LIST><LEDGERNAME>ZZTEST IGST</LEDGERNAME><AMOUNT>5.4</AMOUNT></LEDGERENTRIES.LIST></VOUCHER></COLLECTION></DATA></BODY></ENVELOPE>`;

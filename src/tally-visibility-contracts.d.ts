@@ -17,7 +17,7 @@ export interface TallyRepository {
  payloads(companyId:string,sessionId?:string):Promise<Record<string,any>[]>;
  payload(companyId:string|null,id:string):Promise<Record<string,any>|undefined>;
  quarantined(companyId:string|undefined,query:Record<string,any>,financial:boolean):Promise<Record<string,any>>;
- replay(sessionId:string):Promise<Record<string,any>>;
+ replay(companyId:string,sessionId:string):Promise<Record<string,any>>;
  audit(event:Record<string,any>):Promise<unknown>;
  transaction<T>(callback:()=>Promise<T>,options?:{readOnly?:boolean}):Promise<T>;
  groupCounts(scope:Record<string,any>):Promise<Record<string,any>[]>;
@@ -39,7 +39,7 @@ export interface TallyService {
  overview(url:URL,user:Record<string,any>):Promise<Record<string,any>>;
  retainedPayloads(url:URL,user:Record<string,any>,id?:string):Promise<Record<string,any>>;
  quarantine(url:URL,user:Record<string,any>):Promise<Record<string,any>>;
- replay(sessionId:string,user:Record<string,any>,ip?:string):Promise<Record<string,any>>;
+ replay(sessionId:string,url:URL,user:Record<string,any>,ip?:string):Promise<Record<string,any>>;
  createCrm(kind:string,key:string,url:URL,user:Record<string,any>,ip?:string):Promise<Record<string,any>>;
  list(kind:string,url:URL,user:Record<string,any>):Promise<Record<string,any>>;
  detail(kind:string,key:string,url:URL,user:Record<string,any>):Promise<Record<string,any>>;

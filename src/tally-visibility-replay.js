@@ -42,6 +42,9 @@ export async function replayVisibilityPayload(sql,payload) {
         if(!raw || typeof raw!=='object')continue;
         if(entity==='vouchers') {
           const index=voucherIndex++;
+          if(payload.dataset==='logisticsDocumentsXml'&&(!scalar(raw.GUID)&&!scalar(raw.MASTERID)||!['Delivery Note','Receipt Note','Stock Journal','Physical Stock','Rejections In','Rejections Out'].includes(scalar(raw.VOUCHERTYPENAME)))){
+            invalid.push({raw,index,reason:'Logistics voucher has no stable source ID or an unsupported type; retained for review.'});continue;
+          }
           if(tallySalesDocumentKind(raw)&&!scalar(raw.GUID)&&!scalar(raw.MASTERID)) {
             invalid.push({raw,index,reason:'Quotation/enquiry has no stable Tally GUID or Master ID; original retained for review.'});continue;
           }
@@ -67,7 +70,7 @@ export async function replayVisibilityPayload(sql,payload) {
   // Voucher payloads are already indexed per source document. Flattening the complete
   // multi-megabyte envelope again duplicates every item and makes full imports unbounded.
   // Exact original XML remains in tally_raw_payloads.
-  if(!definition&&!['vouchersXml','salesDocumentsXml'].includes(payload.dataset))records.push({entity:'reports',key:payload.dataset,name:payload.dataset,raw:document,stored:{name:payload.dataset,dataset:payload.dataset}});
+  if(!definition&&!['vouchersXml','salesDocumentsXml','salesOrdersXml','purchaseOrdersXml','logisticsDocumentsXml'].includes(payload.dataset))records.push({entity:'reports',key:payload.dataset,name:payload.dataset,raw:document,stored:{name:payload.dataset,dataset:payload.dataset}});
   const seen=new Map();
   for(const row of records){const identity=`${row.entity}:${row.key}`,count=seen.get(identity)||0;seen.set(identity,count+1);if(count)row.key+=`\u001fduplicate:${keyHash(JSON.stringify(row.raw))}:${count}`;}
   let indexed=0;

@@ -2,6 +2,9 @@ namespace TallyConnector.Core.Models;
 
 public sealed class PendingSyncPackage
 {
+    public VoucherCheckpoint? VoucherCheckpoint { get; set; }
+    public List<string> ReadRequestIds { get; set; } = [];
+    public Dictionary<string, Dictionary<string, object?>> CollectionMetadata { get; set; } = new(StringComparer.Ordinal);
     public string PackageId { get; set; } = Guid.NewGuid().ToString();
 
     public string SyncId { get; set; } = Guid.NewGuid().ToString();

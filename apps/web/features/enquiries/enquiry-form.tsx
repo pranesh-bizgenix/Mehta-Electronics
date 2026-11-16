@@ -10,7 +10,7 @@ import { SOURCES, enquiriesApi, type Enquiry } from './api';
 interface LineDraft { key: string; item: Option | null; quantity: string }
 
 /** New enquiry or revision of an open one. Revisions need a reason and keep the old lines archived. */
-export function EnquiryForm({ open, enquiry, onClose, onSaved }: { open: boolean; enquiry?: Enquiry; onClose: () => void; onSaved: (e: Enquiry) => void }) {
+export function EnquiryForm({ open, enquiry, initialCustomerId, onClose, onSaved }: { open: boolean; enquiry?: Enquiry; initialCustomerId?:string|null; onClose: () => void; onSaved: (e: Enquiry) => void }) {
   const client = useApi();
   const api = useMemo(() => enquiriesApi(client), [client]);
   const { state } = useSession();
@@ -21,19 +21,25 @@ export function EnquiryForm({ open, enquiry, onClose, onSaved }: { open: boolean
   const [owners, setOwners] = useState<Option[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
+  const [customerLoading,setCustomerLoading]=useState(false);
   const [key, setKey] = useState(newIdempotencyKey);
 
   useEffect(() => {
     if (!open) return;
+    const controller=new AbortController();
     setErrors({}); setKey(newIdempotencyKey());
     setCustomer(enquiry ? { value: String(enquiry.customer_id), label: enquiry.customer_name } : null);
     setF({ subject: enquiry?.subject ?? '', source: enquiry?.source ?? '', expectedBy: enquiry?.expected_by ?? '', ownerId: String(enquiry?.assigned_to ?? (state.kind === 'ready' ? state.user.id : '')), notes: enquiry?.notes ?? '', reason: '' });
     setLines(enquiry?.lines.length ? enquiry.lines.map((l) => ({ key: `l${l.id}`, item: l.item_id ? { value: String(l.item_id), label: l.part_code ?? l.description, hint: l.description } : null, quantity: l.quantity.includes('.') ? l.quantity.replace(/0+$/, '').replace(/\.$/, '') : l.quantity })) : [{ key: 'n0', item: null, quantity: '' }]);
-    api.owners().then((o) => setOwners(o.map((x) => ({ value: String(x.id), label: x.name })))).catch(() => setOwners([]));
-  }, [open, enquiry, api, state]);
+    api.owners().then((o) => {if(!controller.signal.aborted)setOwners(o.map((x) => ({ value: String(x.id), label: x.name })));}).catch(() => {if(!controller.signal.aborted)setOwners([]);});
+    setCustomerLoading(Boolean(!enquiry&&initialCustomerId));
+    if(!enquiry&&initialCustomerId)api.customer(initialCustomerId,controller.signal).then(c=>{if(!controller.signal.aborted)setCustomer({value:String(c.id),label:c.name,hint:c.gstin??undefined});}).catch(error=>{if(!controller.signal.aborted)setErrors({customer:'The linked customer could not be loaded. Select an accessible active customer.',form:error instanceof Error?error.message:'Could not load customer.'});}).finally(()=>{if(!controller.signal.aborted)setCustomerLoading(false);});
+    return()=>controller.abort();
+  }, [open, enquiry, initialCustomerId, api, state]);
 
   const submit = async (ev: FormEvent) => {
     ev.preventDefault();
+    if(customerLoading||busy)return;
     const e: Record<string, string> = {};
     if (!customer) e.customer = 'Choose the customer.';
     if (!f.subject.trim()) e.subject = 'Describe the requirement in a few words.';
@@ -52,10 +58,10 @@ export function EnquiryForm({ open, enquiry, onClose, onSaved }: { open: boolean
 
   return (
     <Drawer open={open} title={editing ? `Revise ${enquiry?.enquiry_number}` : 'New enquiry'} description={editing ? 'A new numbered revision is kept; earlier lines are archived.' : 'Capture what the customer asked for. The SLA clock starts now.'}
-      onClose={() => !busy && onClose()} footer={<><Button variant="ghost" onClick={onClose} disabled={busy}>Cancel</Button><Button type="submit" form="enquiry-form" busy={busy} icon="check">{editing ? 'Save revision' : 'Create enquiry'}</Button></>}>
+      onClose={() => !busy && onClose()} footer={<><Button variant="ghost" onClick={onClose} disabled={busy}>Cancel</Button><Button type="submit" form="enquiry-form" busy={busy} disabled={customerLoading} icon="check">{editing ? 'Save revision' : 'Create enquiry'}</Button></>}>
       <form id="enquiry-form" className="stack-lg" onSubmit={(e) => void submit(e)} noValidate>
-        <Combobox label="Customer" required value={customer} onChange={setCustomer} error={errors.customer}
-          search={async (t) => (await api.customers(t)).data.map((c) => ({ value: String(c.id), label: c.name, hint: c.gstin ?? undefined }))} />
+        {customerLoading?<Notice tone="info">Loading the selected customer…</Notice>:<Combobox label="Customer" required value={customer} onChange={value=>{setCustomer(value);setErrors(previous=>({...previous,customer:'',form:''}));}} error={errors.customer}
+          search={async (t) => (await api.customers(t)).data.map((c) => ({ value: String(c.id), label: c.name, hint: c.gstin ?? undefined }))} />}
         <TextField label="Subject" required value={f.subject} onChange={(e) => setF({ ...f, subject: e.target.value })} error={errors.subject} maxLength={300} hint="e.g. MCC panel components for packaging line" />
         <div className="grid-2">
           <SelectField label="Source" value={f.source} onChange={(e) => setF({ ...f, source: e.target.value })} placeholder="Not recorded" options={[...new Set([...SOURCES, ...(f.source ? [f.source] : [])])].map((s) => ({ value: s, label: s }))} />

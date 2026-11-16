@@ -5,6 +5,7 @@ import {createConnectorStore} from '../src/connector-store.js';
 import {importTallySession,parseCollection,scalar,markFinalizeFailed} from '../src/tally-import.js';
 import {tallySalesDocumentKind} from '../src/tally-sales-documents.js';
 const config=getConfig(),db=createDatabase(config),store=createConnectorStore(config);
+await db.ready();
 const escape=v=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[c]));
 const report={at:new Date().toISOString(),source:'direct_xml',tallyReadOnly:true};let session;
 try{

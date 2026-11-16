@@ -2,6 +2,7 @@ const fail=(status,message)=>Object.assign(new Error(message),{status});
 import { escapeLike } from './security.js';
 import { writeAudit } from './db.js';
 import { replayVisibility } from './tally-visibility-replay.js';
+import {resolvedItemVisibilityLinks} from './tally-item-links.js';
 const catalogues=new WeakMap();
 
 /** @implements {import('./tally-visibility-contracts').TallyRepository} */
@@ -11,6 +12,11 @@ export class TallyVisibilityRepository {
     return this.db.prepare('SELECT status,error FROM tally_run_datasets WHERE company_id=? AND dataset=? ORDER BY processed_at DESC LIMIT 1').get(companyId,dataset);
   }
   async links(companyId,entity,key) {
+    if(entity==='items'){
+      const stored=await this.db.prepare("SELECT record_key,crm_kind,crm_id FROM tally_visibility_crm_links WHERE company_id=? AND entity='items'").all(companyId);
+      const resolved=await resolvedItemVisibilityLinks(this.db,companyId),keys=new Set(resolved.map(l=>l.record_key));
+      return [...resolved,...stored.filter(l=>!keys.has(l.record_key))].filter(l=>key===undefined||l.record_key===key);
+    }
     return this.db.prepare(`SELECT record_key,crm_kind,crm_id FROM tally_visibility_crm_links WHERE company_id=? AND entity=?${key===undefined?'':' AND record_key=?'}`).all(companyId,entity,...(key===undefined?[]:[key]));
   }
   async crmRecord(kind,id) {
@@ -33,7 +39,7 @@ export class TallyVisibilityRepository {
     return resolved;
   }
   async payloads(companyId,sessionId) {
-    return this.db.prepare(`SELECT id,dataset,session_id,run_id,received_at,length(content) AS bytes FROM tally_raw_payloads WHERE company_id=?${sessionId?' AND session_id=?':''} ORDER BY received_at DESC,id`).all(companyId,...(sessionId?[sessionId]:[]));
+    return this.db.prepare(`SELECT id,dataset,session_id,run_id,received_at,octet_length(content) AS bytes FROM tally_raw_payloads WHERE company_id=?${sessionId?' AND session_id=?':''} ORDER BY received_at DESC,id`).all(companyId,...(sessionId?[sessionId]:[]));
   }
   async payload(companyId,id) {
     return this.db.prepare('SELECT id,dataset,session_id,received_at,content FROM tally_raw_payloads WHERE id=? AND company_id=?').get(id,companyId);
@@ -46,7 +52,10 @@ export class TallyVisibilityRepository {
      WHERE q.company_id=? ORDER BY s.created_at DESC,q.id LIMIT ? OFFSET ?`).all(financial,companyId,pageSize,(page-1)*pageSize):[];
     return {data,pagination:{page,pageSize,total,pages:Math.ceil(total/pageSize)}};
   }
-  async replay(sessionId) { return replayVisibility(this.db,{sessionId}); }
+  async replay(companyId,sessionId) {
+    if(!await this.db.prepare('SELECT id FROM tally_raw_payloads WHERE company_id=? AND session_id=? LIMIT 1').get(companyId,sessionId))throw fail(404,'Upload session has no retained payload for the selected company.');
+    return replayVisibility(this.db,{companyId,sessionId});
+  }
   async salesSummary(companyId,kind) {
     const current=await this.db.prepare(`SELECT count(*) AS imported,
       count(*) FILTER(WHERE summary_fields->>'/stored/voucher_status'='CANCELLED') AS cancelled,
@@ -118,8 +127,8 @@ export class TallyVisibilityRepository {
     });
   }
   async company(id) {
-    return id ? this.db.prepare('SELECT * FROM tally_companies WHERE id=?').get(id)
-      : this.db.prepare('SELECT * FROM tally_companies ORDER BY name,id LIMIT 1').get();
+    if(!id)throw fail(422,'An explicit company identifier is required.');
+    return this.db.prepare('SELECT * FROM tally_companies WHERE id=?').get(id);
   }
   async groups(companyId) {
     return this.db.prepare(`SELECT DISTINCT ON (record_key) record_key AS id,name,parent_name FROM tally_visibility_records r

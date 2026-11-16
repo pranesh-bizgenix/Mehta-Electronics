@@ -15,7 +15,9 @@ public sealed partial class TallyService
         string CompanyName,
         string? CompanyGuid,
         TallySyncPlan Plan,
-        DateOnly SalesDocumentsFrom);
+        DateOnly SalesDocumentsFrom,
+        VoucherCheckpoint? Checkpoint = null,
+        bool TryIncremental = false);
 
     public sealed record TallyCollectionProgress(
         string Step,
@@ -93,7 +95,8 @@ public sealed partial class TallyService
         IReadOnlyList<TallyCompany> companies = await GetOpenCompaniesAsync(configuration, cancellationToken);
         TallyCompany selected = ResolveSelectedCompany(configuration, companies);
         TallySyncPlan plan = TallyXmlRequests.BuildSyncPlan(state, configuration.HistoryFinancialYears);
-        return new PreparedSyncContext(selected.Name, selected.Guid, plan, selected.BooksFrom ?? plan.SnapshotFrom);
+        return new PreparedSyncContext(selected.Name, selected.Guid, plan, selected.BooksFrom ?? plan.SnapshotFrom,
+            state.VoucherCheckpoint, state.InitialHistoryComplete && !string.IsNullOrWhiteSpace(selected.Guid));
     }
 
     public async Task<TallySnapshot> CollectSnapshotAsync(
@@ -104,6 +107,7 @@ public sealed partial class TallyService
     {
         string selectedCompany = prepared.CompanyName;
         TallySyncPlan plan = prepared.Plan;
+        string capturedAt = DateTimeOffset.UtcNow.ToString("O", CultureInfo.InvariantCulture);
 
         _logger.LogInformation(
             "Collecting Tally snapshot for {CompanyName}: vouchers {VoucherFrom} -> {VoucherTo}; flow reports {FlowFrom} -> {FlowTo}; snapshots {SnapshotFrom} -> {SnapshotTo}.",
@@ -116,8 +120,40 @@ public sealed partial class TallyService
             plan.SnapshotTo);
 
         List<string> voucherNodes = [];
+        VoucherCheckpoint? nextCheckpoint = null;
+        bool usedIncremental = false;
+        string checkpointAfter = "0";
+        if (prepared.TryIncremental)
+        {
+            try
+            {
+                string probeXml = await PostTallyAsync(configuration.TallyBaseUrl,
+                    TallyXmlRequests.VoucherAlterationProbe(prepared.SalesDocumentsFrom, plan.SnapshotTo, selectedCompany), cancellationToken);
+                var probe = VoucherIncremental.Identities(probeXml);
+                string upper = VoucherIncremental.UpperBound(probe);
+                VoucherCheckpoint? previous = prepared.Checkpoint;
+                bool sameWindow = previous is not null && previous.CompanyGuid == prepared.CompanyGuid
+                    && previous.From == prepared.SalesDocumentsFrom && previous.ThroughDate == plan.SnapshotTo;
+                string lower = sameWindow && System.Numerics.BigInteger.TryParse(previous!.AlterId, out var prior) && prior >= 0
+                    && prior <= System.Numerics.BigInteger.Parse(upper) ? previous.AlterId : "0";
+                string changed = await PostTallyAsync(configuration.TallyBaseUrl,
+                    TallyXmlRequests.IncrementalVouchersRequest(prepared.SalesDocumentsFrom, plan.SnapshotTo, selectedCompany, lower, upper), cancellationToken);
+                VoucherIncremental.Validate(changed, probe, lower, upper);
+                checkpointAfter = lower;
+                voucherNodes.AddRange(VoucherRegex().Matches(changed).Select(match => match.Value));
+                nextCheckpoint = new VoucherCheckpoint { CompanyGuid = prepared.CompanyGuid!, From = prepared.SalesDocumentsFrom, ThroughDate = plan.SnapshotTo, AlterId = upper };
+                usedIncremental = true;
+                _logger.LogInformation("Validated voucher alteration pull {After} -> {Through}; {Count} changed vouchers. Masters, orders and reports remain snapshot reads.", lower, upper, voucherNodes.Count);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
+            catch (Exception exception)
+            {
+                voucherNodes.Clear();
+                _logger.LogWarning(exception, "Voucher alteration pull unavailable; reverting to date-window export without advancing its checkpoint.");
+            }
+        }
         List<(DateOnly From, DateOnly To)> voucherRanges = TallyXmlRequests.MonthRanges(plan.VoucherFrom, plan.VoucherTo).ToList();
-        for (int index = 0; index < voucherRanges.Count; index++)
+        for (int index = 0; !usedIncremental && index < voucherRanges.Count; index++)
         {
             (DateOnly rangeFrom, DateOnly rangeTo) = voucherRanges[index];
             string xml = await PostTallyAsync(
@@ -172,7 +208,13 @@ public sealed partial class TallyService
         string ledgersXml = await RequireAsync("ledgers", configuration.TallyBaseUrl, TallyXmlRequests.LedgersRequest(plan.SnapshotFrom, plan.SnapshotTo, selectedCompany), cancellationToken);
         string groupsXml = await RequireAsync("groups", configuration.TallyBaseUrl, TallyXmlRequests.GroupsRequest(plan.SnapshotFrom, plan.SnapshotTo, selectedCompany), cancellationToken);
         string salesDocumentsXml = await RequireAsync("quotation and enquiry history", configuration.TallyBaseUrl, TallyXmlRequests.SalesDocumentsRequest(prepared.SalesDocumentsFrom, plan.SnapshotTo, selectedCompany), cancellationToken);
+        string salesOrdersXml = await RequireAsync("Sales Orders", configuration.TallyBaseUrl,
+            TallyXmlRequests.SalesOrdersRequest(prepared.SalesDocumentsFrom, plan.SnapshotTo, selectedCompany), cancellationToken);
+        string purchaseOrdersXml = await RequireAsync("Purchase Orders", configuration.TallyBaseUrl,
+            TallyXmlRequests.PurchaseOrdersRequest(prepared.SalesDocumentsFrom, plan.SnapshotTo, selectedCompany), cancellationToken);
         bool includeControlReports = plan.InitialHistoryCompleteAfterUpload || plan.HistoryCoveredFrom is not null;
+        string logisticsDocumentsXml = await RequireAsync("logistics movements", configuration.TallyBaseUrl,
+            TallyXmlRequests.LogisticsDocumentsRequest(prepared.SalesDocumentsFrom, plan.SnapshotTo, selectedCompany), cancellationToken);
         string salesRegisterXml = includeControlReports
             ? await OptionalAsync("Sales Register", configuration.TallyBaseUrl, TallyXmlRequests.SalesRegisterRequest(plan.FlowReportFrom, plan.FlowReportTo, selectedCompany), cancellationToken)
             : "";
@@ -194,6 +236,7 @@ public sealed partial class TallyService
 
         TallySnapshot snapshot = new()
         {
+            VoucherCheckpoint = nextCheckpoint,
             CompanyName = selectedCompany,
             CompanyGuid = prepared.CompanyGuid,
             From = plan.VoucherFrom,
@@ -215,6 +258,9 @@ public sealed partial class TallyService
                 ["ledgersXml"] = ledgersXml,
                 ["groupsXml"] = groupsXml,
                 ["salesDocumentsXml"] = salesDocumentsXml,
+                ["salesOrdersXml"] = salesOrdersXml,
+                ["purchaseOrdersXml"] = purchaseOrdersXml,
+                ["logisticsDocumentsXml"] = logisticsDocumentsXml,
                 ["salesRegisterXml"] = salesRegisterXml,
                 ["purchaseRegisterXml"] = purchaseRegisterXml,
                 ["dayBookReportXml"] = dayBookReportXml,
@@ -227,6 +273,25 @@ public sealed partial class TallyService
         {
             string xml = await OptionalAsync(field, configuration.TallyBaseUrl, request, cancellationToken);
             if (!string.IsNullOrWhiteSpace(xml)) snapshot.Fields[field] = xml;
+        }
+        foreach (string field in snapshot.Fields.Keys.Where(key => !string.IsNullOrWhiteSpace(snapshot.Fields[key])))
+        {
+            bool document = field is "salesDocumentsXml" or "salesOrdersXml" or "purchaseOrdersXml" or "logisticsDocumentsXml";
+            bool voucher = field == "vouchersXml";
+            bool flow = field is "profitAndLossXml" or "salesRegisterXml" or "purchaseRegisterXml" or "dayBookReportXml";
+            DateOnly from = document || voucher && usedIncremental ? prepared.SalesDocumentsFrom : voucher ? plan.VoucherFrom : flow ? plan.FlowReportFrom : plan.SnapshotFrom;
+            DateOnly to = voucher && !usedIncremental ? plan.VoucherTo : flow ? plan.FlowReportTo : plan.SnapshotTo;
+            snapshot.CollectionMetadata[field] = new Dictionary<string, object?>
+            {
+                ["mode"] = voucher && usedIncremental ? "ALTER_ID" : document || voucher ? "DATE_WINDOW" : "SNAPSHOT",
+                ["from"] = from.ToString("yyyy-MM-dd"), ["to"] = to.ToString("yyyy-MM-dd"),
+                ["capturedAt"] = capturedAt, ["sourceTimestamp"] = null,
+            };
+            if (voucher && usedIncremental)
+            {
+                snapshot.CollectionMetadata[field]["after"] = checkpointAfter;
+                snapshot.CollectionMetadata[field]["through"] = nextCheckpoint!.AlterId;
+            }
         }
         return snapshot;
     }

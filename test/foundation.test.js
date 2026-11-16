@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict';
-import http from 'node:http';
 import crypto from 'node:crypto';
 import { after, before, describe, test } from 'node:test';
 import { createApp } from '../src/app.js';
 import { getConfig } from '../src/config.js';
-import { openDatabase } from '../src/db.js';
-import { temporaryDatabase } from '../test-support/postgres.js';
+import {openTestTransactionScope} from '../test-support/transaction.js';
+import {testFetch} from '../test-support/http-client.js';
+import {hashPassword} from '../src/security.js';
 import { mfaHelper, TEST_ENCRYPTION_KEY } from '../test-support/mfa.js';
 import { Totp, base32Encode } from '../src/modules/mfa/totp.js';
 import { addBusinessMinutes } from '../src/modules/work/sla-calculator.js';
@@ -56,7 +56,7 @@ describe('F1 units', () => {
 // ---------------------------------------------------------------------------
 // Integration tests (HTTP + throwaway PostgreSQL)
 // ---------------------------------------------------------------------------
-let temporary, db, app, server, base;
+let temporary, db, app, base, fetch;
 const mfa = mfaHelper();
 const sent = [];
 const fakeMailer = { name: 'fake', async send(message) { sent.push(message); return { messageId: `fake-${sent.length}` }; } };
@@ -72,36 +72,32 @@ async function request(path, { method = 'GET', body, auth, headers = {} } = {}) 
   const text = await response.text();
   return { response, status: response.status, data: text ? JSON.parse(text) : null };
 }
-async function login(target, password = PASSWORD) {
+async function login(target, password = target.password||PASSWORD) {
   const r = await request('/api/auth/login', { method: 'POST', body: { email: target.email, password } });
   assert.equal(r.status, 200, JSON.stringify(r.data));
   target.cookie = r.response.headers.get('set-cookie').split(';')[0];
   target.csrf = r.data.csrfToken;
   target.id = r.data.user.id;
   target.loginData = r.data;
+  if(r.data.user.mustChangePassword){const next='Changed#'+password;const changed=await request('/api/auth/change-password',{method:'POST',auth:target,body:{currentPassword:password,newPassword:next}});assert.equal(changed.status,200,JSON.stringify(changed.data));target.password=next;}
   return r.data;
 }
 async function createUser(target, role, name) {
-  const r = await request('/api/users', { method: 'POST', auth: owner, body: { name, email: target.email, phone: '9876500000', role, status: 'ACTIVE', password: PASSWORD } });
+  const r = await request('/api/users', { method: 'POST', auth: owner, body: { name, email: target.email, phone: '9876500000', role, ownerUserId:owner.id,reason:'ZZTEST provisioning regression', password: PASSWORD } });
   assert.equal(r.status, 201, JSON.stringify(r.data));
   await login(target);
 }
 const step = () => mfa.clock.advance(31_000);
 
 before(async () => {
-  temporary = await temporaryDatabase();
-  const config = getConfig({ databaseUrl: temporary.databaseUrl, seedOwnerEmail: owner.email, seedOwnerPassword: PASSWORD, appEncryptionKey: TEST_ENCRYPTION_KEY, mfaEnabled: true });
-  db = await openDatabase(config);
+  temporary = await openTestTransactionScope();db=temporary.db;
+  const config = getConfig({ localReviewAccess:false,seedOwnerEmail: owner.email, seedOwnerPassword: PASSWORD, appEncryptionKey: TEST_ENCRYPTION_KEY, mfaEnabled: true });
+  await db.sql`INSERT INTO users(name,email,role,password_hash,must_change_password) VALUES('ZZTEST_Foundation Owner',${owner.email},'OWNER',${hashPassword(PASSWORD)},0)`;
   app = createApp({ db, config, clock: mfa.clock, outboundMailer: fakeMailer });
-  server = http.createServer(app);
-  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
-  base = `http://127.0.0.1:${server.address().port}`;
+  fetch=testFetch(app);base='http://127.0.0.1:3000';
 });
 after(async () => {
-  if (server) await new Promise((resolve) => server.close(resolve));
-  if (app) await app.close();
-  if (db) await db.close();
-  if (temporary) await temporary.close();
+  try{if(app)await app.close();}finally{if(temporary)await temporary.close();}
 });
 
 describe('F1 MFA', () => {
@@ -200,7 +196,7 @@ describe('F1 permission matrix', () => {
     assert.equal((await request('/api/v1/roles/OWNER/permissions/rules.read', { method: 'PUT', auth: owner, body: { granted: false, reason: 'Lock check' } })).data.code, 'ROLE_LOCKED');
     await assert.rejects(db.prepare("INSERT INTO role_permissions(role_key,permission_key) VALUES('EXECUTIVE','rules.manage')").all(), /reserved for the owner/);
     await assert.rejects(db.prepare("UPDATE access_matrix_events SET reason='x'").run(), /append-only/);
-    const created = await request('/api/v1/roles', { method: 'POST', auth: owner, body: { key: 'STORE_STAFF', name: 'Store staff', requiresMfa: false, reason: 'Client confirmed role' } });
+    const created = await request('/api/v1/roles', { method: 'POST', auth: owner, body: { key: 'ZZTEST_REVIEW', name: 'ZZTEST review role', requiresMfa: false, reason: 'Test-only empty role' } });
     assert.equal(created.status, 201);
     assert.ok((await request('/api/v1/users', { auth: owner })).status === 200);
     const audit = await db.prepare("SELECT action FROM audit_logs WHERE entity IN ('ACCESS_MATRIX','ROLE') ORDER BY id").all();

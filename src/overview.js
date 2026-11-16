@@ -1,7 +1,9 @@
 // Overview reads PostgreSQL only. It never contacts Tally or the connector.
+import {readCompany} from './tally-read-service.js';
 export async function overviewContext(db,config,url) {
   const companies=await db.prepare('SELECT id,name FROM tally_companies ORDER BY name').all();
-  const companyId=url.searchParams.get('companyId')||companies[0]?.id||null;
+  const selected=await readCompany(db,url);
+  const companyId=selected.id;
   if(companyId&&!companies.some(company=>company.id===companyId)){
     const error=new Error('Select an imported Tally company.');error.status=422;throw error;
   }
@@ -25,8 +27,8 @@ export async function overviewContext(db,config,url) {
     latestRun.status='stalled';latestRun.message='No upload or progress has arrived within the configured timeout.';
   }
   const datasets=period?await db.prepare(`SELECT dataset,status,payload_count,imported_count,quarantined_count,error,processed_at
-    FROM tally_run_datasets WHERE session_id=? ORDER BY dataset`).all(period.id):[];
-  const received=period?(await db.prepare('SELECT COUNT(DISTINCT dataset) AS n FROM tally_raw_payloads WHERE session_id=?').get(period.id)).n:0;
+    FROM tally_run_datasets WHERE company_id=? AND session_id=? ORDER BY dataset`).all(companyId,period.id):[];
+  const received=period?(await db.prepare('SELECT COUNT(DISTINCT dataset) AS n FROM tally_raw_payloads WHERE company_id=? AND session_id=?').get(companyId,period.id)).n:0;
   const seen=connector?.heartbeat_at||connector?.last_seen_at;
   const online=seen && Date.now()-new Date(seen).getTime()<=180_000;
   const sync={company:company?.name||null,state:!connector?'Not connected':connector.status==='revoked'?'Revoked':!online?'Connector offline':connector.tally_available===false?'Tally unavailable':connector.selected_company!==company.name?'Company not matched':'Connector online',

@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import {tallyRecordHref} from '../../../../public/crm-navigation.js';
+import {FreshnessBadge,type DatasetFreshness} from './tally-freshness';
 import { useApi } from '@/lib/api/provider';
 import { useScope } from '@/lib/scope';
 import type { Pagination } from '@/lib/api/client';
@@ -14,11 +16,12 @@ interface Row { id: string; record_key: string; name: string; fields: Fields; ob
 interface Listing { data: Row[]; pagination: Pagination; lastUpdated: string | null; emptyReason: string; financial: boolean }
 interface Summary { imported: number; sourceCount: number | null; pending: number | null; failed: number | null; cancelled: number; updated: number; notSeenInLatest?: number | null; types: {type: string;count: number;optional: number;non_optional: number;cancelled: number}[]; periods: {year: string; count: number}[]; receipt: {status: string; error: string | null; processedAt: string; sessionId: string; from: string; to: string} | null }
 interface SourceDocument { [key: string]: unknown; lines: Fields[]; ledgers: Fields[]; totals: Fields; note: string }
-interface Detail { data: Row; document?: SourceDocument; history: Row[]; financial: boolean; rawNote: string }
+interface Detail { freshness:DatasetFreshness[]; data: Row; document?: SourceDocument; history: Row[]; financial: boolean; rawNote: string }
 const text = (v: unknown) => v == null || v === '' ? 'Not supplied' : typeof v === 'object' ? JSON.stringify(v) : String(v);
 const date = (v: unknown) => { const s=String(v ?? ''); return /^\d{8}$/.test(s) ? `${s.slice(6,8)}/${s.slice(4,6)}/${s.slice(0,4)}` : s ? new Date(s).toLocaleString('en-IN',{timeZone:'Asia/Kolkata'}) : 'Not available'; };
 
-export function TallySalesDocuments({kind}: {kind: Kind}) {
+export function TallySalesDocuments({kind}:{kind:Kind}){const {companyId}=useScope();return companyId?<CompanySalesDocuments key={`${companyId}:${kind}`} kind={kind}/>:<EmptyState title="Select a company">Choose an imported company in the header.</EmptyState>;}
+function CompanySalesDocuments({kind}: {kind: Kind}) {
   const api=useApi(), {companyId}=useScope();
   const [page,setPage]=useState(1),[search,setSearch]=useState(''),[fromDate,setFrom]=useState(''),[toDate,setTo]=useState(''),[customer,setCustomer]=useState(''),[voucherStatus,setStatus]=useState(''),[optional,setOptional]=useState(''),[group,setType]=useState(kind==='quotations'?'Sales Quotation':'Enquiry');
   const [list,setList]=useState<Listing>(),[summary,setSummary]=useState<Summary>(),[error,setError]=useState<unknown>(),[loading,setLoading]=useState(true),[version,setVersion]=useState(0);
@@ -62,7 +65,7 @@ export function TallySalesDocuments({kind}: {kind: Kind}) {
       empty={<EmptyState title={search||customer||fromDate||toDate?'No source records match':`No Tally ${kind} imported`}>{list?.emptyReason||'Checking the selected company.'} {kind==='enquiries'?'No dummy enquiries are created.':''}</EmptyState>}/>
     <Drawer open={Boolean(selected)} title={`${kind==='quotations'?'Tally quotation':'Tally enquiry'} ${selected?text(field(selected,'voucher_number')||selected.name):''}`} onClose={()=>setSelected(undefined)}>
       {detailError?<ErrorState error={detailError}/>:!detail?<CardSkeleton/>:<div className="stack">
-        <Badge tone="info">Tally source / Read only</Badge><p>Imported {date(detail.data.observed_at)}. {detail.history.length} retained snapshots. Source GUID: {text(detail.data.fields['/stored/guid'])}</p>
+        <FreshnessBadge data={detail.freshness}/><Badge tone="info">Tally source / Read only</Badge><p>Imported {date(detail.data.observed_at)}. {detail.history.length} retained snapshots. Source GUID: {text(detail.data.fields['/stored/guid'])}</p>
         {detail.document?<><dl className="ds-facts">{Object.entries(detail.document).filter(([key,v])=>!['lines','ledgers','totals','note','relationships'].includes(key)&&!Array.isArray(v)).map(([key,v])=><div key={key}><dt>{key.replaceAll('_',' ')}</dt><dd>{text(v)}</dd></div>)}</dl><p>{Array.isArray(detail.document.address)?detail.document.address.join(', '):''}</p>
           <h3>Items and delivered pricing</h3><DataTable<Fields> id={`source-lines-${kind}`} caption="Source item breakdown" rows={detail.document.lines} rowKey={r=>String(r.position)} columns={['stockItemName','stockItemId','description','actualQuantity','billedQuantity','unit','rate','amount','grossAmount','netAmount','discountPercent','discountAmount','hsn','gstRate','cgst','sgst','igst'].map(key=>({key,header:key.replace(/([A-Z])/g,' $1'),render:r=>text(r[key])}))}/>
           {Array.isArray(detail.document.relationships)&&<details className="import-coverage"><summary>Customer and item source links</summary><div className="ds-card-body stack">{(detail.document.relationships as Fields[]).map((r,i)=><p key={i}>{text(r.role)}: {text(r.name)} / {text(r.status)}{r.matchedBy?` (${text(r.matchedBy)})`:''}</p>)}</div></details>}
@@ -70,13 +73,14 @@ export function TallySalesDocuments({kind}: {kind: Kind}) {
           <h3>Ledger, tax and discount entries</h3><DataTable<Fields> id={`source-ledgers-${kind}`} caption="Original ledger breakdown" rows={detail.document.ledgers.map((l,i)=>({...l,index:i}))} rowKey={r=>Number(r.index)} columns={['ledgerName','amount','isPartyLedger','isDeemedPositive','billAllocations'].map(key=>({key,header:key.replace(/([A-Z])/g,' $1'),render:r=>text(r[key])}))}/>
         </>:<p>Financial source details are restricted to Owner and Accounts. Permitted imported fields are available below.</p>}
         <details className="import-coverage"><summary>All original fields, tax details and custom fields</summary><div className="stack ds-card-body"><TextField label="Find original field" value={fieldSearch} onChange={e=>setFieldSearch(e.target.value)}/><dl className="stack">{Object.entries(detail.data.fields).filter(([key,v])=>`${key} ${text(v)}`.toLowerCase().includes(fieldSearch.toLowerCase())).map(([key,v])=>{const descriptor=describeTallyField(key,kind);return <div key={key}><dt>{descriptor.label}</dt><dd className="wrap-anywhere">{formatTallyField(v,descriptor,detail.data.fields)}</dd></div>;})}</dl></div></details>
-        <Link href={`/tally?entity=${kind}&companyId=${companyId||''}`}>Inspect source history and export fields</Link>
+        {selected&&companyId&&<Link href={tallyRecordHref(kind,companyId,selected.record_key)}>Inspect source history and export fields</Link>}
       </div>}
     </Drawer>
   </section>;
 }
 
-export function TallySalesSyncOverview() {
+export function TallySalesSyncOverview(){const {companyId}=useScope();return companyId?<CompanySalesSyncOverview key={companyId}/>:<Card title="Tally quotations & enquiries"><p>Select a company in the header.</p></Card>;}
+function CompanySalesSyncOverview() {
   const api=useApi(),{companyId}=useScope();const [summaries,setSummaries]=useState<{kind:Kind;summary:Summary}[]>(),[error,setError]=useState<unknown>();
   useEffect(()=>{const controller=new AbortController();Promise.all((['quotations','enquiries'] as Kind[]).map(async kind=>({kind,summary:await api.get<Summary>(`/api/v1/tally/inspection/${kind}/sync`,{query:{companyId},signal:controller.signal})}))).then(setSummaries).catch(e=>{if(!controller.signal.aborted)setError(e);});return()=>controller.abort();},[api,companyId]);
   return <Card title="Tally quotations & enquiries">{error?<ErrorState error={error}/>:!summaries?<CardSkeleton/>:<div className="grid-2">{summaries.map(({kind,summary})=><div className="stack-sm" key={kind}><Link href={`/${kind}`}><strong>{summary.imported.toLocaleString('en-IN')} imported {kind}</strong></Link><p>{summary.cancelled} cancelled / {summary.updated} changed / {summary.pending??'Unknown'} pending</p><p>Last import: {date(summary.receipt?.processedAt)} / {summary.receipt?.status||'Not yet imported'}</p></div>)}</div>}</Card>;

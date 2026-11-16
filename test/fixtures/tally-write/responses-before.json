@@ -1,0 +1,326 @@
+{
+  "pair": {
+    "accessToken": "string",
+    "accessTokenExpiresAt": "string",
+    "apiBaseUrl": "string",
+    "connectorId": "string",
+    "heartbeatIntervalSeconds": "number",
+    "historyFinancialYears": "number",
+    "ok": "boolean",
+    "refreshToken": "string",
+    "syncIntervalSeconds": "number"
+  },
+  "refresh": {
+    "accessToken": "string",
+    "accessTokenExpiresAt": "string",
+    "connectorId": "string",
+    "heartbeatIntervalSeconds": "number",
+    "historyFinancialYears": "number",
+    "ok": "boolean",
+    "refreshToken": "string",
+    "syncIntervalSeconds": "number"
+  },
+  "heartbeat": {
+    "connectorId": "string",
+    "heartbeatIntervalSeconds": "number",
+    "historyFinancialYears": "number",
+    "lastSeenAt": "string",
+    "lastSyncAt": "null",
+    "ok": "boolean",
+    "readRequestIds": [],
+    "syncIntervalSeconds": "number"
+  },
+  "company-config": {
+    "companies": [
+      "string"
+    ],
+    "ok": "boolean"
+  },
+  "sync-job-start": {
+    "ok": "boolean",
+    "syncJobId": "string"
+  },
+  "chunks-start": {
+    "ok": "boolean",
+    "sessionId": "string",
+    "syncJobId": "string"
+  },
+  "chunks-append": {
+    "ok": "boolean",
+    "sequence": "number"
+  },
+  "visibility-ledgers": {
+    "asOf": "string",
+    "columns": [
+      "string"
+    ],
+    "company": {
+      "created_at": "string",
+      "id": "string",
+      "name": "string",
+      "tally_guid": "null"
+    },
+    "data": [],
+    "descriptor": {
+      "baseEntity": "string",
+      "dataset": "string",
+      "defaultFields": [
+        "string"
+      ],
+      "fields": [
+        {
+          "balance": "boolean",
+          "defaultVisible": "boolean",
+          "drCr": "string",
+          "formatter": "string",
+          "key": "string",
+          "label": "string",
+          "permission": "string",
+          "section": "string",
+          "type": "string"
+        }
+      ],
+      "id": "string",
+      "label": "string",
+      "permission": "string",
+      "xmlTag": "string"
+    },
+    "emptyReason": "string",
+    "financial": "boolean",
+    "freshness": [
+      {
+        "ageSeconds": "null",
+        "capturedAt": "null",
+        "dataset": "string",
+        "extractionMode": "null",
+        "lastSuccessfulSync": "null",
+        "latestAttempt": "null",
+        "note": "string",
+        "sourceTimestamp": "null",
+        "state": "string",
+        "window": "null"
+      }
+    ],
+    "lastUpdated": "null",
+    "pagination": {
+      "page": "number",
+      "pageSize": "number",
+      "pages": "number",
+      "total": "number"
+    },
+    "source": "string"
+  },
+  "visibility-items": {
+    "asOf": "string",
+    "columns": [
+      "string"
+    ],
+    "company": {
+      "created_at": "string",
+      "id": "string",
+      "name": "string",
+      "tally_guid": "null"
+    },
+    "data": [],
+    "descriptor": {
+      "baseEntity": "string",
+      "dataset": "string",
+      "defaultFields": [
+        "string"
+      ],
+      "fields": [
+        {
+          "balance": "boolean",
+          "defaultVisible": "boolean",
+          "drCr": "string",
+          "formatter": "string",
+          "key": "string",
+          "label": "string",
+          "permission": "string",
+          "section": "string",
+          "type": "string"
+        }
+      ],
+      "id": "string",
+      "label": "string",
+      "permission": "string",
+      "xmlTag": "string"
+    },
+    "emptyReason": "string",
+    "financial": "boolean",
+    "freshness": [
+      {
+        "ageSeconds": "null",
+        "capturedAt": "null",
+        "dataset": "string",
+        "extractionMode": "null",
+        "lastSuccessfulSync": "null",
+        "latestAttempt": "null",
+        "note": "string",
+        "sourceTimestamp": "null",
+        "state": "string",
+        "window": "null"
+      }
+    ],
+    "lastUpdated": "null",
+    "pagination": {
+      "page": "number",
+      "pageSize": "number",
+      "pages": "number",
+      "total": "number"
+    },
+    "source": "string"
+  },
+  "visibility-groups": {
+    "asOf": "string",
+    "columns": [
+      "string"
+    ],
+    "company": {
+      "created_at": "string",
+      "id": "string",
+      "name": "string",
+      "tally_guid": "null"
+    },
+    "data": [],
+    "descriptor": {
+      "baseEntity": "string",
+      "dataset": "string",
+      "defaultFields": [
+        "string"
+      ],
+      "fields": [
+        {
+          "balance": "boolean",
+          "defaultVisible": "boolean",
+          "drCr": "string",
+          "formatter": "string",
+          "key": "string",
+          "label": "string",
+          "permission": "string",
+          "section": "string",
+          "type": "string"
+        }
+      ],
+      "id": "string",
+      "label": "string",
+      "permission": "string",
+      "xmlTag": "string"
+    },
+    "emptyReason": "string",
+    "financial": "boolean",
+    "freshness": [
+      {
+        "ageSeconds": "null",
+        "capturedAt": "null",
+        "dataset": "string",
+        "extractionMode": "null",
+        "lastSuccessfulSync": "null",
+        "latestAttempt": "null",
+        "note": "string",
+        "sourceTimestamp": "null",
+        "state": "string",
+        "window": "null"
+      }
+    ],
+    "lastUpdated": "null",
+    "pagination": {
+      "page": "number",
+      "pageSize": "number",
+      "pages": "number",
+      "total": "number"
+    },
+    "source": "string"
+  },
+  "visibility-vouchers": {
+    "asOf": "string",
+    "columns": [
+      "string"
+    ],
+    "company": {
+      "created_at": "string",
+      "id": "string",
+      "name": "string",
+      "tally_guid": "null"
+    },
+    "data": [],
+    "descriptor": {
+      "baseEntity": "string",
+      "dataset": "string",
+      "defaultFields": [
+        "string"
+      ],
+      "fields": [
+        {
+          "balance": "boolean",
+          "defaultVisible": "boolean",
+          "drCr": "string",
+          "formatter": "string",
+          "key": "string",
+          "label": "string",
+          "permission": "string",
+          "section": "string",
+          "type": "string"
+        }
+      ],
+      "id": "string",
+      "label": "string",
+      "permission": "string",
+      "xmlTag": "string"
+    },
+    "emptyReason": "string",
+    "financial": "boolean",
+    "freshness": [
+      {
+        "ageSeconds": "null",
+        "capturedAt": "null",
+        "dataset": "string",
+        "extractionMode": "null",
+        "lastSuccessfulSync": "null",
+        "latestAttempt": "null",
+        "note": "string",
+        "sourceTimestamp": "null",
+        "state": "string",
+        "window": "null"
+      }
+    ],
+    "lastUpdated": "null",
+    "pagination": {
+      "page": "number",
+      "pageSize": "number",
+      "pages": "number",
+      "total": "number"
+    },
+    "source": "string"
+  },
+  "tally-orders": {
+    "company": {
+      "display_name": "string",
+      "id": "string",
+      "name": "string"
+    },
+    "data": [],
+    "freshness": [
+      {
+        "ageSeconds": "null",
+        "capturedAt": "null",
+        "dataset": "string",
+        "extractionMode": "null",
+        "lastSuccessfulSync": "null",
+        "latestAttempt": "null",
+        "note": "string",
+        "sourceTimestamp": "null",
+        "state": "string",
+        "window": "null"
+      }
+    ],
+    "pagination": {
+      "page": "number",
+      "pageSize": "number",
+      "pages": "number",
+      "total": "number"
+    },
+    "readOnly": "boolean",
+    "source": "string"
+  }
+}

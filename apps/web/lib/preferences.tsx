@@ -45,7 +45,7 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
   useEffect(() => { setPreferences(readLocal()); }, []);
 
   useEffect(() => {
-    if (state.kind !== 'ready') return;
+    if (state.kind !== 'ready' || state.user.mustChangePassword) return;
     let live = true;
     api.data<Preferences>('GET', '/api/v1/me/preferences').then((server) => {
       if (!live) return;
@@ -54,7 +54,7 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
     }).catch(() => { /* offline or older server: keep local preferences */ });
     return () => { live = false; };
-  }, [api, state.kind]);
+  }, [api, state.kind, state.kind === 'ready' && state.user.mustChangePassword]);
 
   useEffect(() => {
     const apply = () => { const t = resolveTheme(preferences.theme); setResolved(t); document.documentElement.dataset.theme = t; };
@@ -69,10 +69,10 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
     setPreferences((current) => {
       const next = { ...current, ...patch };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-      if (state.kind === 'ready') void api.data('PUT', '/api/v1/me/preferences', patch).catch(() => undefined);
+      if (state.kind === 'ready' && !state.user.mustChangePassword) void api.data('PUT', '/api/v1/me/preferences', patch).catch(() => undefined);
       return next;
     });
-  }, [api, state.kind]);
+  }, [api, state.kind, state.kind === 'ready' && state.user.mustChangePassword]);
 
   const value = useMemo(() => ({ preferences, resolvedTheme, update }), [preferences, resolvedTheme, update]);
   return <PreferencesContext.Provider value={value}>{children}</PreferencesContext.Provider>;

@@ -19,6 +19,7 @@ export const enquiriesApi = (client: ApiClient) => ({
   revise: (id: number, body: EnquiryInput & { reason: string }) => client.data<Enquiry>('PUT', `/api/crm/enquiries/${id}`, body),
   setStatus: (id: number, status: EnquiryStatus, reason: string) => client.data<Enquiry>('PATCH', `/api/crm/enquiries/${id}/status`, { status, reason }),
   owners: () => client.data<{ id: number; name: string }[]>('GET', '/api/crm/owners'),
+  customer: (id:string,signal?:AbortSignal) => client.data<{id:number;name:string;gstin:string|null}>('GET',`/api/crm/customers/${id}`,undefined,{signal}),
   customers: (search: string) => client.get<Paginated<{ id: number; name: string; gstin: string | null }>>('/api/crm/customers', { query: { search, status: 'ACTIVE', pageSize: 20 } }),
   items: (search: string) => client.get<Paginated<{ id: number; part_code: string; description: string; uom: string }>>('/api/crm/items', { query: { search, status: 'ACTIVE', pageSize: 20 } })
 });

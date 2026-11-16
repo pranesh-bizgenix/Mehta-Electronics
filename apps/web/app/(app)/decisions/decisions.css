@@ -1,0 +1,16 @@
+.decisions-print-sheet { display: none; }
+.decisions-page .ds-table td { vertical-align: top; }
+.decisions-page .ds-table td > .stack-sm { white-space: normal; min-width: 12rem; }
+.decisions-page .ds-table td .cluster { flex-wrap: wrap; }
+@media print {
+ body:has(.decisions-page) .ds-sidebar,
+ body:has(.decisions-page) .ds-topbar,
+ body:has(.decisions-page) .ds-toasts,
+ body:has(.decisions-page) .ds-dialog,
+ .decisions-page .decisions-interactive { display: none !important; }
+ body:has(.decisions-page) .ds-app { display: block; }
+ body:has(.decisions-page) .ds-content { max-width: none; margin: 0; padding: 0; }
+ .decisions-print-sheet { display: block; color-scheme: light; color: CanvasText; background: Canvas; }
+ .decisions-print-row { break-inside: avoid; padding-block: var(--space-2); border-bottom: var(--border-width) solid var(--color-border); }
+ .decisions-print-row h2 { font-size: var(--text-base); }
+}

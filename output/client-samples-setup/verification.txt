@@ -1,0 +1,9 @@
+Ignore verification (5 November 2026):
+git check-ignore -v -- tests/fixtures/client-samples/01-customer-pos/ZZTEST_ignore_probe.txt
+.gitignore:23:tests/fixtures/client-samples/**/* tests/fixtures/client-samples/01-customer-pos/ZZTEST_ignore_probe.txt
+PASS: scoped git status listed only README.md and .gitkeep markers.
+PASS: git ls-files -- tests/fixtures/client-samples returned no tracked files.
+PASS: dummy probe removed.
+PASS: filesystem-only test: 1 passed, 0 failed, 0 skipped.
+PASS: npm.cmd run lint.
+PASS: npm.cmd --prefix apps/web run typecheck.

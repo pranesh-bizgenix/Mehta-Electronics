@@ -1,0 +1,12 @@
+import type {ApiClient} from '@/lib/api/client';
+import type {Category,Mapping} from './api';
+export interface MappingProof {mapping_id:string;source_fingerprint:string;expert_name:string|null;expert_reference:string|null;expert_reviewed_at:string|null;generator_version:string;evidence:{coverage:{entity:string;total:number;inspected:number;truncated:boolean;oversized:number}[];records:{entity:string;recordKey:string;recordId:string;contentHash:string}[]}}
+export interface MappingCandidates {company:{id:string;name:string;guid:string};category:Category;sourceFingerprint:string;generatorVersion:string;coverage:{entity:string;total:number;inspected:number;truncated:boolean;oversized:number}[];sources:{entity:string;recordKey:string;recordId:string;name:string;guid:string|null;masterId:string|null;stable:boolean;contentHash:string}[];vouchers:{entity:string;type:string|null;count:number;optional:{yes:number;no:number;unknown:number};dateFormats:Record<string,number>;referencePresent:number;narrationPresent:number;evidenceIds:string[]}[];fieldCandidates:{path:string;count:number;evidenceIds:string[]}[];unresolved:string[];note:string}
+export interface MappingReviewPreview {ready:boolean;dryRun:true;mappingId:string;mappingStatus:string;companyId:string;xml:string|null;validation:unknown;missing:string[];note:string}
+export const mappingReviewApi=(api:ApiClient)=>({
+ candidates:(companyId:string,category:Category,signal?:AbortSignal)=>api.data<MappingCandidates>('GET','/api/tally-write/mapping-candidates',undefined,{query:{companyId,category},signal}),
+ evidence:(companyId:string,id:string,signal?:AbortSignal)=>api.data<MappingProof|null>('GET',`/api/tally-write/mappings/${encodeURIComponent(id)}/evidence`,undefined,{query:{companyId},signal}),
+ draft:(body:{companyId:string;category:Category;configuration:unknown;parentVersionId?:string;sourceFingerprint:string;requestKey:string;reason:string})=>api.data<Mapping>('POST','/api/tally-write/mapping-drafts',body),
+ preview:(id:string,body:{companyId:string;entityId:string;reason:string})=>api.data<MappingReviewPreview>('POST',`/api/tally-write/mappings/${encodeURIComponent(id)}/review-preview`,body),
+ approve:(id:string,body:{companyId:string;category:Category;sourceFingerprint:string;requestKey:string;expertName:string;expertReference:string;reason:string})=>api.data<Mapping>('POST',`/api/tally-write/mappings/${encodeURIComponent(id)}/review-approve`,body)
+});

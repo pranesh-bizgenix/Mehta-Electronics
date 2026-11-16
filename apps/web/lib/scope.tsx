@@ -35,12 +35,12 @@ export function ScopeProvider({ children }: { children: ReactNode }) {
     try { const saved = JSON.parse(localStorage.getItem(KEY) ?? '{}') as { companyId?: string; period?: PeriodKey }; if (saved.period) setPeriodKey(saved.period); if (saved.companyId) setCompanyId(saved.companyId); } catch { /* ignore */ }
   }, []);
   useEffect(() => {
-    if (state.kind !== 'ready' || !(can('customers.read') || can('items.read'))) return;
+    if (state.kind !== 'ready' || state.user.mustChangePassword || !(can('customers.read') || can('items.read') || can('logistics.orders.read'))) return;
     api.data<Company[]>('GET', '/api/tally/read-companies').then((list) => {
       setCompanies(list);
       setCompanyId((current) => current && list.some((c) => c.id === current) ? current : list[0]?.id ?? null);
     }).catch(() => setCompanies([]));
-  }, [api, state.kind, can]);
+  }, [api, state.kind, state.kind === 'ready' && state.user.mustChangePassword, can]);
   useEffect(() => { localStorage.setItem(KEY, JSON.stringify({ companyId, period: periodKey })); }, [companyId, periodKey]);
 
   const value = useMemo(() => ({ companies, companyId, setCompanyId, period: periodRange(periodKey), setPeriod: setPeriodKey }), [companies, companyId, periodKey]);

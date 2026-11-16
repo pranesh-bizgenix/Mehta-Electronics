@@ -1,4 +1,10 @@
 import { s } from '../../core/schema.js';
+import { forbidden } from '../../core/errors.js';
+
+/** Audit access is reserved for Owner even if a mutable grant is misconfigured. */
+export function requireAuditOwner(user) {
+  if (user?.role !== 'OWNER') throw forbidden('Only the Owner may read the audit trail.');
+}
 
 /** Searchable audit trail (S-25): user, date range, module, record, action. */
 export class AuditQueryRepository {
@@ -22,6 +28,7 @@ const parse = (v) => { if (v == null) return null; try { return JSON.parse(v); }
 export class AuditService {
   constructor({ repository, access }) { this.repository = repository; this.access = access; }
   async search(user, query) {
+    requireAuditOwner(user);
     this.access.require(user, 'audit.read');
     const to = query.to ? new Date(new Date(`${query.to}T00:00:00Z`).getTime() + 86400000).toISOString() : null;
     const { total, rows } = await this.repository.search({ ...query, from: query.from ? `${query.from}T00:00:00Z` : null, to });

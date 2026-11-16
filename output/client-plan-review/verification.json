@@ -1,0 +1,60 @@
+{
+  "checkedAt": "2026-11-02T07:16:53.059Z",
+  "checks": [
+    "items: real API, responsive screenshots, accessibility",
+    "orders: real API, responsive screenshots, accessibility",
+    "purchasing: real API, responsive screenshots, accessibility",
+    "contracts?customerId=1: real API, responsive screenshots, accessibility",
+    "operations?kind=SUPPORT: real API, responsive screenshots, accessibility",
+    "Support detail deep link, response action, response time and audit history",
+    "CRM product detail displays retained product fields",
+    "Customer 360 links cases by customer ID",
+    "Manager denied financial cases and Owner customer controls on server",
+    "Bank intake suppressed; no messages or drafts generated"
+  ],
+  "pageErrors": [],
+  "accessibility": [
+    {
+      "route": "items",
+      "serious": []
+    },
+    {
+      "route": "orders",
+      "serious": []
+    },
+    {
+      "route": "purchasing",
+      "serious": []
+    },
+    {
+      "route": "contracts?customerId=1",
+      "serious": []
+    },
+    {
+      "route": "operations?kind=SUPPORT",
+      "serious": []
+    }
+  ],
+  "screenshots": [
+    "items-1440-light.png",
+    "items-390-light.png",
+    "items-1440-dark.png",
+    "items-390-dark.png",
+    "orders-1440-light.png",
+    "orders-390-light.png",
+    "orders-1440-dark.png",
+    "orders-390-dark.png",
+    "purchasing-1440-light.png",
+    "purchasing-390-light.png",
+    "purchasing-1440-dark.png",
+    "purchasing-390-dark.png",
+    "contracts-1440-light.png",
+    "contracts-390-light.png",
+    "contracts-1440-dark.png",
+    "contracts-390-dark.png",
+    "operations-1440-light.png",
+    "operations-390-light.png",
+    "operations-1440-dark.png",
+    "operations-390-dark.png"
+  ]
+}

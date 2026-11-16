@@ -23,9 +23,10 @@ const integer = (value, fallback) => {
 
 export function getConfig(overrides = {}) {
   const databaseUrl = String(process.env.DATABASE_URL || '').trim().replace(/^DATABASE_URL\s*=/i, '').trim();
-  return {
+  const config = {
     host: process.env.HOST || '127.0.0.1',
     port: integer(process.env.PORT, 3000),
+    localReviewAccess: process.env.LOCAL_REVIEW_ACCESS === 'true',
     databaseUrl,
     tallyConnectorOrgId: process.env.TALLY_CONNECTOR_ORG_ID || 'mehta-electronics',
     tallyStalledRunMinutes: Math.max(1, integer(process.env.TALLY_STALLED_RUN_MINUTES, 30)),
@@ -35,8 +36,6 @@ export function getConfig(overrides = {}) {
     tallyCompany: process.env.TALLY_COMPANY || 'Mehta Electronics',
     tallyTimeoutMs: integer(process.env.TALLY_TIMEOUT_MS, 10_000),
     tallyMaxRetries: integer(process.env.TALLY_MAX_RETRIES, 3),
-    seedOwnerEmail: process.env.SEED_OWNER_EMAIL || 'owner@mehtaelectronics.local',
-    seedOwnerPassword: process.env.SEED_OWNER_PASSWORD || 'ChangeMe123!',
     companyName: process.env.COMPANY_NAME || 'Mehta Electronics',
     companyAddress: process.env.COMPANY_ADDRESS || 'Authorised industrial automation and electrical solutions',
     companyGstin: process.env.COMPANY_GSTIN || '',
@@ -56,4 +55,8 @@ export function getConfig(overrides = {}) {
     tallyFinancialRoles: (overrides.tallyFinancialRoles || (process.env.TALLY_FINANCIAL_ROLES || 'OWNER,ACCOUNTS').split(',').map(role=>role.trim().toUpperCase()))
       .filter(role=>['OWNER','ACCOUNTS'].includes(role))
   };
+  if ((config.isProduction || process.env.NODE_ENV === 'production') && config.localReviewAccess) {
+    throw Object.assign(new Error('ControlDesk cannot start in production with LOCAL_REVIEW_ACCESS=true. Set LOCAL_REVIEW_ACCESS=false and use normal staff authentication.'), { code: 'LOCAL_REVIEW_PRODUCTION_FORBIDDEN' });
+  }
+  return config;
 }

@@ -1,3 +1,4 @@
+import {minorMoney} from './money.js';
 // Shared browser/server decimal arithmetic: six-place inputs, half-up paise per line/component.
 const SCALE=1000000n;
 export const scaled=value=>{
@@ -5,7 +6,7 @@ export const scaled=value=>{
  const [w,f='']=v.split('.');return BigInt(w)*SCALE+BigInt(f.padEnd(6,'0'));
 };
 const round=(n,d)=>(n+d/2n)/d;
-export const money=n=>`${n<0n?'-':''}${(n<0n?-n:n)/100n}.${String((n<0n?-n:n)%100n).padStart(2,'0')}`;
+export const money=minorMoney;
 export function calculateQuotation(lines,sellerState,placeOfSupply,costs=null,floor='0',basis='LINE_AND_TOTAL') {
  let net=0n,cgst=0n,sgst=0n,igst=0n,cost=0n,missingCost=false,lineBelow=false;
  const threshold=scaled(floor);if(threshold>100n*SCALE)throw new Error('Margin floor must be between 0 and 100.');

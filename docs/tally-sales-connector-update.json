@@ -1,4 +1,4 @@
-{
+﻿{
     "profiles":  [
                      {
                          "name":  "mehta-electronics"
@@ -7,8 +7,166 @@
                          "name":  "mehta-electric-corporation-from"
                      }
                  ],
-    "sha256":  "5C9DB117329D3BCCDE20043CC6D670FCC96947EEF6B43BD7DE92BA1159F3238C",
+    "sha256":  "5518833AB6F1238E91CB92CE96AFCE96BF6D1BC4C8CB9A51E325E9C793B12AB6",
+    "coreSha256":  "6C4DD8CB9B8231A4FEB22E657DBA9AF2CDBF3BF1AC9F2B1C898238F375286D29",
     "company":  "MEHTA ELECTRIC CORPORATION - (from 1-Apr-23) - (from 1-Apr-23)",
-    "release":  "output\\tally-sales-review\\connector-release\\TallyConnector.Service.exe",
-    "apiBaseUrl":  "http://127.0.0.1:3000"
+    "releaseDirectory":  "output\\tally-sales-review\\connector-prepared-1.3.0",
+    "releaseExe":  "TallyConnector.Service.exe",
+    "coreAssembly":  "TallyConnector.Core.dll",
+    "apiBaseUrl":  "http://127.0.0.1:3000",
+    "connectorVersion":  "1.3.0",
+    "files":  [
+                  {
+                      "path":  "Microsoft.Extensions.Configuration.Abstractions.dll",
+                      "sha256":  "FEFCDB267A73099CB90E5AF56B5EF2BCA59BED974339B3A6810352BDE23537A6"
+                  },
+                  {
+                      "path":  "Microsoft.Extensions.Configuration.Binder.dll",
+                      "sha256":  "BEAC12F7BBA4E22CDA2ACD9DDFE944A4ED56ABEC414E084EDD147BD5DAD3C032"
+                  },
+                  {
+                      "path":  "Microsoft.Extensions.Configuration.CommandLine.dll",
+                      "sha256":  "688EF791D4BB2E84839CFB28EC83772D561D958F6D0B20CA28BE1C6EFC9EA5F7"
+                  },
+                  {
+                      "path":  "Microsoft.Extensions.Configuration.dll",
+                      "sha256":  "B5CD9DA2C3364A5B201CECB0C80E25227D27BA44D96343D2894FF8EF3FD81550"
+                  },
+                  {
+                      "path":  "Microsoft.Extensions.Configuration.EnvironmentVariables.dll",
+                      "sha256":  "797B3034FD173CAFF0850CD580428A5F4AEB7DA27BF03369AD7F2B0996019399"
+                  },
+                  {
+                      "path":  "Microsoft.Extensions.Configuration.FileExtensions.dll",
+                      "sha256":  "ACF5896D0F34FA1A43295797584B3805C24743CE25EE87538EEEC83B012BBF4F"
+                  },
+                  {
+                      "path":  "Microsoft.Extensions.Configuration.Json.dll",
+                      "sha256":  "15E1262880F263806A2808D750688739662323B20CCD9835222FFF8C30899A4A"
+                  },
+                  {
+                      "path":  "Microsoft.Extensions.Configuration.UserSecrets.dll",
+                      "sha256":  "206CAD6A76676E1FE74E12CEA23D92AA7AE3EB06217315617F6F267AF1383E58"
+                  },
+                  {
+                      "path":  "Microsoft.Extensions.DependencyInjection.Abstractions.dll",
+                      "sha256":  "67FA4325000DB017DC0C35829B416F024F042D24EFB868BCF17A895EE6500A93"
+                  },
+                  {
+                      "path":  "Microsoft.Extensions.DependencyInjection.dll",
+                      "sha256":  "158761CE778E799949F3A3060C461B1055BB35F1F5A65EFF0E42397849F09ECD"
+                  },
+                  {
+                      "path":  "Microsoft.Extensions.Diagnostics.Abstractions.dll",
+                      "sha256":  "9864DBCFDBFE395BBD64DEEC7568FDAF0CBC3850F0CD8F53E7359189BD158082"
+                  },
+                  {
+                      "path":  "Microsoft.Extensions.Diagnostics.dll",
+                      "sha256":  "31E08B4E0018EE136D65DFCCA8F655A1A74CF8841E6029044C99B2E75D5F59F0"
+                  },
+                  {
+                      "path":  "Microsoft.Extensions.FileProviders.Abstractions.dll",
+                      "sha256":  "F08B1F597ABB3647AB6E844282DED763E6078DBEF6DD54B9D956CA419FAC42FE"
+                  },
+                  {
+                      "path":  "Microsoft.Extensions.FileProviders.Physical.dll",
+                      "sha256":  "9F67076C79A953F5068C0792114F9722527CFA17ED7414C73FD14833BFE59918"
+                  },
+                  {
+                      "path":  "Microsoft.Extensions.FileSystemGlobbing.dll",
+                      "sha256":  "ED0855B522F09B5A9DDBB85DE62042C25E07D10044086DA8620C845DE41E473C"
+                  },
+                  {
+                      "path":  "Microsoft.Extensions.Hosting.Abstractions.dll",
+                      "sha256":  "27F074952005F74BA37FC62756690255E5F743FF3F7426FCDEB65A0D6EC9FF77"
+                  },
+                  {
+                      "path":  "Microsoft.Extensions.Hosting.dll",
+                      "sha256":  "22CE5576ADEC386F12CC92DE15B38C85405995B4B0E6F610A00C918A72433F62"
+                  },
+                  {
+                      "path":  "Microsoft.Extensions.Hosting.WindowsServices.dll",
+                      "sha256":  "FF86F44F29D91DF5A23CED211F19D20833E689EAE30B2CFE023DAD191494FBA2"
+                  },
+                  {
+                      "path":  "Microsoft.Extensions.Logging.Abstractions.dll",
+                      "sha256":  "45C22524218541717E4A0ADE36847C1CDA4921F5945B4975A1C78DDFE023D0B1"
+                  },
+                  {
+                      "path":  "Microsoft.Extensions.Logging.Configuration.dll",
+                      "sha256":  "372DCB44F6F9243346CB82DB99BB01F27A0F3C8019902481BD45D65C311A732D"
+                  },
+                  {
+                      "path":  "Microsoft.Extensions.Logging.Console.dll",
+                      "sha256":  "D42DA097BB5EF92A3EB9889726E5C231BB5D0D4CA7CA7132ED944514D52BEC01"
+                  },
+                  {
+                      "path":  "Microsoft.Extensions.Logging.Debug.dll",
+                      "sha256":  "3B1DC1ADA5BFEB19FE4BA5225DB9C9950DCA250FB2DAAAC259B537C5D0894A65"
+                  },
+                  {
+                      "path":  "Microsoft.Extensions.Logging.dll",
+                      "sha256":  "B2CFBA2E05EE89A91E9BC9CF112468A5F4FA05D1A77EA81C131EA656F3D133C2"
+                  },
+                  {
+                      "path":  "Microsoft.Extensions.Logging.EventLog.dll",
+                      "sha256":  "4913C4D4D3837176BCB830A8A76402873ADA8C35050A3A93B29BE092EFDDB335"
+                  },
+                  {
+                      "path":  "Microsoft.Extensions.Logging.EventSource.dll",
+                      "sha256":  "2C043EA968ECAEFD7B935255A8DB84D5666FB28A791C67D3555A611BC0C8B83C"
+                  },
+                  {
+                      "path":  "Microsoft.Extensions.Options.ConfigurationExtensions.dll",
+                      "sha256":  "B9EA7BB70BFECF5C649F2559300FCE232729257CFDB4221DC96F1EA778227353"
+                  },
+                  {
+                      "path":  "Microsoft.Extensions.Options.dll",
+                      "sha256":  "5E01894CBC0661BACB8CA8F485A40D5EE4E02F28FEF58007668A0276431B4693"
+                  },
+                  {
+                      "path":  "Microsoft.Extensions.Primitives.dll",
+                      "sha256":  "446FF16E903E7479558816E213A3ADEE9A1C1ADAD65A56D853801B10933E29D7"
+                  },
+                  {
+                      "path":  "System.Diagnostics.EventLog.dll",
+                      "sha256":  "8343020E3752DC8FAE7598816570AA30B041F835412A76DAC7F65B229ED9532B"
+                  },
+                  {
+                      "path":  "System.Diagnostics.EventLog.Messages.dll",
+                      "sha256":  "DBFB7C81FB62A0BD3F77DA92496640F179E96DD0C1A41A0D3C5D2A2445A3BE46"
+                  },
+                  {
+                      "path":  "System.ServiceProcess.ServiceController.dll",
+                      "sha256":  "46328AD334942A6F2B0FD331EE632F06C51EEFB2A7BA18FFE264513847E9C3BD"
+                  },
+                  {
+                      "path":  "TallyConnector.Core.dll",
+                      "sha256":  "6C4DD8CB9B8231A4FEB22E657DBA9AF2CDBF3BF1AC9F2B1C898238F375286D29"
+                  },
+                  {
+                      "path":  "TallyConnector.Core.pdb",
+                      "sha256":  "A4CA1D4ABEE33A6E970A7E291C9D2ADBA633A25080276DE489E84C31FEDE1043"
+                  },
+                  {
+                      "path":  "TallyConnector.Service.deps.json",
+                      "sha256":  "2DB664790F478169252B295905F13F047F72B73D392CD84DAA5027876FF1F008"
+                  },
+                  {
+                      "path":  "TallyConnector.Service.dll",
+                      "sha256":  "FACAF48231D84F75B354277FBDDFEAAB322A07CD8BC300174D7C13229872AB68"
+                  },
+                  {
+                      "path":  "TallyConnector.Service.exe",
+                      "sha256":  "5518833AB6F1238E91CB92CE96AFCE96BF6D1BC4C8CB9A51E325E9C793B12AB6"
+                  },
+                  {
+                      "path":  "TallyConnector.Service.pdb",
+                      "sha256":  "56D7861E667A0260A98005631D0ADFF3436F7A0C413D9D6632B3EEC3EEDDA097"
+                  },
+                  {
+                      "path":  "TallyConnector.Service.runtimeconfig.json",
+                      "sha256":  "28329CF08F6505E73806B17558B187C02F0C1C516FE47EBFB7A013D082AAA306"
+                  }
+              ]
 }

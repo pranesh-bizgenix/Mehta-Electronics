@@ -1,52 +1,40 @@
-import assert from 'node:assert/strict';
-import { describe, test } from 'node:test';
-import { connectPostgres, createDatabase } from '../src/postgres.js';
-import { applyMigrations } from '../src/migrations.js';
-import { temporarySchema } from '../test-support/postgres.js';
+﻿import assert from 'node:assert/strict';
+import crypto from 'node:crypto';
+import {test} from 'node:test';
+import {createDatabase} from '../src/postgres.js';
+import {getConfig} from '../src/config.js';
+import {applyMigrations} from '../src/migrations.js';
 
-describe('PostgreSQL migrations', () => {
-  test('requires PostgreSQL configuration without a storage fallback', () => {
-    assert.throws(() => createDatabase({ databaseUrl: '' }), /DATABASE_URL is required/);
-  });
-  test('applies once, detects edits, rolls back failures, and preserves rows', async () => {
-    const temporary = await temporarySchema('migrations');
-    const sql = connectPostgres(temporary.databaseUrl);
-    const baseline = [{ name: '0001_probe.sql', sql: 'CREATE TABLE probe(id integer PRIMARY KEY, value text); INSERT INTO probe VALUES(1,\'preserved\');' }];
-    try {
-      assert.deepEqual(await applyMigrations(sql, { migrations: baseline }), { applied: 1, total: 1 });
-      assert.deepEqual(await applyMigrations(sql, { migrations: baseline }), { applied: 0, total: 1 });
-      await assert.rejects(applyMigrations(sql, { migrations: [{ ...baseline[0], sql: '-- edited' }] }), /checksum/);
-      await assert.rejects(applyMigrations(sql, { migrations: [...baseline, { name: '0002_broken.sql', sql: 'CREATE TABLE rollback_probe(id integer); INVALID SQL;' }] }));
-      assert.equal((await sql`SELECT COUNT(*) AS count FROM mehta_schema_migrations`)[0].count, 1);
-      assert.equal((await sql`SELECT to_regclass('rollback_probe') AS name`)[0].name, null);
-      assert.equal((await sql`SELECT value FROM probe`)[0].value, 'preserved');
-      await assert.rejects(applyMigrations(sql, { migrations: [] }), /unknown migrations/);
-    } finally { await sql.end(); await temporary.close(); }
-  });
+test('requires PostgreSQL configuration without a storage fallback',()=>assert.throws(()=>createDatabase({databaseUrl:''}),/DATABASE_URL is required/));
 
-  test('keeps concurrent request transactions isolated and rolls back on connection release', async () => {
-    const temporary = await temporarySchema('migrations');
-    const db = createDatabase(temporary);
-    try {
-      await db.exec('CREATE TABLE probe(id integer PRIMARY KEY)');
-      await Promise.all([
-        db.withConnection(async () => {
-          await db.exec('BEGIN');
-          await db.prepare('INSERT INTO probe(id) VALUES(?)').all(1);
-          await db.exec('ROLLBACK');
-        }),
-        db.withConnection(async () => {
-          await db.exec('BEGIN');
-          await db.prepare('INSERT INTO probe(id) VALUES(?)').all(2);
-          await db.exec('COMMIT');
-        })
-      ]);
-      await assert.rejects(db.withConnection(async () => {
-        await db.exec('BEGIN');
-        await db.prepare('INSERT INTO probe(id) VALUES(?)').all(3);
-        throw new Error('interrupted');
-      }), /interrupted/);
-      assert.deepEqual((await db.prepare('SELECT id FROM probe ORDER BY id').all()).map(row => row.id), [2]);
-    } finally { await db.close(); await temporary.close(); }
-  });
+// Migration SQL is observed by a protocol spy, never executed as DDL on the live database.
+test('migration protocol is idempotent, detects checksum edits/unknown entries and rolls back a failed statement',async()=>{
+ const entries=[{name:'0001_probe.sql',sql:'ZZTEST migration statement'}],ledger=new Map(),events=[];
+ const tx=async(parts,...values)=>{const statement=parts.join('?');events.push(statement);
+  if(statement.includes('to_regclass'))return [{relation:'mehta_schema_migrations'}];
+  if(statement.includes('SELECT name,'))return [...ledger].map(([name,checksum])=>({name,checksum}));
+  if(statement.includes('INSERT INTO mehta_schema_migrations'))ledger.set(values[0],values[1]);return [];
+ };
+ tx.unsafe=async text=>{events.push(text);if(text==='ZZTEST deliberate failure')throw new Error('ZZTEST failed statement');return [];};
+ const sql={unsafe:async()=>[{name:'mehta_electronics_local'}],begin:async fn=>{const before=new Map(ledger);try{return await fn(tx);}catch(error){ledger.clear();for(const [key,value]of before)ledger.set(key,value);events.push('ROLLBACK');throw error;}}};
+ const run=migrations=>applyMigrations(sql,{migrations,environment:'development',allowWithoutBackup:true});
+ assert.deepEqual(await run(entries),{applied:1,total:1});assert.deepEqual(await run(entries),{applied:0,total:1});
+ await assert.rejects(run([{...entries[0],sql:'ZZTEST edited'}]),/checksum/);
+ await assert.rejects(run([...entries,{name:'0002_failure.sql',sql:'ZZTEST deliberate failure'}]),/failed statement/);
+ assert.equal(ledger.size,1);assert.equal(ledger.get(entries[0].name),crypto.createHash('sha256').update(entries[0].sql).digest('hex'));assert.ok(events.includes('ROLLBACK'));
+ await assert.rejects(run([]),/unknown migrations/);
+});
+
+test('real concurrent connections isolate uncommitted fixtures and release rolls back',async()=>{
+ const db=createDatabase(getConfig());
+ try{
+  await Promise.all([1,2].map(n=>db.withConnection(async()=>{
+   await db.exec('BEGIN');
+   await db.prepare("INSERT INTO audit_logs(entity,record_id,action,reason) VALUES('ZZTEST_CONNECTION',?,'TEST','ZZTEST rollback')").run(String(n));
+   assert.equal((await db.prepare("SELECT count(*) AS n FROM audit_logs WHERE entity='ZZTEST_CONNECTION'").get()).n,1);
+   await db.exec('ROLLBACK');
+  })));
+  await assert.rejects(db.withConnection(async()=>{await db.exec('BEGIN');await db.prepare("INSERT INTO audit_logs(entity,record_id,action,reason) VALUES('ZZTEST_CONNECTION','3','TEST','ZZTEST interrupted')").run();throw new Error('ZZTEST interrupted');}),/interrupted/);
+  assert.equal((await db.prepare("SELECT count(*) AS n FROM audit_logs WHERE entity='ZZTEST_CONNECTION'").get()).n,0);
+ }finally{await db.close();}
 });

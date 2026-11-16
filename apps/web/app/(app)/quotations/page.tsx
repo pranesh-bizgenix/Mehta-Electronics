@@ -2,8 +2,8 @@
 
 import Link from 'next/link';
 import {RecordWorkspace} from '@/features/workflows/tally-imports';
-import { Suspense, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useEffect, useMemo, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useApi } from '@/lib/api/provider';
 import { useSession } from '@/lib/session';
 import { formatDate, formatMoney, formatRelative, titleCase } from '@/lib/format';
@@ -18,11 +18,16 @@ function QuotationsList() {
   const api = useMemo(() => quotationsApi(client), [client]);
   const { can } = useSession();
   const router = useRouter();
+  const params = useSearchParams();
   const [search, setSearch] = useState('');
   const debounced = useDebounced(search, 300);
   const [status, setStatus] = useState('');
   const [page, setPage] = useState(1);
-  const [tool, setTool] = useState<'policy' | 'costs' | 'history' | null>(null);
+  const [tool, setTool] = useState<'policy' | 'costs' | 'history' | null>(() => params.get('tool') === 'policy' && can('quotations.policy.manage') ? 'policy' : params.get('tool') === 'costs' && can('quotations.cost.manage') ? 'costs' : null);
+  useEffect(() => {
+    if(params.get('tool')==='policy'&&can('quotations.policy.manage'))setTool('policy');
+    if(params.get('tool')==='costs'&&can('quotations.cost.manage'))setTool('costs');
+  },[params,can]);
   const [state, reload] = useAsync((signal) => api.list({ page, search: debounced, status }, signal), [api, page, debounced, status]);
   const data = state.status === 'ready' ? state.data : state.data;
   const today = new Date().toISOString().slice(0, 10);

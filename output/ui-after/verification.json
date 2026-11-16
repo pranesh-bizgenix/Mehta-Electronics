@@ -1,17 +1,68 @@
 {
-  "checkedAt": "2026-10-29T12:47:35.352Z",
+  "checkedAt": "2026-10-30T04:21:45.112Z",
   "checks": [
     "login + two-factor enrolment",
     "theme toggle persisted per user",
     "command palette search + navigation",
     "create customer + 360",
     "create enquiry + split view",
+    "enquiry → quote → independent approval → sent",
     "duplicate submit creates one record",
     "captures + axe + overflow",
     "role-aware navigation + unauthorized state"
   ],
-  "axe": [],
-  "overflow": [],
+  "axe": [
+    {
+      "screen": "quotations/new",
+      "width": 1440,
+      "theme": "light",
+      "id": "aria-required-children",
+      "impact": "critical",
+      "help": "Certain ARIA roles must contain particular children",
+      "nodes": [
+        ".ds-line-grid"
+      ]
+    },
+    {
+      "screen": "quotations/new",
+      "width": 390,
+      "theme": "light",
+      "id": "aria-required-children",
+      "impact": "critical",
+      "help": "Certain ARIA roles must contain particular children",
+      "nodes": [
+        ".ds-line-grid"
+      ]
+    },
+    {
+      "screen": "quotations/new",
+      "width": 1440,
+      "theme": "dark",
+      "id": "aria-required-children",
+      "impact": "critical",
+      "help": "Certain ARIA roles must contain particular children",
+      "nodes": [
+        ".ds-line-grid"
+      ]
+    },
+    {
+      "screen": "quotations/new",
+      "width": 390,
+      "theme": "dark",
+      "id": "aria-required-children",
+      "impact": "critical",
+      "help": "Certain ARIA roles must contain particular children",
+      "nodes": [
+        ".ds-line-grid"
+      ]
+    }
+  ],
+  "overflow": [
+    "quotations @390 light: 23px",
+    "quotations/new @390 light: 115px",
+    "quotations @390 dark: 23px",
+    "quotations/new @390 dark: 115px"
+  ],
   "consoleErrors": [],
-  "captures": 84
+  "captures": 96
 }

@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState, type ReactNode } from 'react';
-import { Avatar, ErrorState, Icon, IconButton, Kbd, Menu, Spinner, useAsync, useHotkey } from '@/components/ds';
+import { Avatar, Button, ErrorState, Icon, IconButton, Kbd, Menu, Spinner, useAsync, useHotkey } from '@/components/ds';
 import { formatRelative, initials } from '@/lib/format';
 import { useApi } from '@/lib/api/provider';
 import { useSession } from '@/lib/session';
@@ -11,6 +11,8 @@ import { usePreferences, type ThemeChoice } from '@/lib/preferences';
 import { useScope, type PeriodKey } from '@/lib/scope';
 import { CommandPalette } from './command-palette';
 import { NAV, type BadgeKey } from './nav-config';
+import {CompanyFreshness} from '@/features/workflows/tally-freshness';
+import {TallyWriteLiveBanner} from '@/features/tally-write/live-banner';
 
 type Badges = Partial<Record<BadgeKey | 'unreadNotifications', number>>;
 interface Notification { id: string; type: string; title: string; message: string; read: boolean; createdAt: string }
@@ -25,7 +27,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
-  const [badges, reloadBadges] = useAsync(() => state.kind === 'ready' ? api.data<Badges>('GET', '/api/v1/me/badges') : Promise.resolve({} as Badges), [state.kind, pathname]);
+  const [badges, reloadBadges] = useAsync(() => state.kind === 'ready' && !state.user.mustChangePassword ? api.data<Badges>('GET', '/api/v1/me/badges') : Promise.resolve({} as Badges), [state.kind, state.kind === 'ready' && state.user.mustChangePassword, pathname]);
 
   useHotkey('k', () => setPaletteOpen(true));
   useEffect(() => { setDrawerOpen(false); }, [pathname]);
@@ -33,11 +35,14 @@ export function AppShell({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (state.kind === 'anonymous') router.replace(`/login?next=${encodeURIComponent(pathname)}`);
     if (state.kind === 'ready' && state.mfa.required && !state.mfa.verified) router.replace('/login');
+    else if (state.kind === 'ready' && state.user.mustChangePassword && pathname !== '/settings') router.replace('/settings');
+    else if (state.kind === 'ready' && pathname === '/dashboard' && ['LOGISTICS_LEAD','STORE_STAFF'].includes(state.user.role)) router.replace('/logistics');
   }, [state, router, pathname]);
   useEffect(() => { const t = setInterval(reloadBadges, 60_000); return () => clearInterval(t); }, [reloadBadges]);
 
   if (state.kind === 'loading' || state.kind === 'anonymous') return <main className="ds-state" style={{ minHeight: '100vh' }}><Spinner size="lg" /><p>Opening ControlDesk…</p></main>;
   if (state.kind === 'error') return <main style={{ minHeight: '100vh', display: 'grid', placeItems: 'center' }}><ErrorState error={new Error(state.message)} onRetry={() => void refresh()} /></main>;
+  if (state.kind === 'ready' && state.user.mustChangePassword) return <main id="main" className="ds-main"><div className="ds-page">{pathname === '/settings' && (!state.mfa.required || state.mfa.verified) ? <><Button variant="secondary" onClick={() => void logout()}>Sign out</Button>{children}</> : <Spinner size="lg" />}</div></main>;
 
   const counts: Badges = badges.status === 'ready' ? badges.data : badges.data ?? {};
   const collapsed = preferences.sidebarCollapsed;
@@ -48,13 +53,13 @@ export function AppShell({ children }: { children: ReactNode }) {
       <a className="skip-link" href="#main">Skip to content</a>
       {drawerOpen && <div className="ds-scrim" onClick={() => setDrawerOpen(false)} aria-hidden="true" />}
       <nav className="ds-sidebar" data-open={drawerOpen} id="app-sidebar" aria-label="Main">
-        <Link href="/dashboard" className="ds-brand">
+        <Link href={state.kind === 'ready' && ['LOGISTICS_LEAD','STORE_STAFF'].includes(state.user.role) ? '/logistics' : '/dashboard'} className="ds-brand">
           <span className="ds-brand-mark" aria-hidden="true">ME</span>
           <span className="ds-brand-text"><strong>ControlDesk</strong><small>Mehta Electronics</small></span>
         </Link>
         <div className="ds-nav">
           {NAV.map((group) => {
-            const items = group.items.filter((i) => i.permission === 'authenticated' || can(i.permission));
+            const items = group.items.filter((i) => (!i.ownerOnly || state.user.role === 'OWNER') && (i.permission === 'authenticated' || can(i.permission)));
             if (!items.length) return null;
             return (
               <div key={group.label} className="ds-nav">
@@ -94,7 +99,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             </Menu>
           </div>
         </header>
-        <main className="ds-content" id="main" tabIndex={-1}>{children}</main>
+        <main className="ds-content" id="main" tabIndex={-1}><TallyCompanyHeading/>{children}</main>
       </div>
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
     </div>
@@ -149,4 +154,11 @@ function Notifications({ unread, onRead }: { unread: number; onRead: () => void 
       ))}
     </Menu>
   );
+}
+
+function TallyCompanyHeading(){
+ const pathname=usePathname(),{companies,companyId}=useScope();
+ if(!/^\/(tally|customers|items|quotations|enquiries|orders|dashboard)(?:\/|$)/.test(pathname))return null;
+ const company=companies.find(row=>row.id===companyId);
+ return <section className="stack"><TallyWriteLiveBanner/><p className="ds-cell-secondary" role="status"><strong>Tally browsing company:</strong> {company?.display_name||company?.name||'Select an imported company'}</p>{company&&<CompanyFreshness key={company.id} companyId={company.id}/>}</section>;
 }

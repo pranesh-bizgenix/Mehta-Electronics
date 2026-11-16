@@ -6,6 +6,7 @@ import {getConfig} from '../src/config.js';
 import {createDatabase} from '../src/postgres.js';
 import {TallyVisibilityService} from '../src/tally-visibility-service.js';
 const db=createDatabase(getConfig()),service=new TallyVisibilityService(db),owner={id:1,role:'OWNER'};
+await db.ready();
 const output='output/tally-sales-review';await fs.mkdir(output,{recursive:true});const browser=await chromium.launch({headless:true});const context=await browser.newContext();const errors=[],requests=[];
 try{
  const companies=await db.prepare('SELECT id,name,name AS display_name FROM tally_companies ORDER BY name,id').all();

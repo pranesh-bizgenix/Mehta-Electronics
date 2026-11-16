@@ -1,3 +1,4 @@
+import {lineNet,format,formatIndian} from '../public/money.js';
 import PDFDocument from 'pdfkit';
 import { fileURLToPath } from 'node:url';
 
@@ -12,20 +13,14 @@ const ISSUED = ['APPROVED', 'SENT', 'WON'];
 const STATES = { '27': 'Maharashtra', '33': 'Tamil Nadu', '29': 'Karnataka', '24': 'Gujarat', '07': 'Delhi', '36': 'Telangana', '37': 'Andhra Pradesh', '32': 'Kerala', '19': 'West Bengal', '09': 'Uttar Pradesh', '06': 'Haryana', '08': 'Rajasthan', '23': 'Madhya Pradesh', '03': 'Punjab', '21': 'Odisha', '10': 'Bihar', '20': 'Jharkhand', '22': 'Chhattisgarh', '30': 'Goa', '34': 'Puducherry' };
 const stateLabel = (code) => STATES[code] ? `${STATES[code]} (${code})` : code;
 
-/** Exact decimal string → BigInt scaled by 10^6. */
-const SCALE = 1000000n;
-function scaled(value) { const [w, f = ''] = String(value ?? '0').split('.'); return BigInt(w || '0') * SCALE + BigInt((f + '000000').slice(0, 6)); }
-/** Net unit rate after discount, rounded half-up to paise (no floats). */
-function netRate(unitPrice, discountPercent) {
-  const paise = (scaled(unitPrice) * (100n * SCALE - scaled(discountPercent)) * 100n + 50n * SCALE * SCALE) / (100n * SCALE * SCALE);
-  return `${paise / 100n}.${String(paise % 100n).padStart(2, '0')}`;
+/** Net unit rate after discount, rounded half-up to paise. */
+function netRate(unitPrice,discountPercent) {
+  return format(lineNet({quantity:'1',unit_price:unitPrice,discount_percent:discountPercent}));
 }
 function group(whole) { return whole.length <= 3 ? whole : `${whole.slice(0, -3).replace(/\B(?=(\d{2})+(?!\d))/g, ',')},${whole.slice(-3)}`; }
 /** ₹12,34,567.00 from an exact decimal string. */
-export function inr(value) {
-  const [w, f = ''] = String(value ?? '0').replace(/^-/, '').split('.');
-  return `${String(value).startsWith('-') ? '-' : ''}₹${group(w.replace(/^0+(?=\d)/, ''))}.${(f + '00').slice(0, 2)}`;
-}
+export function inr(value) { return `?${formatIndian(value)}`; }
+
 const qty = (value) => { const [w, f = ''] = String(value).split('.'); const frac = f.replace(/0+$/, ''); return `${group(w)}${frac ? `.${frac}` : ''}`; };
 const pct = (value) => `${String(value).replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '')}%`;
 const dateText = (iso) => { const d = new Date(`${iso}T00:00:00+05:30`); return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Kolkata' }); };
@@ -49,8 +44,12 @@ export function amountInWords(value) {
   return `${rupees}${paise ? ` and ${upTo99(paise)} paise` : ''} only`.replace(/\s+/g, ' ');
 }
 
+export function quotationLineDescription(line) {
+  const d=line.requestDetails??{};
+  return [line.description,...[['Customer reference',d.sourceLine],['Tag',d.tag],['Make',d.make],['Customer requested specification',d.requestedSpecification],['Availability (quoted)',d.availability],['Availability checked on',d.availability?d.availabilityAsOf:null],['Delivery lead time from PO date',d.leadTime]].filter(([,value])=>value).map(([label,value])=>`${label}: ${value}`)].filter(Boolean).join('\n');
+}
 function rows(q) {
-  return q.lines.map((l, i) => ({ n: i + 1, code: l.partCode, description: l.description, hsn: l.hsn || '—', qty: `${qty(l.quantity)} ${l.uom}`, rate: inr(netRate(l.unitPrice, l.discountPercent)), gst: pct(l.taxPercent), amount: inr(l.net) }));
+  return q.lines.map((l, i) => ({ n: i + 1, code: l.partCode, description: quotationLineDescription(l), hsn: l.hsn || '—', qty: `${qty(l.quantity)} ${l.uom}`, rate: inr(netRate(l.unitPrice, l.discountPercent)), gst: pct(l.taxPercent), amount: inr(l.net) }));
 }
 function taxRows(q) {
   const local = q.sellerState === q.placeOfSupply;
@@ -68,8 +67,10 @@ ${issued ? '' : '<p class="watermark" aria-hidden="true">NOT APPROVED FOR ISSUE<
 <section class="title"><h2>Quotation</h2><p class="status">${issued ? '' : 'Draft — not approved for issue · '}Version ${e(q.version)}</p></section>
 <section class="parties"><div><h3>Bill to</h3><p class="strong">${e(q.customer_name)}</p><p class="multiline">${e(q.customerAddress || '')}</p>${q.customerGstin ? `<p>GSTIN ${e(q.customerGstin)}</p>` : ''}</div>
 <dl class="meta"><div><dt>Quotation no.</dt><dd>${e(q.quotation_number)}</dd></div><div><dt>Valid until</dt><dd>${e(dateText(q.validUntil))}</dd></div><div><dt>Place of supply</dt><dd>${e(stateLabel(q.placeOfSupply))}</dd></div></dl></section>
+${q.request?.reference?`<section class="block"><h3>Customer RFQ / reference</h3><p>${e(q.request.reference)}</p></section>`:''}
+${q.request?.quantityInstructions?`<section class="block"><h3>Quantity instructions${q.request.quantityConfirmed?' — reviewed':' — review pending'}</h3><p class="multiline">${e(q.request.quantityInstructions)}</p></section>`:''}
 <table><thead><tr><th>#</th><th>Item and description</th><th>HSN</th><th class="num">Qty</th><th class="num">Unit rate</th><th class="num">GST</th><th class="num">Amount</th></tr></thead><tbody>
-${rows(q).map((r) => `<tr><td class="idx">${r.n}</td><td class="item"><strong>${e(r.code)}</strong><span>${e(r.description)}</span></td><td data-label="HSN">${e(r.hsn)}</td><td class="num" data-label="Qty">${e(r.qty)}</td><td class="num" data-label="Unit rate">${e(r.rate)}</td><td class="num" data-label="GST">${e(r.gst)}</td><td class="num" data-label="Amount">${e(r.amount)}</td></tr>`).join('')}
+${rows(q).map((r) => `<tr><td class="idx">${r.n}</td><td class="item"><strong>${e(r.code)}</strong><span class="multiline">${e(r.description)}</span></td><td data-label="HSN">${e(r.hsn)}</td><td class="num" data-label="Qty">${e(r.qty)}</td><td class="num" data-label="Unit rate">${e(r.rate)}</td><td class="num" data-label="GST">${e(r.gst)}</td><td class="num" data-label="Amount">${e(r.amount)}</td></tr>`).join('')}
 </tbody></table>
 <section class="summary"><p class="words"><span>Amount in words</span>${e(amountInWords(q.total))}</p>
 <dl class="totals">${taxRows(q).map(([k, v]) => `<div><dt>${e(k)}</dt><dd>${e(inr(v))}</dd></div>`).join('')}<div class="grand"><dt>Total</dt><dd>${e(inr(q.total))}</dd></div></dl></section>
@@ -116,6 +117,12 @@ export function quotationPdf(q) {
     doc.fillColor(INK).fontSize(11).text(q.customer_name, left + 14, y + 22, { width: width - 28 });
     doc.fillColor(MUTED).fontSize(8.5).text([q.customerAddress, q.customerGstin && `GSTIN ${q.customerGstin}`].filter(Boolean).join(' · '), left + 14, doc.y + 1, { width: width - 28, height: 24, ellipsis: true });
     y += 82;
+    for(const [label,value]of [['Customer RFQ / reference',q.request?.reference],[`Quantity instructions — ${q.request?.quantityConfirmed?'reviewed':'review pending'}`,q.request?.quantityInstructions]]){
+      if(!value)continue;
+      doc.fillColor(MUTED).fontSize(8).text(label,left,y,{width});
+      doc.fillColor(INK).fontSize(9).text(value,left,doc.y+2,{width});y=doc.y+12;
+    }
+    if(y>doc.page.height-180){doc.addPage();y=48;}
 
     // Table
     const cols = [{ k: 'n', label: '#', w: 22 }, { k: 'item', label: 'Item and description', w: 186 }, { k: 'hsn', label: 'HSN', w: 52 }, { k: 'qty', label: 'Qty', w: 58, right: true }, { k: 'rate', label: 'Unit rate', w: 72, right: true }, { k: 'gst', label: 'GST', w: 34, right: true }, { k: 'amount', label: 'Amount', w: width - 424, right: true }];
@@ -127,19 +134,32 @@ export function quotationPdf(q) {
     };
     header();
     rows(q).forEach((r, i) => {
-      const descHeight = doc.fontSize(8).heightOfString(r.description, { width: cols[1].w - 12 });
-      const h = Math.max(30, 18 + descHeight);
-      if (y + h > doc.page.height - 150) { doc.addPage(); y = 48; header(); }
+      // Split long source specifications across pages without dropping text or repeating money.
+      const descriptions=[];let remainder=r.description||'';
+      while(remainder){
+        let low=1,high=remainder.length,best=1;
+        while(low<=high){const mid=Math.floor((low+high)/2);if(doc.fontSize(8).heightOfString(remainder.slice(0,mid),{width:cols[1].w-12})<=420){best=mid;low=mid+1;}else high=mid-1;}
+        if(best<remainder.length){const space=remainder.lastIndexOf(' ',best);if(space>best/2)best=space+1;}
+        descriptions.push(remainder.slice(0,best));remainder=remainder.slice(best);
+      }
+      if(!descriptions.length)descriptions.push('');
+      descriptions.forEach((description,segment)=>{
+      const code=segment?`${r.code} (continued)`:r.code;
+      const descHeight = doc.fontSize(8).heightOfString(description, { width: cols[1].w - 12 });
+      const codeHeight = doc.fontSize(9).heightOfString(code, {width:cols[1].w-12});
+      const h = Math.max(30, 12 + codeHeight + descHeight);
+      if (y + h > doc.page.height - 100) { doc.addPage(); y = 48; header(); }
       if (i % 2 === 1) doc.rect(left, y, width, h).fill('#f7f9f8');
       let x = left;
-      const cells = { n: String(r.n), item: null, hsn: r.hsn, qty: r.qty, rate: r.rate, gst: r.gst, amount: r.amount };
+      const cells = { n: segment?'':String(r.n), item: null, hsn: segment?'':r.hsn, qty: segment?'':r.qty, rate: segment?'':r.rate, gst: segment?'':r.gst, amount: segment?'':r.amount };
       for (const c of cols) {
-        if (c.k === 'item') { doc.fillColor(INK).fontSize(9).text(r.code, x + 6, y + 6, { width: c.w - 12 }); doc.fillColor(MUTED).fontSize(8).text(r.description, x + 6, doc.y, { width: c.w - 12 }); }
+        if (c.k === 'item') { doc.fillColor(INK).fontSize(9).text(code, x + 6, y + 6, { width: c.w - 12 }); doc.fillColor(MUTED).fontSize(8).text(description, x + 6, doc.y, { width: c.w - 12 }); }
         else doc.fillColor(INK).fontSize(8.5).text(cells[c.k], x + 6, y + 7, { width: c.w - 12, align: c.right ? 'right' : 'left' });
         x += c.w;
       }
       y += h;
       doc.moveTo(left, y).lineTo(right, y).lineWidth(0.5).strokeColor(LINE).stroke();
+      });
     });
 
     // Totals and amount in words

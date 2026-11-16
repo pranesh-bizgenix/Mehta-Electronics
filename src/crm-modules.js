@@ -1,12 +1,22 @@
-import { writeAudit, enquiryView, recordEnquiryRevision } from './db.js';
+import { writeAudit, enquiryView, recordEnquiryRevision, detectCustomerDuplicates } from './db.js';
 import { normalizeKey, escapeLike } from './security.js';
 import { pagination, classifyLedgers } from './tally-read-service.js';
+import {hasPermission} from './rbac.js';
 import {requireCustomerHandler} from './modules/operations/customer-gates.js';
+import {stableCustomerLinkExists,stableCustomerLinks} from './tally-customer-links.js';
+import {stableItemLinkExists,stableItemLinks} from './tally-item-links.js';
+import {commercialRecordHref} from '../public/crm-navigation.js';
 
 const error=(status,message)=>Object.assign(new Error(message),{status});
 export const id=value=>{if(!['string','number'].includes(typeof value)||typeof value==='string'&&!/^\d+$/.test(value))throw error(422,'Invalid record identifier.');const n=Number(value);if(!Number.isSafeInteger(n)||n<1)throw error(422,'Invalid record identifier.');return n;};
 const text=(value,max=500)=>{if(value==null)return '';if(typeof value!=='string'||value.length>max)throw error(422,`Text must be at most ${max} characters.`);return value.trim();};
 const required=(value,label,max=200)=>{const v=text(value,max);if(!v)throw error(422,`${label} is required.`);return v;};
+const stringList=(value,label)=>{
+  if(value==null)return null;
+  if(!Array.isArray(value)||value.length>50)throw error(422,`${label} must contain at most 50 entries.`);
+  const values=[...new Set(value.map(entry=>required(entry,label,200)))];
+  return values.length?values:null;
+};
 export function decimal(value,label,{positive=false,percent=false}={}) {
   const v=String(value??'');
   if(!/^\d{1,14}(?:\.\d{1,6})?$/.test(v))throw error(422,`${label} must be a non-negative decimal with at most six decimal places.`);
@@ -41,8 +51,9 @@ async function audit(db,user,entity,recordId,oldValue,newValue,reason,action) {a
 async function profile(db,table,key,recordId,values,user) {
   const existing=await db.prepare(`SELECT id FROM ${table} WHERE ${key}=?`).get(recordId);
   const keys=Object.keys(values);
-  if(existing)await db.prepare(`UPDATE ${table} SET ${keys.map(k=>`${k}=?`).join(',')} WHERE id=?`).run(...Object.values(values),existing.id);
-  else await db.prepare(`INSERT INTO ${table}(${key},${keys.join(',')},created_by) VALUES(${Array(keys.length+2).fill('?').join(',')})`).run(recordId,...Object.values(values),user.id);
+  const parameter=column=>column==='brand_relationships'?'?::text::jsonb':'?';
+  if(existing)await db.prepare(`UPDATE ${table} SET ${keys.map(k=>`${k}=${parameter(k)}`).join(',')} WHERE id=?`).run(...Object.values(values),existing.id);
+  else await db.prepare(`INSERT INTO ${table}(${key},${keys.join(',')},created_by) VALUES(?,${keys.map(parameter).join(',')},?)`).run(recordId,...Object.values(values),user.id);
 }
 async function validateLink(db,companyId,name,kind) {
   if(!companyId&&!name)return {company_id:null,[kind==='customer'?'tally_ledger_name':'tally_stock_name']:null};
@@ -69,17 +80,19 @@ export async function listRecords(db,kind,url) {
   const joins=kind==='enquiries'?'JOIN customers c ON c.id=r.customer_id LEFT JOIN users u ON u.id=r.assigned_to':'';
   const clause=where.length?' WHERE '+where.join(' AND '):'';
   const total=(await db.prepare(`SELECT count(*) AS n FROM ${table} r ${joins}${clause}`).get(...args)).n;
-  const extra=kind==='customers'?`,r.credit_limit::text AS credit_limit,(SELECT payment_terms FROM crm_customer_profiles p WHERE p.customer_id=r.id) AS payment_terms,(EXISTS(SELECT 1 FROM crm_customer_tally_facts f WHERE f.customer_id=r.id AND f.match_count=1) OR NOT EXISTS(SELECT 1 FROM crm_customer_profiles p WHERE p.customer_id=r.id) AND EXISTS(SELECT 1 FROM crm_parties p WHERE p.customer_id=r.id AND p.status='ACTIVE' AND NOT p.is_deleted AND (SELECT count(*) FROM tally_ledgers l WHERE l.company_id=p.company_id AND l.name=p.name)=1)) AS tally_linked`:
-    kind==='items'?`,r.pack_size::text AS pack_size,(EXISTS(SELECT 1 FROM crm_item_tally_facts f WHERE f.item_id=r.id AND f.match_count=1) OR NOT EXISTS(SELECT 1 FROM crm_item_profiles p WHERE p.item_id=r.id) AND EXISTS(SELECT 1 FROM crm_tally_item_links p WHERE p.item_id=r.id AND p.status='ACTIVE' AND NOT p.is_deleted AND (SELECT count(*) FROM tally_stock_items t WHERE t.company_id=p.company_id AND t.name=p.tally_name)=1)) AS tally_linked`:
+  const extra=kind==='customers'?`,r.credit_limit::text AS credit_limit,(SELECT payment_terms FROM crm_customer_profiles p WHERE p.customer_id=r.id) AS payment_terms,(${stableCustomerLinkExists} OR EXISTS(SELECT 1 FROM crm_customer_tally_facts f WHERE f.customer_id=r.id AND f.match_count=1) OR NOT EXISTS(SELECT 1 FROM crm_customer_profiles p WHERE p.customer_id=r.id) AND EXISTS(SELECT 1 FROM crm_parties p WHERE p.customer_id=r.id AND p.status='ACTIVE' AND NOT p.is_deleted AND (SELECT count(*) FROM tally_ledgers l WHERE l.company_id=p.company_id AND l.name=p.name)=1)) AS tally_linked`:
+    kind==='items'?`,r.pack_size::text AS pack_size,(${stableItemLinkExists} OR EXISTS(SELECT 1 FROM crm_item_tally_facts f WHERE f.item_id=r.id AND f.match_count=1) OR NOT EXISTS(SELECT 1 FROM crm_item_profiles p WHERE p.item_id=r.id) AND EXISTS(SELECT 1 FROM crm_tally_item_links p WHERE p.item_id=r.id AND p.tally_record_key IS NULL AND p.status='ACTIVE' AND NOT p.is_deleted AND (SELECT count(*) FROM tally_stock_items t WHERE t.company_id=p.company_id AND t.name=p.tally_name)=1)) AS tally_linked`:
     ',c.name AS customer_name,u.name AS owner_name,(SELECT count(*) FROM enquiry_lines l WHERE l.enquiry_id=r.id AND NOT l.is_deleted) AS line_count';
   const data=await db.prepare(`SELECT r.*${extra} FROM ${table} r ${joins}${clause} ORDER BY r.updated_at DESC,r.id DESC LIMIT ? OFFSET ?`).all(...args,meta.pageSize,(meta.page-1)*meta.pageSize);
   return {data,pagination:{...meta,total,pages:Math.ceil(total/meta.pageSize)}};
 }
 export async function customerDetail(db,customerId,{financial=false}={}) {
-  const row=await db.prepare('SELECT *,credit_limit::text AS credit_limit FROM customers WHERE id=?').get(id(customerId));if(!row)throw error(404,'Customer not found.');
+  const row=await db.prepare('SELECT c.*,c.credit_limit::text AS credit_limit,u.name AS owner_name FROM customers c LEFT JOIN users u ON u.id=c.owner_id WHERE c.id=?').get(id(customerId));if(!row)throw error(404,'Customer not found.');
   const p=await db.prepare('SELECT * FROM crm_customer_profiles WHERE customer_id=?').get(row.id);
   row.profile=p||{};
+  row.onboarding=await customerOnboarding(db,row.id);
   if(!p){const links=await db.prepare("SELECT company_id,name FROM crm_parties WHERE customer_id=? AND status='ACTIVE' AND NOT is_deleted").all(row.id);if(links.length===1)row.profile={company_id:links[0].company_id,tally_ledger_name:links[0].name};}
+  if(row.profile.backup_owner_id)row.profile.backup_owner_name=(await db.prepare("SELECT name FROM users WHERE id=?").get(row.profile.backup_owner_id))?.name??null;
   row.contacts=await db.prepare('SELECT * FROM customer_contacts WHERE customer_id=? AND NOT is_deleted ORDER BY is_primary DESC,id').all(row.id);
   row.partMappings=await db.prepare('SELECT m.*,i.part_code FROM crm_customer_part_mappings m JOIN items i ON i.id=m.item_id WHERE m.customer_id=? AND NOT m.is_deleted ORDER BY m.id').all(row.id);
   const link=row.profile;
@@ -88,10 +101,16 @@ export async function customerDetail(db,customerId,{financial=false}={}) {
   row.dues={available:financial&&facts.length===1&&facts[0].closing_balance!=null,financialAccess:financial,
     ...(financial&&facts.length===1?{closingBalance:facts[0].closing_balance,drCr:facts[0].dr_cr,fetchedAt:facts[0].fetched_at}:{}),
     note:'Read-only signed Tally closing balance. This is not an overdue or ageing calculation.'};
+  const stable=await stableCustomerLinks(db,row.id);
+  if(stable.length){
+    const one=stable.length===1?stable[0]:null;
+    row.tally={linked:true,matchCount:stable.length,companyId:one?.company_id??null,name:one?.name??null,links:stable.map(l=>({companyId:l.company_id,companyName:l.company_name,recordKey:l.record_key,tallyGuid:l.tally_guid,masterId:l.master_id,name:l.name}))};
+    row.dues={available:Boolean(financial&&one&&one.closing_balance!=null),financialAccess:financial,...(financial&&one?{closingBalance:one.closing_balance,drCr:one.dr_cr,fetchedAt:one.fetched_at}:{}),note:one?'Read-only signed Tally closing balance resolved by company and stable source ID.':'Multiple companies are linked; no cross-company balance is combined or selected automatically.'};
+  }
   return row;
 }
 export async function saveCustomer(db,customerId,body,user) {
-  const reason=editReason(body,!!customerId);
+  let reason=editReason(body,!!customerId);
   return transaction(db,user,reason,async()=>{
     const old=customerId?await db.prepare('SELECT *,credit_limit::text AS credit_limit FROM customers WHERE id=? FOR UPDATE').get(id(customerId)):null;
     if(customerId&&!old)throw error(404,'Customer not found.');
@@ -99,19 +118,77 @@ export async function saveCustomer(db,customerId,body,user) {
     if(old&&!oldProfile){const links=await db.prepare("SELECT company_id,name AS tally_ledger_name FROM crm_parties WHERE customer_id=? AND status='ACTIVE' AND NOT is_deleted").all(old.id);if(links.length===1)oldProfile=links[0];}
     const tax=validateTax(body.gstin??old?.gstin,body.stateCode??oldProfile?.state_code);
     const name=required(body.name??old?.name,'Customer name');
-    const limit=decimal(body.creditLimit??old?.credit_limit??0,'Credit limit');
-    const days=Number(body.creditDays??old?.credit_days??0);if(!Number.isInteger(days)||days<0||days>3650)throw error(422,'Credit days must be an integer between 0 and 3650.');
-    const owner=body.ownerId?await active(db,'users',body.ownerId,'owner'):old?.owner_id||null;
-    const values=[name,normalizeKey(name),text(body.customerCode??old?.customer_code,100)||null,tax.gstin,limit,days,owner,status(body.status??old?.status??'ACTIVE',['ACTIVE','INACTIVE','ON_HOLD']),text(body.billingAddress??old?.billing_address,4000)||null,user.id];
+    const limit=decimal(body.creditLimit??old?.credit_limit,'Credit limit');
+    const days=Number(body.creditDays??old?.credit_days);if(!Number.isInteger(days)||days<0||days>3650)throw error(422,'Credit days must be an integer between 0 and 3650.');
+    const owner=body.ownerId===undefined?(old?.owner_id??null):body.ownerId===null?null:await active(db,'users',body.ownerId,'owner');
+    if(!old&&!owner)throw error(422,'Choose an account owner for the new customer.');
+    const backupOwnerId=body.backupOwnerId===undefined?(oldProfile?.backup_owner_id??null):body.backupOwnerId===null?null:await active(db,'users',body.backupOwnerId,'backup owner');
+    if(owner&&backupOwnerId===owner)throw error(422,'Account owner and backup owner must be different people.');
+    const pan=text(body.pan??old?.pan,20).toUpperCase();
+    if(pan&&!/^[A-Z]{5}\d{4}[A-Z]$/.test(pan))throw error(422,'PAN must have the expected 10-character format.');
+    const contacts=body.contacts??[];
+    const duplicateInput={name,gstin:tax.gstin,pan:pan||null,contacts};
+    const duplicates=await detectCustomerDuplicates(db,duplicateInput,old?.id??null);
+    if(duplicates.length){
+      const duplicateReason=required(body.duplicateReviewReason??(customerId?body.reason:null),'Duplicate review reason',1000);
+      if(!customerId)reason=duplicateReason;
+      await db.prepare("SELECT set_config('mehta.audit_reason',?,true)").get(reason);
+    }
+    const values=[name,normalizeKey(name),text(body.customerCode??old?.customer_code,100)||null,tax.gstin,pan||null,limit,days,owner,status(body.status??old?.status??'ACTIVE',['ACTIVE','INACTIVE','ON_HOLD']),text(body.billingAddress??old?.billing_address,4000)||null,text(body.shippingAddress??old?.shipping_address,4000)||null,text(body.city??old?.city,200)||null,text(body.state??old?.state,200)||null,text(body.pincode??old?.pincode,20)||null,text(body.notes??old?.notes,4000)||null,user.id];
     let recordId=old?.id;
-    if(old)await db.prepare('UPDATE customers SET name=?,normalized_name=?,customer_code=?,gstin=?,credit_limit=?,credit_days=?,owner_id=?,status=?,billing_address=?,updated_by=?,updated_at=now() WHERE id=?').run(...values,recordId);
-    else recordId=(await db.prepare('INSERT INTO customers(name,normalized_name,customer_code,gstin,credit_limit,credit_days,owner_id,status,billing_address,updated_by,created_by) VALUES(?,?,?,?,?,?,?,?,?,?,?)').run(...values,user.id)).insertedId;
+    if(old)await db.prepare('UPDATE customers SET name=?,normalized_name=?,customer_code=?,gstin=?,pan=?,credit_limit=?,credit_days=?,owner_id=?,status=?,billing_address=?,shipping_address=?,city=?,state=?,pincode=?,notes=?,updated_by=?,updated_at=now() WHERE id=?').run(...values,recordId);
+    else recordId=(await db.prepare('INSERT INTO customers(name,normalized_name,customer_code,gstin,pan,credit_limit,credit_days,owner_id,status,billing_address,shipping_address,city,state,pincode,notes,updated_by,created_by) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)').run(...values,user.id)).insertedId;
     const link=await validateLink(db,body.companyId??oldProfile?.company_id,body.tallyName??oldProfile?.tally_ledger_name,'customer');
-    await profile(db,'crm_customer_profiles','customer_id',recordId,{state_code:tax.stateCode,payment_terms:text(body.paymentTerms??oldProfile?.payment_terms,2000)||null,...link},user);
+    const brands=stringList(body.brandRelationships??oldProfile?.brand_relationships,'Brand relationships');
+    await profile(db,'crm_customer_profiles','customer_id',recordId,{state_code:tax.stateCode,payment_terms:text(body.paymentTerms??oldProfile?.payment_terms,2000)||null,backup_owner_id:backupOwnerId,territory:text(body.territory??oldProfile?.territory,200)||null,dealership:text(body.dealership??oldProfile?.dealership,500)||null,brand_relationships:brands?JSON.stringify(brands):null,...link},user);
     if(body.contacts!==undefined)await saveContacts(db,recordId,body.contacts,user,reason);
+    const duplicateSnapshot=duplicates.map(({id,name,gstin,customer_code,matchedFields})=>({id,name,gstin,customerCode:customer_code,matchedFields}));
+    const onboarding=await db.prepare('SELECT * FROM crm_customer_onboarding WHERE customer_id=? FOR UPDATE').get(recordId);
+    if(!onboarding){
+      await db.prepare("INSERT INTO crm_customer_onboarding(customer_id,status,submitted_by,duplicate_snapshot,created_by,updated_by) VALUES(?,'PENDING_APPROVAL',?,?::text::jsonb,?,?) RETURNING customer_id").get(recordId,user.id,JSON.stringify(duplicateSnapshot),user.id,user.id);
+      await db.prepare("INSERT INTO crm_customer_onboarding_events(customer_id,version,action,to_status,reason,detail,created_by) VALUES(?,1,'SUBMITTED','PENDING_APPROVAL',?,?::text::jsonb,?)").run(recordId,reason,JSON.stringify({duplicateCount:duplicates.length}),user.id);
+    }else if(old){
+      const version=onboarding.version+1;
+      await db.prepare("UPDATE crm_customer_onboarding SET status='PENDING_APPROVAL',version=?,submitted_by=?,submitted_at=now(),decided_by=NULL,decided_at=NULL,decision_reason=NULL,duplicate_snapshot=?::text::jsonb,updated_by=?,updated_at=now() WHERE customer_id=?").run(version,user.id,JSON.stringify(duplicateSnapshot),user.id,recordId);
+      await db.prepare("INSERT INTO crm_customer_onboarding_events(customer_id,version,action,from_status,to_status,reason,detail,created_by) VALUES(?,?,'RESUBMITTED',?,'PENDING_APPROVAL',?,?::text::jsonb,?)").run(recordId,version,onboarding.status,reason,JSON.stringify({duplicateCount:duplicates.length}),user.id);
+    }
     const result=await customerDetail(db,recordId);
-    await audit(db,user,'CUSTOMER',recordId,old,result,reason);return result;
+    await audit(db,user,'CUSTOMER',recordId,old,result,reason);return {...result,duplicateWarning:duplicates};
   });
+}
+
+export async function customerOnboarding(db,customerId){
+  return await db.prepare(`SELECT o.*,submitter.name AS submitted_by_name,decider.name AS decided_by_name
+    FROM crm_customer_onboarding o
+    JOIN users submitter ON submitter.id=o.submitted_by
+    LEFT JOIN users decider ON decider.id=o.decided_by
+    WHERE o.customer_id=?`).get(id(customerId))??null;
+}
+
+export async function decideCustomerOnboarding(db,customerId,body,user){
+  if(!hasPermission(user,'customers.approve'))throw error(403,'Customer approval permission is required.');
+  const decision=body.decision;
+  if(!['APPROVE','REJECT'].includes(decision))throw error(422,'Choose approve or reject.');
+  const why=required(body.reason,'Decision reason',1000),expected=Number(body.version);
+  if(!Number.isInteger(expected)||expected<1)throw error(422,'Reload the customer review before deciding.');
+  return transaction(db,user,why,async()=>{
+    const row=await db.prepare('SELECT * FROM crm_customer_onboarding WHERE customer_id=? FOR UPDATE').get(id(customerId));
+    if(!row)throw error(409,'This established customer has no CRM onboarding review.');
+    if(row.status!=='PENDING_APPROVAL'||row.version!==expected)throw error(409,'The customer review changed. Reload it before deciding.');
+    if(row.submitted_by===user.id)throw error(403,'The person who submitted or last edited this customer cannot approve or reject it.');
+    const next=decision==='APPROVE'?'APPROVED':'REJECTED';
+    await db.prepare('UPDATE crm_customer_onboarding SET status=?,decided_by=?,decided_at=now(),decision_reason=?,updated_by=?,updated_at=now() WHERE customer_id=?').run(next,user.id,why,user.id,row.customer_id);
+    await db.prepare('INSERT INTO crm_customer_onboarding_events(customer_id,version,action,from_status,to_status,reason,detail,created_by) VALUES(?,?,?,?,?,?,?::text::jsonb,?)').run(row.customer_id,row.version,decision==='APPROVE'?'APPROVED':'REJECTED',row.status,next,why,JSON.stringify({reviewedVersion:row.version}),user.id);
+    const result=await customerOnboarding(db,row.customer_id);
+    await audit(db,user,'CUSTOMER_ONBOARDING',row.customer_id,row,result,why,decision==='APPROVE'?'APPROVE':'REJECT');
+    return result;
+  });
+}
+
+export async function requireCustomerBillingApproval(db,customerId){
+  const review=await db.prepare('SELECT status FROM crm_customer_onboarding WHERE customer_id=?').get(id(customerId));
+  if(review&&review.status!=='APPROVED')throw error(409,'Customer onboarding must be approved by a different eligible reviewer before creating a sales order.');
+  return review;
 }
 async function saveContacts(db,customerId,contacts,user,reason) {
   if(!Array.isArray(contacts)||contacts.length>50)throw error(422,'Provide at most 50 contacts.');
@@ -154,15 +231,25 @@ export async function customerHistory(db,customerId,tab,{financial=false}={}) {
   if(tab==='invoices')return {data:[],available:false,reason:'Stored imports do not yet expose normalized invoice records. No invoice history or totals are inferred.'};
   const tables={enquiries:['enquiries','enquiry_number'],quotes:['quotations','quotation_number'],orders:['sales_orders','order_number']};
   if(!tables[tab])throw error(404,'Unknown history tab.');
-  const [table,number]=tables[tab];return {data:await db.prepare(`SELECT id,${number} AS number,status,created_at,updated_at FROM ${table} WHERE customer_id=? ORDER BY created_at DESC,id DESC LIMIT 100`).all(customer.id),limit:100};
+  const [table,number]=tables[tab],managed=tab==='quotes'?'EXISTS(SELECT 1 FROM crm_quotation_workflows w WHERE w.quotation_id=r.id)':tab==='orders'?'EXISTS(SELECT 1 FROM crm_order_workflows w WHERE w.sales_order_id=r.id)':'true';
+  const rows=await db.prepare(`SELECT r.id,r.${number} AS number,r.status,r.created_at,r.updated_at,${managed} AS managed FROM ${table} r WHERE r.customer_id=? ORDER BY r.created_at DESC,r.id DESC LIMIT 100`).all(customer.id);
+  return {data:rows.map(row=>({...row,href:commercialRecordHref(tab,row.id,row.managed)})),limit:100};
 }
-export async function itemDetail(db,itemId,{financial=false}={}) {
+export async function itemDetail(db,itemId,{financial=false,listPrices=false}={}) {
   const row=await db.prepare('SELECT *,pack_size::text AS pack_size FROM items WHERE id=?').get(id(itemId));if(!row)throw error(404,'Item not found.');
   const storedProfile=await db.prepare('SELECT *,moq::text AS moq,list_price::text AS list_price,discount_percent::text AS discount_percent FROM crm_item_profiles WHERE item_id=?').get(row.id);row.profile=storedProfile||{};
   if(!storedProfile){const links=await db.prepare("SELECT company_id,tally_name FROM crm_tally_item_links WHERE item_id=? AND status='ACTIVE' AND NOT is_deleted").all(row.id);if(links.length===1)row.profile={...row.profile,company_id:links[0].company_id,tally_stock_name:links[0].tally_name};}
   const p=row.profile,rows=p.company_id?await db.prepare(`SELECT name,base_unit,closing_quantity_text,fetched_at${financial?',closing_rate_text,closing_value::text AS closing_value':''} FROM tally_stock_items WHERE company_id=? AND name=?`).all(p.company_id,p.tally_stock_name):[];
   row.stock={linked:rows.length===1,matchCount:rows.length,note:'Read-only Tally stock; no reservation, adjustment or unit conversion is applied.',...(rows.length===1?rows[0]:{})};
-  row.prices=await db.prepare(`SELECT e.*,e.min_quantity::text AS min_quantity,e.unit_price::text AS unit_price,e.discount_percent::text AS discount_percent,l.name AS list_name,l.currency,l.effective_from,l.effective_to,l.discount_percent AS list_discount FROM crm_price_list_items e JOIN crm_price_lists l ON l.id=e.price_list_id WHERE e.item_id=? AND NOT e.is_deleted AND NOT l.is_deleted ORDER BY l.effective_from DESC,e.min_quantity`).all(row.id);
+  const hasStable=(await db.prepare("SELECT count(*) AS n FROM crm_tally_item_links WHERE item_id=? AND tally_record_key IS NOT NULL AND status='ACTIVE' AND NOT is_deleted").get(row.id)).n;
+  if(hasStable){
+    const stable=await stableItemLinks(db,row.id,{financial}),one=stable.length===1?stable[0]:null;
+    row.stock={linked:stable.length>0,matchCount:stable.length,companyId:one?.company_id??null,links:stable.map(l=>({companyId:l.company_id,companyName:l.company_name,recordKey:l.record_key,tallyGuid:l.guid,masterId:l.master_id,name:l.name})),
+      ...(one?{name:one.name,base_unit:one.uom,closing_quantity_text:one.closing_quantity_text,fetched_at:one.observed_at,...(financial?{closing_rate_text:one.closing_rate_text,closing_value:one.closing_value}:{})}:{}),
+      note:one?'Read-only Tally stock resolved by company and source identity; no unit conversion.':stable.length?'Multiple company links; no stock or financial values are combined.':'The linked source identity is missing or ambiguous; no name fallback is used.'};
+  }
+  if(!listPrices){delete row.profile.list_price;delete row.profile.discount_percent;}
+  row.prices=listPrices?await db.prepare(`SELECT e.*,e.min_quantity::text AS min_quantity,e.unit_price::text AS unit_price,e.discount_percent::text AS discount_percent,l.name AS list_name,l.currency,l.effective_from,l.effective_to,l.discount_percent AS list_discount FROM crm_price_list_items e JOIN crm_price_lists l ON l.id=e.price_list_id WHERE e.item_id=? AND NOT e.is_deleted AND NOT l.is_deleted ORDER BY l.effective_from DESC,e.min_quantity`).all(row.id):[];
   return row;
 }
 export async function saveItem(db,itemId,body,user) {
@@ -177,35 +264,15 @@ export async function saveItem(db,itemId,body,user) {
     else recordId=(await db.prepare('INSERT INTO items(part_code,description,hsn,uom,pack_size,status,updated_by,created_by) VALUES(?,?,?,?,?,?,?,?)').run(...values,user.id)).insertedId;
     const link=await validateLink(db,body.companyId??p?.company_id,body.tallyName??p?.tally_stock_name,'item');
     await profile(db,'crm_item_profiles','item_id',recordId,{moq:decimal(body.moq??p?.moq??1,'MOQ',{positive:true}),list_price:decimal(body.listPrice??p?.list_price??0,'List price'),discount_percent:decimal(body.discountPercent??p?.discount_percent??0,'Discount',{percent:true}),...link},user);
-    const result=await itemDetail(db,recordId);await audit(db,user,'ITEM',recordId,old,result,reason);return result;
+    const result=await itemDetail(db,recordId,{listPrices:hasPermission(user,'items.list_price.read')});await audit(db,user,'ITEM',recordId,old,result,reason);return result;
   });
 }
-export async function priceLists(db) {return db.prepare('SELECT * FROM crm_price_lists ORDER BY effective_from DESC,id DESC').all();}
-export async function priceListDetail(db,listId) {const row=await db.prepare('SELECT * FROM crm_price_lists WHERE id=?').get(id(listId));if(!row)throw error(404,'Price list not found.');return {...row,entries:await db.prepare('SELECT e.*,e.min_quantity::text AS min_quantity,e.unit_price::text AS unit_price,e.discount_percent::text AS discount_percent,i.part_code FROM crm_price_list_items e JOIN items i ON i.id=e.item_id WHERE e.price_list_id=? AND NOT e.is_deleted ORDER BY e.id').all(row.id)};}
+export async function priceLists(db) {return db.prepare("SELECT p.*,p.effective_from::text AS effective_from,p.effective_to::text AS effective_to,p.discount_percent::text AS discount_percent,w.id AS review_id,coalesce(w.status,'NO_RETAINED_REVIEW') AS review_status FROM crm_price_lists p LEFT JOIN crm_price_import_workflows w ON w.target_list_id=p.id ORDER BY p.effective_from DESC,p.id DESC").all();}
+export async function priceListDetail(db,listId) {const row=await db.prepare("SELECT p.*,p.effective_from::text AS effective_from,p.effective_to::text AS effective_to,p.discount_percent::text AS discount_percent,w.id AS review_id,coalesce(w.status,'NO_RETAINED_REVIEW') AS review_status FROM crm_price_lists p LEFT JOIN crm_price_import_workflows w ON w.target_list_id=p.id WHERE p.id=?").get(id(listId));if(!row)throw error(404,'Price list not found.');return {...row,entries:await db.prepare('SELECT e.*,e.min_quantity::text AS min_quantity,e.unit_price::text AS unit_price,e.discount_percent::text AS discount_percent,i.part_code FROM crm_price_list_items e JOIN items i ON i.id=e.item_id WHERE e.price_list_id=? AND NOT e.is_deleted ORDER BY e.id').all(row.id)};}
 export async function savePriceList(db,listId,body,user) {
-  const reason=editReason(body,!!listId);
-  return transaction(db,user,reason,async()=>{
-    if(!validDate(body.effectiveFrom)||body.effectiveTo&&!validDate(body.effectiveTo)||body.effectiveTo&&body.effectiveTo<body.effectiveFrom)throw error(422,'Provide a valid price-list date range.');
-    const currency=required(body.currency||'INR','Currency',3).toUpperCase();if(!/^[A-Z]{3}$/.test(currency))throw error(422,'Currency must have three letters.');
-    const values=[required(body.name,'Price-list name'),currency,body.effectiveFrom,body.effectiveTo||null,decimal(body.discountPercent??0,'Discount',{percent:true}),status(body.status||'ACTIVE',['ACTIVE','INACTIVE','ARCHIVED']),body.status==='ARCHIVED'];
-    let recordId=listId?id(listId):null;
-    if(recordId){if(!await db.prepare('SELECT id FROM crm_price_lists WHERE id=? FOR UPDATE').get(recordId))throw error(404,'Price list not found.');await db.prepare('UPDATE crm_price_lists SET name=?,currency=?,effective_from=?,effective_to=?,discount_percent=?,status=?,is_deleted=? WHERE id=?').run(...values,recordId);}
-    else recordId=(await db.prepare('INSERT INTO crm_price_lists(name,currency,effective_from,effective_to,discount_percent,status,is_deleted,created_by) VALUES(?,?,?,?,?,?,?,?)').run(...values,user.id)).insertedId;
-    if(!Array.isArray(body.entries)||body.entries.length>200)throw error(422,'Provide at most 200 price tiers.');
-    const old=await db.prepare('SELECT *,min_quantity::text AS min_quantity FROM crm_price_list_items WHERE price_list_id=? FOR UPDATE').all(recordId),keep=new Set();
-    for(const entry of body.entries){
-      if(!entry||typeof entry!=='object'||Array.isArray(entry))throw error(422,'Each price tier must be an object.');
-      const item=await active(db,'items',entry.itemId,'item'),minimum=decimal(entry.minQuantity??1,'Minimum quantity',{positive:true}),price=decimal(entry.unitPrice,'Unit price'),discount=decimal(entry.discountPercent??0,'Discount',{percent:true});
-      const previous=entry.id?old.find(row=>row.id===id(entry.id)):old.find(row=>row.item_id===item&&decimalKey(row.min_quantity)===decimalKey(minimum));
-      if(entry.id&&!previous)throw error(422,'Price tier belongs to another list.');
-      let tierId;
-      if(previous){tierId=previous.id;await db.prepare("UPDATE crm_price_list_items SET item_id=?,min_quantity=?,unit_price=?,discount_percent=?,status='ACTIVE',is_deleted=false WHERE id=?").run(item,minimum,price,discount,tierId);}
-      else tierId=(await db.prepare('INSERT INTO crm_price_list_items(price_list_id,item_id,min_quantity,unit_price,discount_percent,created_by) VALUES(?,?,?,?,?,?)').run(recordId,item,minimum,price,discount,user.id)).insertedId;
-      if(keep.has(tierId))throw error(422,'Duplicate price tier.');keep.add(tierId);
-    }
-    for(const row of old)if(!keep.has(row.id)&&!row.is_deleted)await db.prepare("UPDATE crm_price_list_items SET status='ARCHIVED',is_deleted=true WHERE id=?").run(row.id);
-    return priceListDetail(db,recordId);
-  });
+  // This former direct activation route remains as a clear migration error for
+  // older clients. Manual creation is fully supported by reviewed manual input.
+  throw error(409,'Price lists are immutable reviewed versions. Use the manual price-list preview and independent approval flow at /items/price-imports.');
 }
 export async function saveEnquiry(db,enquiryId,body,user) {
   await requireCustomerHandler(db,body.customerId,user);

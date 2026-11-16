@@ -1,0 +1,4251 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "ControlDesk automation interface",
+    "version": "1.0.0",
+    "description": "Design contract. PLANNED endpoints are not implemented or enabled merely by this document. Only this existing app serves the eventual interface; no external server is configured."
+  },
+  "servers": [
+    {
+      "url": "/"
+    }
+  ],
+  "paths": {
+    "/api/v1/automation/customers/match": {
+      "get": {
+        "operationId": "matchCustomers",
+        "summary": "matchCustomers",
+        "security": [
+          {
+            "ServiceToken": []
+          }
+        ],
+        "x-required-scope": "automation.read",
+        "x-implementation-status": "PLANNED",
+        "parameters": [
+          {
+            "name": "companyId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          },
+          {
+            "name": "gstin",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "maxLength": 250
+            }
+          },
+          {
+            "name": "email",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "maxLength": 250
+            }
+          },
+          {
+            "name": "name",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "maxLength": 250
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Bounded company-scoped result; draft/queue receipt for writes. No approval or send is performed.",
+            "headers": {
+              "X-ControlDesk-API-Version": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "1.0.0"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/CustomerCandidate"
+                      },
+                      "maxItems": 100
+                    },
+                    "companyId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "freshness": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Freshness"
+                      },
+                      "maxItems": 30
+                    },
+                    "pagination": {
+                      "type": "object",
+                      "properties": {
+                        "page": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "pageSize": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 100
+                        },
+                        "hasMore": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "page",
+                        "pageSize",
+                        "hasMore"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "companyId",
+                    "freshness",
+                    "pagination"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Request refused; no partial mutation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, revoked or expired service token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong scope or company; no fallback to staff access",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Request refused; no partial mutation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Replay mismatch or unconfirmed workflow setting",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Size limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request refused; no partial mutation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit; Retry-After applies",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Request refused; no partial mutation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/automation/items": {
+      "get": {
+        "operationId": "lookupItems",
+        "summary": "lookupItems",
+        "security": [
+          {
+            "ServiceToken": []
+          }
+        ],
+        "x-required-scope": "automation.read",
+        "x-implementation-status": "PLANNED",
+        "parameters": [
+          {
+            "name": "companyId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          },
+          {
+            "name": "partCode",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "maxLength": 250
+            }
+          },
+          {
+            "name": "customerPartCode",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "maxLength": 250
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "maxLength": 250
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Bounded company-scoped result; draft/queue receipt for writes. No approval or send is performed.",
+            "headers": {
+              "X-ControlDesk-API-Version": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "1.0.0"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Item"
+                      },
+                      "maxItems": 100
+                    },
+                    "companyId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "freshness": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Freshness"
+                      },
+                      "maxItems": 30
+                    },
+                    "pagination": {
+                      "type": "object",
+                      "properties": {
+                        "page": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "pageSize": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 100
+                        },
+                        "hasMore": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "page",
+                        "pageSize",
+                        "hasMore"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "companyId",
+                    "freshness",
+                    "pagination"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Request refused; no partial mutation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, revoked or expired service token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong scope or company; no fallback to staff access",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Request refused; no partial mutation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Replay mismatch or unconfirmed workflow setting",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Size limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request refused; no partial mutation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit; Retry-After applies",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Request refused; no partial mutation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/automation/price-availability/preview": {
+      "post": {
+        "operationId": "previewPriceAvailability",
+        "summary": "previewPriceAvailability",
+        "security": [
+          {
+            "ServiceToken": []
+          }
+        ],
+        "x-required-scope": "automation.read",
+        "x-implementation-status": "PLANNED",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Bounded company-scoped result; draft/queue receipt for writes. No approval or send is performed.",
+            "headers": {
+              "X-ControlDesk-API-Version": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "1.0.0"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/PriceAvailability"
+                      },
+                      "maxItems": 100
+                    },
+                    "companyId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "freshness": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Freshness"
+                      },
+                      "maxItems": 30
+                    },
+                    "pagination": {
+                      "type": "object",
+                      "properties": {
+                        "page": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "pageSize": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 100
+                        },
+                        "hasMore": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "page",
+                        "pageSize",
+                        "hasMore"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "companyId",
+                    "freshness",
+                    "pagination"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Request refused; no partial mutation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, revoked or expired service token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong scope or company; no fallback to staff access",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Request refused; no partial mutation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Replay mismatch or unconfirmed workflow setting",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Size limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request refused; no partial mutation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit; Retry-After applies",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Request refused; no partial mutation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PriceRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/automation/orders/{id}": {
+      "get": {
+        "operationId": "orderStatus",
+        "summary": "orderStatus",
+        "security": [
+          {
+            "ServiceToken": []
+          }
+        ],
+        "x-required-scope": "automation.read",
+        "x-implementation-status": "PLANNED",
+        "parameters": [
+          {
+            "name": "companyId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Bounded company-scoped result; draft/queue receipt for writes. No approval or send is performed.",
+            "headers": {
+              "X-ControlDesk-API-Version": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "1.0.0"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Order"
+                      },
+                      "maxItems": 100
+                    },
+                    "companyId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "freshness": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Freshness"
+                      },
+                      "maxItems": 30
+                    },
+                    "pagination": {
+                      "type": "object",
+                      "properties": {
+                        "page": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "pageSize": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 100
+                        },
+                        "hasMore": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "page",
+                        "pageSize",
+                        "hasMore"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "companyId",
+                    "freshness",
+                    "pagination"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Request refused; no partial mutation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, revoked or expired service token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong scope or company; no fallback to staff access",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Request refused; no partial mutation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Replay mismatch or unconfirmed workflow setting",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Size limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request refused; no partial mutation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit; Retry-After applies",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Request refused; no partial mutation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/automation/invoices": {
+      "get": {
+        "operationId": "invoiceReferences",
+        "summary": "invoiceReferences",
+        "security": [
+          {
+            "ServiceToken": []
+          }
+        ],
+        "x-required-scope": "automation.read",
+        "x-implementation-status": "PLANNED",
+        "parameters": [
+          {
+            "name": "companyId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          },
+          {
+            "name": "customerId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Bounded company-scoped result; draft/queue receipt for writes. No approval or send is performed.",
+            "headers": {
+              "X-ControlDesk-API-Version": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "1.0.0"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Invoice"
+                      },
+                      "maxItems": 100
+                    },
+                    "companyId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "freshness": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Freshness"
+                      },
+                      "maxItems": 30
+                    },
+                    "pagination": {
+                      "type": "object",
+                      "properties": {
+                        "page": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "pageSize": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 100
+                        },
+                        "hasMore": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "page",
+                        "pageSize",
+                        "hasMore"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "companyId",
+                    "freshness",
+                    "pagination"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Request refused; no partial mutation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, revoked or expired service token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong scope or company; no fallback to staff access",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Request refused; no partial mutation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Replay mismatch or unconfirmed workflow setting",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Size limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request refused; no partial mutation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit; Retry-After applies",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Request refused; no partial mutation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/automation/documents/{handle}": {
+      "get": {
+        "operationId": "readDocument",
+        "summary": "readDocument",
+        "security": [
+          {
+            "ServiceToken": []
+          }
+        ],
+        "x-required-scope": "automation.read",
+        "x-implementation-status": "PLANNED",
+        "parameters": [
+          {
+            "name": "companyId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          },
+          {
+            "name": "handle",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 250
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Bounded company-scoped result; draft/queue receipt for writes. No approval or send is performed.",
+            "headers": {
+              "X-ControlDesk-API-Version": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "1.0.0"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Document"
+                      },
+                      "maxItems": 100
+                    },
+                    "companyId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "freshness": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Freshness"
+                      },
+                      "maxItems": 30
+                    },
+                    "pagination": {
+                      "type": "object",
+                      "properties": {
+                        "page": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "pageSize": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 100
+                        },
+                        "hasMore": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "page",
+                        "pageSize",
+                        "hasMore"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "companyId",
+                    "freshness",
+                    "pagination"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Request refused; no partial mutation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, revoked or expired service token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong scope or company; no fallback to staff access",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Request refused; no partial mutation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Replay mismatch or unconfirmed workflow setting",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Size limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request refused; no partial mutation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit; Retry-After applies",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Request refused; no partial mutation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/automation/dispatches": {
+      "get": {
+        "operationId": "dispatchStatus",
+        "summary": "dispatchStatus",
+        "security": [
+          {
+            "ServiceToken": []
+          }
+        ],
+        "x-required-scope": "automation.read",
+        "x-implementation-status": "PLANNED",
+        "parameters": [
+          {
+            "name": "companyId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          },
+          {
+            "name": "customerId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Bounded company-scoped result; draft/queue receipt for writes. No approval or send is performed.",
+            "headers": {
+              "X-ControlDesk-API-Version": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "1.0.0"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Dispatch"
+                      },
+                      "maxItems": 100
+                    },
+                    "companyId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "freshness": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Freshness"
+                      },
+                      "maxItems": 30
+                    },
+                    "pagination": {
+                      "type": "object",
+                      "properties": {
+                        "page": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "pageSize": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 100
+                        },
+                        "hasMore": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "page",
+                        "pageSize",
+                        "hasMore"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "companyId",
+                    "freshness",
+                    "pagination"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Request refused; no partial mutation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, revoked or expired service token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong scope or company; no fallback to staff access",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Request refused; no partial mutation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Replay mismatch or unconfirmed workflow setting",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Size limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request refused; no partial mutation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit; Retry-After applies",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Request refused; no partial mutation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/automation/tickets/{id}": {
+      "get": {
+        "operationId": "ticketStatus",
+        "summary": "ticketStatus",
+        "security": [
+          {
+            "ServiceToken": []
+          }
+        ],
+        "x-required-scope": "automation.read",
+        "x-implementation-status": "PLANNED",
+        "parameters": [
+          {
+            "name": "companyId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Bounded company-scoped result; draft/queue receipt for writes. No approval or send is performed.",
+            "headers": {
+              "X-ControlDesk-API-Version": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "1.0.0"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Ticket"
+                      },
+                      "maxItems": 100
+                    },
+                    "companyId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "freshness": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Freshness"
+                      },
+                      "maxItems": 30
+                    },
+                    "pagination": {
+                      "type": "object",
+                      "properties": {
+                        "page": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "pageSize": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 100
+                        },
+                        "hasMore": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "page",
+                        "pageSize",
+                        "hasMore"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "companyId",
+                    "freshness",
+                    "pagination"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Request refused; no partial mutation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, revoked or expired service token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong scope or company; no fallback to staff access",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Request refused; no partial mutation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Replay mismatch or unconfirmed workflow setting",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Size limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request refused; no partial mutation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit; Retry-After applies",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Request refused; no partial mutation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/automation/templates": {
+      "get": {
+        "operationId": "listTemplates",
+        "summary": "listTemplates",
+        "security": [
+          {
+            "ServiceToken": []
+          }
+        ],
+        "x-required-scope": "automation.read",
+        "x-implementation-status": "PLANNED",
+        "parameters": [
+          {
+            "name": "companyId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Bounded company-scoped result; draft/queue receipt for writes. No approval or send is performed.",
+            "headers": {
+              "X-ControlDesk-API-Version": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "1.0.0"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Template"
+                      },
+                      "maxItems": 100
+                    },
+                    "companyId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "freshness": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Freshness"
+                      },
+                      "maxItems": 30
+                    },
+                    "pagination": {
+                      "type": "object",
+                      "properties": {
+                        "page": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "pageSize": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 100
+                        },
+                        "hasMore": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "page",
+                        "pageSize",
+                        "hasMore"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "companyId",
+                    "freshness",
+                    "pagination"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Request refused; no partial mutation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, revoked or expired service token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong scope or company; no fallback to staff access",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Request refused; no partial mutation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Replay mismatch or unconfirmed workflow setting",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Size limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request refused; no partial mutation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit; Retry-After applies",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Request refused; no partial mutation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/automation/switches": {
+      "get": {
+        "operationId": "readSwitches",
+        "summary": "readSwitches",
+        "security": [
+          {
+            "ServiceToken": []
+          }
+        ],
+        "x-required-scope": "automation.read",
+        "x-implementation-status": "IMPLEMENTED",
+        "parameters": [
+          {
+            "name": "companyId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Bounded company-scoped result; draft/queue receipt for writes. No approval or send is performed.",
+            "headers": {
+              "X-ControlDesk-API-Version": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "1.0.0"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Switch"
+                      },
+                      "maxItems": 100
+                    },
+                    "companyId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "freshness": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Freshness"
+                      },
+                      "maxItems": 30
+                    },
+                    "pagination": {
+                      "type": "object",
+                      "properties": {
+                        "page": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "pageSize": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 100
+                        },
+                        "hasMore": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "page",
+                        "pageSize",
+                        "hasMore"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "companyId",
+                    "freshness",
+                    "pagination"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Request refused; no partial mutation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, revoked or expired service token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong scope or company; no fallback to staff access",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Request refused; no partial mutation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Replay mismatch or unconfirmed workflow setting",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Size limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request refused; no partial mutation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit; Retry-After applies",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Request refused; no partial mutation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/automation/settings": {
+      "get": {
+        "operationId": "readSettings",
+        "summary": "readSettings",
+        "security": [
+          {
+            "ServiceToken": []
+          }
+        ],
+        "x-required-scope": "automation.read",
+        "x-implementation-status": "PLANNED",
+        "parameters": [
+          {
+            "name": "companyId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Bounded company-scoped result; draft/queue receipt for writes. No approval or send is performed.",
+            "headers": {
+              "X-ControlDesk-API-Version": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "1.0.0"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Setting"
+                      },
+                      "maxItems": 100
+                    },
+                    "companyId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "freshness": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Freshness"
+                      },
+                      "maxItems": 30
+                    },
+                    "pagination": {
+                      "type": "object",
+                      "properties": {
+                        "page": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "pageSize": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 100
+                        },
+                        "hasMore": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "page",
+                        "pageSize",
+                        "hasMore"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "companyId",
+                    "freshness",
+                    "pagination"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Request refused; no partial mutation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, revoked or expired service token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong scope or company; no fallback to staff access",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Request refused; no partial mutation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Replay mismatch or unconfirmed workflow setting",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Size limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request refused; no partial mutation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit; Retry-After applies",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Request refused; no partial mutation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/automation/intake": {
+      "post": {
+        "operationId": "queueIntake",
+        "summary": "queueIntake",
+        "security": [
+          {
+            "ServiceToken": []
+          }
+        ],
+        "x-required-scope": "automation.write.intake",
+        "x-implementation-status": "PLANNED",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 200
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Bounded company-scoped result; draft/queue receipt for writes. No approval or send is performed.",
+            "headers": {
+              "X-ControlDesk-API-Version": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "1.0.0"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/QueueReceipt"
+                      },
+                      "maxItems": 100
+                    },
+                    "companyId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "freshness": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Freshness"
+                      },
+                      "maxItems": 30
+                    },
+                    "pagination": {
+                      "type": "object",
+                      "properties": {
+                        "page": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "pageSize": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 100
+                        },
+                        "hasMore": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "page",
+                        "pageSize",
+                        "hasMore"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "companyId",
+                    "freshness",
+                    "pagination"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Request refused; no partial mutation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, revoked or expired service token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong scope or company; no fallback to staff access",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Request refused; no partial mutation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Replay mismatch or unconfirmed workflow setting",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Size limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request refused; no partial mutation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit; Retry-After applies",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Request refused; no partial mutation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IntakeRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/automation/drafts": {
+      "post": {
+        "operationId": "createDraft",
+        "summary": "createDraft",
+        "security": [
+          {
+            "ServiceToken": []
+          }
+        ],
+        "x-required-scope": "automation.write.drafts",
+        "x-implementation-status": "PLANNED",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 200
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Bounded company-scoped result; draft/queue receipt for writes. No approval or send is performed.",
+            "headers": {
+              "X-ControlDesk-API-Version": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "1.0.0"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/QueueReceipt"
+                      },
+                      "maxItems": 100
+                    },
+                    "companyId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "freshness": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Freshness"
+                      },
+                      "maxItems": 30
+                    },
+                    "pagination": {
+                      "type": "object",
+                      "properties": {
+                        "page": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "pageSize": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 100
+                        },
+                        "hasMore": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "page",
+                        "pageSize",
+                        "hasMore"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "companyId",
+                    "freshness",
+                    "pagination"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Request refused; no partial mutation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, revoked or expired service token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong scope or company; no fallback to staff access",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Request refused; no partial mutation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Replay mismatch or unconfirmed workflow setting",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Size limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request refused; no partial mutation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit; Retry-After applies",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Request refused; no partial mutation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DraftRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/automation/review-items": {
+      "post": {
+        "operationId": "queueReview",
+        "summary": "queueReview",
+        "security": [
+          {
+            "ServiceToken": []
+          }
+        ],
+        "x-required-scope": "automation.write.intake",
+        "x-implementation-status": "PLANNED",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 200
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Bounded company-scoped result; draft/queue receipt for writes. No approval or send is performed.",
+            "headers": {
+              "X-ControlDesk-API-Version": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "1.0.0"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/QueueReceipt"
+                      },
+                      "maxItems": 100
+                    },
+                    "companyId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "freshness": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Freshness"
+                      },
+                      "maxItems": 30
+                    },
+                    "pagination": {
+                      "type": "object",
+                      "properties": {
+                        "page": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "pageSize": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 100
+                        },
+                        "hasMore": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "page",
+                        "pageSize",
+                        "hasMore"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "companyId",
+                    "freshness",
+                    "pagination"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Request refused; no partial mutation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, revoked or expired service token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong scope or company; no fallback to staff access",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Request refused; no partial mutation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Replay mismatch or unconfirmed workflow setting",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Size limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request refused; no partial mutation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit; Retry-After applies",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Request refused; no partial mutation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/automation/tasks": {
+      "post": {
+        "operationId": "queueTask",
+        "summary": "queueTask",
+        "security": [
+          {
+            "ServiceToken": []
+          }
+        ],
+        "x-required-scope": "automation.write.intake",
+        "x-implementation-status": "PLANNED",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 200
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Bounded company-scoped result; draft/queue receipt for writes. No approval or send is performed.",
+            "headers": {
+              "X-ControlDesk-API-Version": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "1.0.0"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/QueueReceipt"
+                      },
+                      "maxItems": 100
+                    },
+                    "companyId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "freshness": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Freshness"
+                      },
+                      "maxItems": 30
+                    },
+                    "pagination": {
+                      "type": "object",
+                      "properties": {
+                        "page": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "pageSize": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 100
+                        },
+                        "hasMore": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "page",
+                        "pageSize",
+                        "hasMore"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "companyId",
+                    "freshness",
+                    "pagination"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Request refused; no partial mutation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, revoked or expired service token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong scope or company; no fallback to staff access",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Request refused; no partial mutation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Replay mismatch or unconfirmed workflow setting",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Size limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request refused; no partial mutation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit; Retry-After applies",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Request refused; no partial mutation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TaskRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/automation/enquiries": {
+      "post": {
+        "operationId": "queueEnquiry",
+        "summary": "queueEnquiry",
+        "security": [
+          {
+            "ServiceToken": []
+          }
+        ],
+        "x-required-scope": "automation.write.intake",
+        "x-implementation-status": "PLANNED",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 200
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Bounded company-scoped result; draft/queue receipt for writes. No approval or send is performed.",
+            "headers": {
+              "X-ControlDesk-API-Version": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "1.0.0"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/QueueReceipt"
+                      },
+                      "maxItems": 100
+                    },
+                    "companyId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "freshness": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Freshness"
+                      },
+                      "maxItems": 30
+                    },
+                    "pagination": {
+                      "type": "object",
+                      "properties": {
+                        "page": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "pageSize": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 100
+                        },
+                        "hasMore": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "page",
+                        "pageSize",
+                        "hasMore"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "companyId",
+                    "freshness",
+                    "pagination"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Request refused; no partial mutation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, revoked or expired service token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong scope or company; no fallback to staff access",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Request refused; no partial mutation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Replay mismatch or unconfirmed workflow setting",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Size limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request refused; no partial mutation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit; Retry-After applies",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Request refused; no partial mutation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EnquiryRequest"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "ServiceToken": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Scoped service credential; never a staff session or connector credential."
+      }
+    },
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "code": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "correlationId": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "details": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "error",
+          "code"
+        ],
+        "additionalProperties": false
+      },
+      "Freshness": {
+        "type": "object",
+        "properties": {
+          "dataset": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "status": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "sourceTimestamp": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "lastSuccessfulSync": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "ageSeconds": {
+            "type": "integer",
+            "minimum": 0,
+            "nullable": true
+          }
+        },
+        "required": [
+          "dataset",
+          "status",
+          "sourceTimestamp",
+          "lastSuccessfulSync",
+          "ageSeconds"
+        ],
+        "additionalProperties": false
+      },
+      "CustomerCandidate": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 250
+          },
+          "gstin": {
+            "type": "string",
+            "maxLength": 20,
+            "nullable": true
+          },
+          "matchMethods": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 80
+            },
+            "maxItems": 10
+          },
+          "confidence": {
+            "type": "string",
+            "pattern": "^(?:0(?:\\.\\d{1,6})?|1(?:\\.0{1,6})?)$",
+            "nullable": true
+          },
+          "requiresReview": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "gstin",
+          "matchMethods",
+          "confidence",
+          "requiresReview"
+        ],
+        "additionalProperties": false
+      },
+      "Item": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "partCode": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "unit": {
+            "type": "string",
+            "maxLength": 40
+          },
+          "matchedBy": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "sourceRecordKey": {
+            "type": "string",
+            "maxLength": 250,
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "partCode",
+          "description",
+          "unit",
+          "matchedBy",
+          "sourceRecordKey"
+        ],
+        "additionalProperties": false
+      },
+      "PriceAvailability": {
+        "type": "object",
+        "properties": {
+          "customerId": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "itemId": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "currency": {
+            "type": "string",
+            "maxLength": 3,
+            "nullable": true
+          },
+          "netUnitPrice": {
+            "type": "string",
+            "pattern": "^-?\\d{1,24}(?:\\.\\d{1,6})?$",
+            "nullable": true
+          },
+          "requestedQuantity": {
+            "type": "string",
+            "pattern": "^-?\\d{1,24}(?:\\.\\d{1,6})?$"
+          },
+          "availableQuantity": {
+            "type": "string",
+            "pattern": "^-?\\d{1,24}(?:\\.\\d{1,6})?$",
+            "nullable": true
+          },
+          "unit": {
+            "type": "string",
+            "maxLength": 40,
+            "nullable": true
+          },
+          "available": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "blockedBy": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 250
+            },
+            "maxItems": 100
+          },
+          "priceFingerprint": {
+            "type": "string",
+            "maxLength": 64,
+            "nullable": true
+          },
+          "stockFingerprint": {
+            "type": "string",
+            "maxLength": 64,
+            "nullable": true
+          }
+        },
+        "required": [
+          "customerId",
+          "itemId",
+          "currency",
+          "netUnitPrice",
+          "requestedQuantity",
+          "availableQuantity",
+          "unit",
+          "available",
+          "status",
+          "blockedBy",
+          "priceFingerprint",
+          "stockFingerprint"
+        ],
+        "additionalProperties": false
+      },
+      "OrderLine": {
+        "type": "object",
+        "properties": {
+          "itemId": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "acceptedQuantity": {
+            "type": "string",
+            "pattern": "^-?\\d{1,24}(?:\\.\\d{1,6})?$"
+          },
+          "suppliedQuantity": {
+            "type": "string",
+            "pattern": "^-?\\d{1,24}(?:\\.\\d{1,6})?$",
+            "nullable": true
+          },
+          "pendingQuantity": {
+            "type": "string",
+            "pattern": "^-?\\d{1,24}(?:\\.\\d{1,6})?$",
+            "nullable": true
+          },
+          "unit": {
+            "type": "string",
+            "maxLength": 40
+          }
+        },
+        "required": [
+          "itemId",
+          "acceptedQuantity",
+          "suppliedQuantity",
+          "pendingQuantity",
+          "unit"
+        ],
+        "additionalProperties": false
+      },
+      "Order": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "customerId": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "status": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OrderLine"
+            },
+            "maxItems": 1000
+          }
+        },
+        "required": [
+          "id",
+          "customerId",
+          "status",
+          "lines"
+        ],
+        "additionalProperties": false
+      },
+      "Invoice": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 250
+          },
+          "customerId": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "reference": {
+            "type": "string",
+            "maxLength": 250
+          },
+          "date": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "documentHandle": {
+            "type": "string",
+            "maxLength": 250,
+            "nullable": true
+          },
+          "gstMismatch": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "creditNoteReferences": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 250
+            },
+            "maxItems": 100
+          },
+          "debitNoteReferences": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 250
+            },
+            "maxItems": 100
+          }
+        },
+        "required": [
+          "id",
+          "customerId",
+          "reference",
+          "date",
+          "documentHandle",
+          "gstMismatch",
+          "creditNoteReferences",
+          "debitNoteReferences"
+        ],
+        "additionalProperties": false
+      },
+      "Document": {
+        "type": "object",
+        "properties": {
+          "handle": {
+            "type": "string",
+            "maxLength": 250
+          },
+          "contentType": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "byteCount": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "downloadPath": {
+            "type": "string",
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "handle",
+          "contentType",
+          "byteCount",
+          "downloadPath"
+        ],
+        "additionalProperties": false
+      },
+      "Dispatch": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 250
+          },
+          "orderId": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "status": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "lrReference": {
+            "type": "string",
+            "maxLength": 250,
+            "nullable": true
+          },
+          "podHandle": {
+            "type": "string",
+            "maxLength": 250,
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "orderId",
+          "status",
+          "lrReference",
+          "podHandle"
+        ],
+        "additionalProperties": false
+      },
+      "Ticket": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 250
+          },
+          "customerId": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "status": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "slaState": {
+            "type": "string",
+            "maxLength": 80
+          }
+        },
+        "required": [
+          "id",
+          "customerId",
+          "status",
+          "slaState"
+        ],
+        "additionalProperties": false
+      },
+      "Template": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 250
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "category": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "status": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "placeholders": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 80
+            },
+            "maxItems": 100
+          },
+          "approvedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "category",
+          "status",
+          "placeholders",
+          "approvedAt"
+        ],
+        "additionalProperties": false
+      },
+      "Switch": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "enabled": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "key",
+          "enabled"
+        ],
+        "additionalProperties": false
+      },
+      "Setting": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "EMPTY",
+              "PROPOSED",
+              "ENTERED",
+              "CONFIRMED",
+              "REJECTED"
+            ]
+          },
+          "usable": {
+            "type": "boolean"
+          },
+          "value": {
+            "nullable": true,
+            "description": "Allowlisted operational values only, and only when CONFIRMED. No secrets or financial policy internals."
+          }
+        },
+        "required": [
+          "key",
+          "status",
+          "usable",
+          "value"
+        ],
+        "additionalProperties": false
+      },
+      "QueueReceipt": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 250
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "QUEUED",
+              "REVIEW_REQUIRED"
+            ]
+          },
+          "requiresReview": {
+            "type": "boolean"
+          },
+          "reviewItemId": {
+            "type": "string",
+            "maxLength": 250,
+            "nullable": true
+          },
+          "ownerId": {
+            "type": "integer",
+            "minimum": 1,
+            "nullable": true
+          },
+          "backupOwnerId": {
+            "type": "integer",
+            "minimum": 1,
+            "nullable": true
+          },
+          "dueAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "blockedBy": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 250
+            },
+            "maxItems": 100
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "requiresReview",
+          "reviewItemId",
+          "ownerId",
+          "backupOwnerId",
+          "dueAt",
+          "blockedBy"
+        ],
+        "additionalProperties": false
+      },
+      "PriceRequest": {
+        "type": "object",
+        "properties": {
+          "companyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "customerId": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "itemId": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "quantity": {
+            "type": "string",
+            "pattern": "^\\d{1,24}(?:\\.\\d{1,6})?$"
+          },
+          "level": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 3
+          },
+          "basis": {
+            "type": "string",
+            "enum": [
+              "FREE_STOCK",
+              "RESERVED_STOCK"
+            ]
+          },
+          "reservationKey": {
+            "type": "string",
+            "maxLength": 250
+          }
+        },
+        "required": [
+          "companyId",
+          "customerId",
+          "itemId",
+          "quantity",
+          "basis"
+        ],
+        "additionalProperties": false
+      },
+      "IntakeRequest": {
+        "type": "object",
+        "properties": {
+          "companyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 1000
+          },
+          "provider": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "providerMessageId": {
+            "type": "string",
+            "maxLength": 250
+          },
+          "threadId": {
+            "type": "string",
+            "maxLength": 250
+          },
+          "sender": {
+            "type": "string",
+            "format": "email",
+            "maxLength": 254
+          },
+          "intent": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "secondaryIntents": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 80
+            },
+            "maxItems": 20
+          },
+          "confidence": {
+            "type": "string",
+            "pattern": "^(?:0(?:\\.\\d{1,6})?|1(?:\\.0{1,6})?)$",
+            "nullable": true
+          },
+          "subject": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "bodyText": {
+            "type": "string",
+            "maxLength": 20000
+          },
+          "extractedIds": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "maxLength": 80
+                },
+                "value": {
+                  "type": "string",
+                  "maxLength": 250
+                }
+              },
+              "required": [
+                "kind",
+                "value"
+              ],
+              "additionalProperties": false
+            },
+            "maxItems": 100
+          },
+          "attachmentReferences": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 250
+            },
+            "maxItems": 20
+          }
+        },
+        "required": [
+          "companyId",
+          "reason",
+          "provider",
+          "providerMessageId",
+          "sender",
+          "intent",
+          "confidence",
+          "attachmentReferences"
+        ],
+        "additionalProperties": false
+      },
+      "DraftRequest": {
+        "type": "object",
+        "properties": {
+          "companyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 1000
+          },
+          "customerId": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "templateId": {
+            "type": "string",
+            "maxLength": 250
+          },
+          "templateVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "subject": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "bodyText": {
+            "type": "string",
+            "maxLength": 20000
+          },
+          "recipientContactIds": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "maxItems": 20
+          },
+          "attachmentReferences": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 250
+            },
+            "maxItems": 20
+          },
+          "sourceIntakeId": {
+            "type": "string",
+            "maxLength": 250
+          },
+          "outboundKey": {
+            "type": "string",
+            "maxLength": 200
+          }
+        },
+        "required": [
+          "companyId",
+          "reason",
+          "customerId",
+          "templateId",
+          "templateVersion",
+          "subject",
+          "bodyText",
+          "recipientContactIds",
+          "attachmentReferences",
+          "outboundKey"
+        ],
+        "additionalProperties": false
+      },
+      "ReviewRequest": {
+        "type": "object",
+        "properties": {
+          "companyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 1000
+          },
+          "summary": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "sourceIntakeId": {
+            "type": "string",
+            "maxLength": 250
+          },
+          "ownerId": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "backupOwnerId": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "dueAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "companyId",
+          "reason",
+          "summary"
+        ],
+        "additionalProperties": false
+      },
+      "TaskRequest": {
+        "type": "object",
+        "properties": {
+          "companyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 1000
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 10000
+          },
+          "customerId": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "orderId": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "ownerId": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "backupOwnerId": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "dueAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "companyId",
+          "reason",
+          "title"
+        ],
+        "additionalProperties": false
+      },
+      "EnquiryRequest": {
+        "type": "object",
+        "properties": {
+          "companyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 1000
+          },
+          "customerId": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "sourceIntakeId": {
+            "type": "string",
+            "maxLength": 250
+          },
+          "summary": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "attachmentReferences": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 250
+            },
+            "maxItems": 20
+          }
+        },
+        "required": [
+          "companyId",
+          "reason",
+          "summary",
+          "attachmentReferences"
+        ],
+        "additionalProperties": false
+      }
+    }
+  }
+}

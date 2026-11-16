@@ -18,7 +18,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  themeColor: [{ media: '(prefers-color-scheme: light)', color: '#0f172a' }, { media: '(prefers-color-scheme: dark)', color: '#0b1220' }] // check-tokens: allow (browser chrome matches navy workspace palette)
+  themeColor: [{ media: '(prefers-color-scheme: light)', color: '#101B33' }, { media: '(prefers-color-scheme: dark)', color: '#0B1324' }] // check-tokens: allow (browser chrome matches navy workspace palette)
 };
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {

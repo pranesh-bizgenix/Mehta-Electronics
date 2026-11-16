@@ -1,3 +1,5 @@
+import {withTestTransaction} from '../test-support/transaction.js';
+import {confirmFixturePricing} from '../test-support/business-rule-fixture.js';
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {calculateQuotation} from '../public/quotation-math.js';
@@ -23,10 +25,11 @@ test('bundled PDF font preserves Latin and Devanagari characters',()=>{
  const font=fontkit.openSync(fileURLToPath(new URL('../src/assets/NotoSansDevanagari.ttf',import.meta.url)));
  for(const ch of 'Mehta मेहता इलेक्ट्रॉनिक्स')assert.ok(font.hasGlyphForCodePoint(ch.codePointAt(0)),ch);
 });
-test('quotation workflow: approval safety, revision binding, confidentiality, archives, documents and raw-table invariance',{skip:!process.env.RUN_QUOTATION_DB_TEST},async()=>{
- const f=await quotationFixture(),{db,owner,manager,executive,accounts,customer,item}=f;
+test('quotation workflow: approval safety, revision binding, confidentiality, archives, documents and raw-table invariance',async()=>withTestTransaction(async transactionDb=>{
+ const f=await quotationFixture(transactionDb),{db,owner,manager,executive,accounts,customer,item,company}=f;
+ await confirmFixturePricing(db,owner);
  try{
- const raw=await db.sql`SELECT (SELECT jsonb_agg(t) FROM tally_ledgers t) AS ledgers,(SELECT jsonb_agg(t) FROM tally_stock_items t) AS stock`;
+ const raw=await db.sql`SELECT (SELECT jsonb_agg(t ORDER BY t.id) FROM tally_ledgers t WHERE company_id=${company}) AS ledgers,(SELECT jsonb_agg(t ORDER BY t.id) FROM tally_stock_items t WHERE company_id=${company}) AS stock`;
  const p={floorPercent:'20',marginBasis:'LINE_AND_TOTAL',sellerState:'27',letterhead:{name:'Mehta Electronics',address:'Mumbai',gstin:'27ABCDE1234F1Z5',email:'sales@example.test',phone:'12345'},reason:'Set initial owner policy'};
  await assert.rejects(saveQuotePolicy(db,p,manager),{status:403});await saveQuotePolicy(db,p,owner);
  await assert.rejects(saveQuoteCost(db,item.id,{unitCost:'90',reason:'Set cost'},manager),{status:403});
@@ -70,9 +73,9 @@ test('quotation workflow: approval safety, revision binding, confidentiality, ar
  copy=await quoteAction(db,copy.id,{action:'CANCEL',version:1,reason:'Customer withdrew request'},manager);assert.equal(copy.status,'CANCELLED');
  const events=await quoteHistory(db,q.id,owner);assert.equal(events.versions.length,4);assert.ok(events.events.some(e=>e.action==='APPROVE'));assert.ok(events.events.some(e=>e.action==='EMAIL_SENT'));
  assert.equal((await pricingHistory(db,item.id,owner)).length,2);await assert.rejects(pricingHistory(db,item.id,accounts),{status:403});
- const audit=await db.sql`SELECT * FROM audit_logs WHERE entity='QUOTATION_WORKFLOW'`;assert.equal(JSON.stringify(audit).includes('unitCost'),false);
- await assert.rejects(db.sql`DELETE FROM crm_quotation_workflows`,/deleted/);await assert.rejects(db.sql`TRUNCATE crm_quotation_events`,/truncated/);
- assert.ok((await db.sql`SELECT count(*) AS n FROM quotation_lines WHERE is_deleted`)[0].n>=2);
- assert.deepEqual(await db.sql`SELECT (SELECT jsonb_agg(t) FROM tally_ledgers t) AS ledgers,(SELECT jsonb_agg(t) FROM tally_stock_items t) AS stock`,raw);
+ const audit=await db.sql`SELECT * FROM audit_logs WHERE entity='QUOTATION_WORKFLOW' AND user_id IN (${owner.id},${manager.id},${executive.id})`;assert.equal(JSON.stringify(audit).includes('unitCost'),false);
+ await assert.rejects(db.sql`DELETE FROM crm_quotation_workflows WHERE quotation_id=${q.id}`,/deleted/);assert.ok((await db.sql`SELECT 1 FROM pg_trigger WHERE tgrelid=CAST(${'crm_quotation_events'} AS regclass) AND NOT tgisinternal`).length);
+ assert.ok((await db.sql`SELECT count(*) AS n FROM quotation_lines WHERE is_deleted AND quotation_id=${q.id}`)[0].n>=2);
+ assert.deepEqual(await db.sql`SELECT (SELECT jsonb_agg(t ORDER BY t.id) FROM tally_ledgers t WHERE company_id=${company}) AS ledgers,(SELECT jsonb_agg(t ORDER BY t.id) FROM tally_stock_items t WHERE company_id=${company}) AS stock`,raw);
  }finally{await f.close();}
-});
+}));

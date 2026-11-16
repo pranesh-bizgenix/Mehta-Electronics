@@ -20,8 +20,9 @@ export class OperationsService {
  async detail(user,recordId){const row=await this.repository.record(uuid(recordId));if(!row)throw notFound();this.definition(user,row.kind);
   const events=await this.repository.events(row.id),policy=row.kind==='WARRANTY'?await this.rules.get('warranty.policy'):null;
   const responseHours=row.first_response_at?(new Date(row.first_response_at)-new Date(row.created_at))/3600000:null;
+  const complaintBand=row.kind==='SUPPORT'?(await this.rules.get('complaints.bands'))?.value.find(band=>band.name===row.payload.complaintBand):null;
   return {record:this.project(row,user),events,original:row.kind==='INTAKE'&&finance(user)?await this.repository.originalForRecord(row.id):null,actions:Object.keys(OPERATION_DESCRIPTORS[row.kind].actions).filter(a=>(transitions[row.status]||[]).includes(a)).filter(a=>['APPROVE','CONFIRM','REJECT'].includes(a)?row.created_by!==user.id&&this.access.can(user,OPERATION_DESCRIPTORS[row.kind].financial?'collections.approve':'operations.approve'):[row.owner_id,row.backup_id].includes(user.id)||this.access.can(user,'work.reassign')),
-   firstResponse:{at:row.first_response_at,hours:responseHours,targetHours:policy?.value.firstResponseHours??null,note:'First response time, not total resolution time.'},
+   firstResponse:{at:row.first_response_at,hours:responseHours,targetHours:policy?.value.firstResponseHours??complaintBand?.firstResponseHours??null,note:'First response time, not total resolution time.'},
    approvalChecks:row.kind==='PAYMENT'?(await this.rules.get('payments.authorisation'))?.value.checks||[]:[],
    note:row.kind==='INVOICE'?'Reference to an existing invoice only. This does not issue an invoice, IRN or e-Way bill.':row.kind==='PAYMENT'?'CRM approval only. This does not transfer money or post to Tally.':null};}
  async create(user,kind,input){const d=this.definition(user,kind,true),reason=text(input.reason,'Reason'),title=text(input.title,'Title',200);
@@ -84,6 +85,10 @@ export class OperationsService {
    const start=new Date(row.payload.purchaseDate+'T00:00:00Z'),end=new Date(start);end.setUTCMonth(end.getUTCMonth()+policy.periodMonths);
    if(start>new Date(row.created_at)||new Date(row.created_at)>end)throw conflict('Claim falls outside the confirmed warranty period.');
   }
+  if(row.kind==='SUPPORT'&&['START','RESPOND','RESOLVE'].includes(action)){
+   const bands=(await this.rules.require('complaints.bands')).value;
+   if(!bands.some(band=>band.name===row.payload.complaintBand))throw conflict('Select a confirmed complaint band in the complaint findings before progressing this case. Owner configures the bands in Rules.');
+  }
   if(action==='APPROVE'&&row.kind==='RETURN'&&!row.payload.evidence)throw conflict('Receipt and inspection evidence is required before return approval.');
   if(action==='APPROVE'&&row.kind==='PAYMENT'){
    const policy=(await this.rules.require('payments.authorisation')).value;
@@ -129,6 +134,12 @@ export class OperationsService {
   if(!['NEW','EXISTING','POTENTIAL','DO_NOT_QUOTE'].includes(body.classification)||typeof body.creditExempt!=='boolean')throw validationFailed('Choose a customer classification and credit-exempt flag.');
   const reason=text(body.reason,'Reason');return this.transactions.run(user,reason,async()=>{await this.repository.lockKey(`customer-controls:${cid}`);const old=await this.repository.controls(cid);
    if(body.version!==(old?.version||0))throw conflict('Customer controls changed. Reload.');
+   if(old?.classification==='DO_NOT_QUOTE'&&body.classification!=='DO_NOT_QUOTE'){
+    if(user.role!=='OWNER')throw forbidden('Only an Owner can clear Do Not Quote after review.');
+    const maker=await this.repository.db.prepare(`SELECT user_id FROM audit_logs WHERE entity='CUSTOMER_CONTROLS' AND record_id=? AND new_value::jsonb->>'classification'='DO_NOT_QUOTE' AND COALESCE(old_value::jsonb->>'classification','')<>'DO_NOT_QUOTE' ORDER BY id DESC LIMIT 1`).get(String(cid));
+    if(!maker?.user_id)throw conflict('The original restriction maker is unavailable. Owner must review the audit history before this restriction can be cleared.');
+    if(maker.user_id===user.id)throw forbidden('The Owner who imposed Do Not Quote cannot approve its removal. Ask a different Owner to review.');
+   }
    const pricingClass=body.pricingClass===undefined?old?.pricing_class||null:body.pricingClass;
    if(pricingClass!==null&&!['RATE_CONTRACT','MEDIUM_DISCOUNT','DEALER_NETWORK','NEW'].includes(pricingClass))throw validationFailed('Choose a supported pricing class.');
    const saved=await this.repository.saveControls(cid,body.classification,body.creditExempt,reason,user.id,pricingClass);

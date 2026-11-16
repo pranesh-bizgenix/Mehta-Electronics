@@ -39,10 +39,10 @@ export function CustomerForm({ open, customer, onClose, onSaved }: { open: boole
     api.owners().then((o) => setOwners(o.map((x) => ({ value: String(x.id), label: x.name })))).catch(() => setOwners([]));
   }, [open, customer, api]);
 
-  const probe = useDebounced(`${f.name}|${f.gstin}`, 400);
+  const probe = useDebounced(JSON.stringify([f.name, f.gstin, f.pan, contacts.map(({ phone, email }) => [phone, email])]), 400);
   useEffect(() => {
-    if (!open || (f.name.trim().length < 3 && !GSTIN.test(f.gstin))) { setDuplicates([]); return; }
-    api.duplicates({ name: f.name.trim() || undefined, gstin: GSTIN.test(f.gstin) ? f.gstin : undefined, excludeId: customer?.id })
+    if (!open || (f.name.trim().length < 3 && !GSTIN.test(f.gstin) && !f.pan && !contacts.some(c => c.phone || c.email))) { setDuplicates([]); return; }
+    api.duplicates({ name: f.name.trim() || undefined, gstin: GSTIN.test(f.gstin) ? f.gstin : undefined, pan: f.pan || undefined, contacts: contacts.filter(c => c.name.trim()).map(({ name, phone, email }) => ({ name: name.trim(), phone: phone || null, email: email || null })), excludeId: customer?.id })
       .then(setDuplicates).catch(() => setDuplicates([]));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [probe, open]);
@@ -54,11 +54,15 @@ export function CustomerForm({ open, customer, onClose, onSaved }: { open: boole
     const e: Record<string, string> = {};
     if (!f.name.trim()) e.name = 'Enter the customer’s registered name.';
     if (f.gstin && !GSTIN.test(f.gstin)) e.gstin = 'A GSTIN has 15 characters, e.g. 27ABCDE1234F1Z5.';
+    if (f.pan && !/^[A-Z]{5}\d{4}[A-Z]$/.test(f.pan)) e.pan = 'Enter the 10-character PAN shown on the customer document.';
     if (f.gstin && GSTIN.test(f.gstin) && f.stateCode && f.gstin.slice(0, 2) !== f.stateCode) e.stateCode = 'State code must match the first two digits of the GSTIN.';
-    if (!/^\d{1,14}(\.\d{1,6})?$/.test(f.creditLimit)) e.creditLimit = 'Enter an amount in rupees, e.g. 500000.';
-    if (!/^\d{1,4}$/.test(f.creditDays)) e.creditDays = 'Enter whole days (0–3650).';
+    if (!/^\d{1,14}(\.\d{1,6})?$/.test(f.creditLimit)) e.creditLimit = 'Enter the confirmed amount in rupees; no default is assumed.';
+    if (!/^\d{1,4}$/.test(f.creditDays) || Number(f.creditDays) > 3650) e.creditDays = 'Enter the confirmed whole days (0–3650).';
+    if (!editing && !f.ownerId) e.ownerId = 'Choose the staff member responsible for this customer.';
+    if (f.ownerId && f.backupOwnerId === f.ownerId) e.backupOwnerId = 'Choose a different backup owner.';
     if (Boolean(f.companyId) !== Boolean(ledger)) e.tally = 'Choose both a Tally company and the exact ledger, or neither.';
     contacts.forEach((c, i) => { if ((c.email || c.phone || c.designation) && !c.name.trim()) e[`contact${i}`] = 'Add the contact’s name.'; if (c.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c.email)) e[`contact${i}`] = 'Check the email address.'; });
+    if (duplicates.length && f.duplicateReviewReason.trim().length < 3) e.duplicateReviewReason = 'Explain why this is a separate customer or which record you reviewed.';
     if (editing && f.reason.trim().length < 3) e.reason = 'Say briefly why you are changing this customer.';
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -69,11 +73,11 @@ export function CustomerForm({ open, customer, onClose, onSaved }: { open: boole
     if (!validate()) return;
     setBusy(true);
     const body: CustomerInput = {
-      name: f.name.trim(), customerCode: f.customerCode || null, gstin: f.gstin || null, stateCode: f.stateCode || null, paymentTerms: f.paymentTerms || null,
-      creditLimit: f.creditLimit, creditDays: Number(f.creditDays), billingAddress: f.billingAddress || null, status: f.status as CustomerInput['status'],
-      ownerId: f.ownerId ? Number(f.ownerId) : null, companyId: f.companyId || null, tallyName: ledger?.value ?? null,
+      name: f.name.trim(), customerCode: f.customerCode || null, gstin: f.gstin || null, pan: f.pan || null, stateCode: f.stateCode || null, paymentTerms: f.paymentTerms || null,
+      creditLimit: f.creditLimit, creditDays: Number(f.creditDays), billingAddress: f.billingAddress || null, shippingAddress: f.shippingAddress || null, city: f.city || null, state: f.state || null, pincode: f.pincode || null, notes: f.notes || null, status: f.status as CustomerInput['status'],
+      ownerId: f.ownerId ? Number(f.ownerId) : null, backupOwnerId: f.backupOwnerId ? Number(f.backupOwnerId) : null, territory: f.territory || null, dealership: f.dealership || null, brandRelationships: f.brandRelationships.split(',').map(v => v.trim()).filter(Boolean), companyId: f.companyId || null, tallyName: ledger?.value ?? null,
       contacts: contacts.filter((c) => c.name.trim()).map((c) => ({ ...(c.id ? { id: c.id } : {}), name: c.name.trim(), designation: c.designation || null, phone: c.phone || null, email: c.email || null, isPrimary: c.isPrimary })),
-      ...(editing ? { reason: f.reason.trim() } : {})
+      ...(editing ? { reason: f.reason.trim() } : {}), ...(duplicates.length ? { duplicateReviewReason: f.duplicateReviewReason.trim() } : {})
     };
     try {
       const saved = editing && customer ? await api.update(customer.id, { ...body, reason: f.reason.trim() }) : await api.create(body, key);
@@ -89,8 +93,9 @@ export function CustomerForm({ open, customer, onClose, onSaved }: { open: boole
       <form id="customer-form" className="stack-lg" onSubmit={(e) => void submit(e)} noValidate>
         {duplicates.length > 0 && (
           <Notice tone="warning" title="Possible duplicate">
-            {duplicates.slice(0, 3).map((d) => <span key={d.id} style={{ display: 'block' }}><Link href={`/customers/${d.id}`}>{d.name}</Link>{d.gstin ? ` · ${d.gstin}` : ''}</span>)}
-            Check before creating a second record for the same business.
+            {duplicates.slice(0, 3).map((d) => <span key={d.id} style={{ display: 'block' }}><Link href={`/customers/${d.id}`}>{d.name}</Link>{d.gstin ? ` · ${d.gstin}` : ''}{d.matchedFields?.length ? ` · matched ${d.matchedFields.join(', ')}` : ''}</span>)}
+            Review these records before saving a second customer.
+            <TextAreaField label="Duplicate review reason" required rows={2} value={f.duplicateReviewReason} onChange={(e) => set('duplicateReviewReason', e.target.value)} error={errors.duplicateReviewReason} />
           </Notice>
         )}
         <fieldset className="stack" style={{ border: 0, padding: 0, margin: 0 }}>
@@ -98,13 +103,24 @@ export function CustomerForm({ open, customer, onClose, onSaved }: { open: boole
           <TextField label="Registered name" required value={f.name} onChange={(e) => set('name', e.target.value)} error={errors.name} maxLength={300} />
           <div className="grid-2">
             <TextField label="GSTIN" value={f.gstin} onChange={(e) => set('gstin', e.target.value.toUpperCase().replace(/\s/g, ''))} error={errors.gstin} maxLength={15} hint="Checked for format and state." />
-            <TextField label="State code" value={f.stateCode} onChange={(e) => set('stateCode', e.target.value.replace(/\D/g, '').slice(0, 2))} error={errors.stateCode} inputMode="numeric" maxLength={2} />
+            <TextField label="PAN" value={f.pan} onChange={(e) => set('pan', e.target.value.toUpperCase().replace(/\s/g, ''))} error={errors.pan} maxLength={10} />
           </div>
+          <TextField label="State code" value={f.stateCode} onChange={(e) => set('stateCode', e.target.value.replace(/\D/g, '').slice(0, 2))} error={errors.stateCode} inputMode="numeric" maxLength={2} />
           <div className="grid-2">
             <TextField label="Customer code" value={f.customerCode} onChange={(e) => set('customerCode', e.target.value)} maxLength={100} />
             <SelectField label="Status" value={f.status} onChange={(e) => set('status', e.target.value)} options={[{ value: 'ACTIVE', label: 'Active' }, { value: 'ON_HOLD', label: 'On hold' }, { value: 'INACTIVE', label: 'Inactive' }]} />
           </div>
           <TextAreaField label="Billing address" rows={2} value={f.billingAddress} onChange={(e) => set('billingAddress', e.target.value)} maxLength={4000} />
+          <TextAreaField label="Shipping / site address" rows={2} value={f.shippingAddress} onChange={(e) => set('shippingAddress', e.target.value)} maxLength={4000} />
+          <div className="grid-2">
+            <TextField label="City" value={f.city} onChange={(e) => set('city', e.target.value)} maxLength={200} />
+            <TextField label="State" value={f.state} onChange={(e) => set('state', e.target.value)} maxLength={200} />
+            <TextField label="PIN code" value={f.pincode} onChange={(e) => set('pincode', e.target.value.replace(/\s/g, ''))} maxLength={20} />
+            <TextField label="Territory" value={f.territory} onChange={(e) => set('territory', e.target.value)} maxLength={200} />
+          </div>
+          <TextField label="Dealership / relationship" value={f.dealership} onChange={(e) => set('dealership', e.target.value)} maxLength={500} />
+          <TextField label="Brand relationships" value={f.brandRelationships} onChange={(e) => set('brandRelationships', e.target.value)} hint="Comma-separated confirmed brands; leave empty when unknown." />
+          <TextAreaField label="Internal customer notes" rows={2} value={f.notes} onChange={(e) => set('notes', e.target.value)} maxLength={4000} />
         </fieldset>
 
         <fieldset className="stack" style={{ border: 0, padding: 0, margin: 0 }}>
@@ -114,7 +130,10 @@ export function CustomerForm({ open, customer, onClose, onSaved }: { open: boole
             <TextField label="Credit days" inputMode="numeric" value={f.creditDays} onChange={(e) => set('creditDays', e.target.value.replace(/\D/g, ''))} error={errors.creditDays} />
           </div>
           <TextField label="Payment terms" value={f.paymentTerms} onChange={(e) => set('paymentTerms', e.target.value)} maxLength={2000} hint="As agreed with the customer, e.g. 30 days from invoice." />
-          <SelectField label="Account owner" value={f.ownerId} onChange={(e) => set('ownerId', e.target.value)} placeholder="Unassigned" options={owners} />
+          <div className="grid-2">
+            <SelectField label="Account owner" required={!editing} value={f.ownerId} onChange={(e) => set('ownerId', e.target.value)} placeholder="Select responsible staff" options={owners} error={errors.ownerId} />
+            <SelectField label="Backup owner" value={f.backupOwnerId} onChange={(e) => set('backupOwnerId', e.target.value)} placeholder="Not assigned" options={owners} error={errors.backupOwnerId} />
+          </div>
         </fieldset>
 
         <fieldset className="stack" style={{ border: 0, padding: 0, margin: 0 }}>
@@ -158,8 +177,10 @@ function trimDecimal(value: string): string {
 
 function toForm(c?: Customer) {
   return {
-    name: c?.name ?? '', customerCode: c?.customer_code ?? '', gstin: c?.gstin ?? '', stateCode: c?.profile.state_code ?? '', paymentTerms: c?.profile.payment_terms ?? '',
-    creditLimit: c ? trimDecimal(c.credit_limit) : '0', creditDays: String(c?.credit_days ?? 0),
-    billingAddress: c?.billing_address ?? '', status: c?.status ?? 'ACTIVE', ownerId: c?.owner_id ? String(c.owner_id) : '', companyId: c?.profile.company_id ?? '', reason: ''
+    name: c?.name ?? '', customerCode: c?.customer_code ?? '', gstin: c?.gstin ?? '', pan: c?.pan ?? '', stateCode: c?.profile.state_code ?? '', paymentTerms: c?.profile.payment_terms ?? '',
+    creditLimit: c ? trimDecimal(c.credit_limit) : '', creditDays: c ? String(c.credit_days) : '',
+    billingAddress: c?.billing_address ?? '', shippingAddress: c?.shipping_address ?? '', city: c?.city ?? '', state: c?.state ?? '', pincode: c?.pincode ?? '', notes: c?.notes ?? '',
+    territory: c?.profile.territory ?? '', dealership: c?.profile.dealership ?? '', brandRelationships: c?.profile.brand_relationships?.join(', ') ?? '',
+    status: c?.status ?? 'ACTIVE', ownerId: c?.owner_id ? String(c.owner_id) : '', backupOwnerId: c?.profile.backup_owner_id ? String(c.profile.backup_owner_id) : '', companyId: c?.profile.company_id ?? '', duplicateReviewReason: '', reason: ''
   };
 }

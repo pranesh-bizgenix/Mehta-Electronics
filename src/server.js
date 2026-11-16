@@ -7,9 +7,20 @@ import { markStalledRuns } from './tally-import.js';
 const dev=process.argv.includes('--dev');
 process.env.NODE_ENV ||= dev?'development':'production';
 process.env.NEXT_DIST_DIR ||= dev?'.next-dev':'.next';
-const config = getConfig();
-const db = (await openDatabase(config));
+let config;
+try { config = getConfig(); }
+catch (error) {
+  console.error(error.code === 'LOCAL_REVIEW_PRODUCTION_FORBIDDEN' ? error.message : 'ControlDesk configuration is invalid. Check the local configuration.');
+  process.exit(1);
+}
+let db;
+try { db = await openDatabase(config); }
+catch (error) {
+  console.error(['DATABASE_GUARD_REJECTED', 'MIGRATION_BACKUP_REQUIRED', 'ACTIVE_OWNER_REQUIRED'].includes(error.code) ? error.message : 'ControlDesk could not open its required PostgreSQL database. Check the local configuration.');
+  process.exit(1);
+}
 const app = createApp({ db, config });
+await app.tallyWrite.initialize(); // Own control-plane bootstrap; no read-route queries or timers are added.
 let combined;
 try{combined=await createControlDeskServer({api:app,host:config.host,port:config.port,dev});}
 catch{await app.close();await db.close();console.error('ControlDesk could not start. Run npm.cmd run build before npm.cmd start, or use npm.cmd run dev.');process.exit(1);}

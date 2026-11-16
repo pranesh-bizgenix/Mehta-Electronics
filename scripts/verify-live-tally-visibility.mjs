@@ -10,6 +10,7 @@ import { TALLY_ENTITY_DESCRIPTORS,describeTallyEntity } from '../public/tally-en
 const config=getConfig();
 if(new URL(config.databaseUrl).pathname!=='/mehta_electronics_local')throw new Error('Unexpected DATABASE_URL database.');
 const db=createDatabase(config);
+await db.ready();
 const report={checkedAt:new Date().toISOString(),readOnly:true,entities:{},sourcePayloadHashesVerified:0,rawLeavesVerified:0};
 try {
   await db.withConnection(async()=>{

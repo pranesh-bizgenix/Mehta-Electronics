@@ -1,7 +1,8 @@
 import PDFDocument from 'pdfkit';
+import {formatIndian,lineNet,format} from '../public/money.js';
 
 const clean=(value)=>String(value??'').replace(/[–—−]/g,'-').replace(/₹/g,'INR ').replace(/[^\x0A\x20-\x7E]/g,'');
-const money=(value)=>`INR ${Number(value||0).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2})}`;
+const money=(value)=>`INR ${formatIndian(value)}`;
 
 export function createQuotationPdf(config,quote){
   return new Promise((resolve,reject)=>{
@@ -16,7 +17,7 @@ export function createQuotationPdf(config,quote){
     doc.font('Helvetica-Bold').fontSize(9).fillColor('#68736d').text('VALID UNTIL',350,104);doc.fillColor('#17211c').font('Helvetica').fontSize(10).text(clean(quote.valid_until),350,120);doc.font('Helvetica-Bold').fontSize(9).fillColor('#68736d').text('ENQUIRY',450,104);doc.fillColor('#17211c').font('Helvetica').fontSize(10).text(clean(quote.enquiry_number||'-'),450,120);
     if(config.companyGstin)doc.fontSize(8).fillColor('#68736d').text(`GSTIN: ${clean(config.companyGstin)}`,350,145,{width:203,align:'right'});
     let y=tableHeader(178);
-    quote.lines.forEach(line=>{const description=clean(line.description);const height=Math.max(30,doc.heightOfString(description,{width:widths[1]-10})+12);if(y+height>700)y=newPage();const values=[clean(line.part_code||'Custom'),description,`${line.quantity} ${clean(line.uom)}`,money(line.unit_price),`${line.discount_percent}%`,money(line.quantity*line.unit_price*(1-line.discount_percent/100))];doc.font('Helvetica').fontSize(8).fillColor('#17211c');let x=left;values.forEach((value,index)=>{doc.text(value,x+5,y+7,{width:widths[index]-10,align:index>1?'right':'left'});x+=widths[index]});doc.moveTo(left,y+height).lineTo(right,y+height).strokeColor('#dce3de').lineWidth(.6).stroke();y+=height});
+    quote.lines.forEach(line=>{const description=clean(line.description);const height=Math.max(30,doc.heightOfString(description,{width:widths[1]-10})+12);if(y+height>700)y=newPage();const values=[clean(line.part_code||'Custom'),description,`${line.quantity} ${clean(line.uom)}`,money(line.unit_price),`${line.discount_percent}%`,money(format(lineNet(line)))];doc.font('Helvetica').fontSize(8).fillColor('#17211c');let x=left;values.forEach((value,index)=>{doc.text(value,x+5,y+7,{width:widths[index]-10,align:index>1?'right':'left'});x+=widths[index]});doc.moveTo(left,y+height).lineTo(right,y+height).strokeColor('#dce3de').lineWidth(.6).stroke();y+=height});
     if(y>610){doc.addPage();header();y=110}
     const totalsX=350;doc.font('Helvetica').fontSize(9).fillColor('#68736d').text('Subtotal',totalsX,y+18,{width:90});doc.fillColor('#17211c').text(money(quote.subtotal),440,y+18,{width:113,align:'right'});doc.fillColor('#68736d').text('Tax',totalsX,y+36,{width:90});doc.fillColor('#17211c').text(money(quote.tax_total),440,y+36,{width:113,align:'right'});doc.rect(totalsX,y+56,203,34).fill('#174c36');doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(11).text('Total',totalsX+10,y+68,{width:65});doc.text(money(quote.total),421,y+68,{width:122,align:'right'});
     y+=112;doc.fillColor('#17211c').font('Helvetica-Bold').fontSize(9).text('Terms and notes',left,y);doc.font('Helvetica').fontSize(8.5).fillColor('#4f5d55').text(clean([quote.terms,quote.notes].filter(Boolean).join('\n\n')||'Standard terms apply.'),left,y+16,{width:511,lineGap:3});

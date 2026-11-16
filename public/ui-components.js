@@ -1,3 +1,4 @@
+import {decimal,compare} from './money.js';
 /* Network-free UI components. Do not put business rules or connector handlers here. */
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
@@ -172,10 +173,10 @@ export class DataTable {
     this.sortIndex = index;
     const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
     const value = row => row.cells[index]?.textContent.trim() || '';
-    const number = text => /^[-+₹$€£\d,.%\s]+$/.test(text) && /\d/.test(text) ? Number(text.replace(/[^\d.+-]/g, '')) : null;
+    const number = text => { try { return /^[-+₹$€£\d,.%\s]+$/.test(text) && /\d/.test(text) ? decimal(text.replace(/[^\d.+-]/g, '')) : null; } catch { return null; } };
     this.rows.sort((a, b) => {
       const left = value(a), right = value(b), ln = number(left), rn = number(right);
-      return this.direction * (ln !== null && rn !== null ? ln - rn : collator.compare(left, right));
+      return this.direction * (ln !== null && rn !== null ? compare(ln,rn) : collator.compare(left, right));
     });
     this.rows.forEach(row => this.table.tBodies[0].append(row));
     [...this.table.tHead.rows[0].cells].forEach((cell, i) => {

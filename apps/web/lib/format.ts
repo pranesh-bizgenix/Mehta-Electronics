@@ -1,13 +1,15 @@
 // Display formatting. Money and quantities arrive from the API as exact decimal
 // strings (NUMERIC); they are formatted as strings, never through floats.
+import {decimal as exactDecimal,format as exactFormat,div as exactDivide,compare as exactCompare} from '../../../public/money.js';
 
 type Decimalish = string | number | null | undefined;
 
 function splitDecimal(value: Decimalish): { negative: boolean; whole: string; fraction: string } | null {
   if (value === null || value === undefined || value === '') return null;
-  const text = typeof value === 'number' ? (Number.isFinite(value) ? value.toFixed(6) : '') : String(value).trim();
+  const text = typeof value === 'number' ? (Number.isFinite(value) ? String(value) : '') : String(value).trim();
   const match = /^(-)?(\d+)(?:\.(\d+))?$/.exec(text);
   if (!match) return null;
+  try{exactDecimal(text);}catch{return null;}
   return { negative: Boolean(match[1]), whole: match[2].replace(/^0+(?=\d)/, ''), fraction: match[3] ?? '' };
 }
 
@@ -21,20 +23,13 @@ export function groupIndian(whole: string): string {
 
 /** Rounds a decimal string half-up to `places` digits without floating point. */
 function roundDecimal(whole: string, fraction: string, places: number): { whole: string; fraction: string } {
-  if (fraction.length <= places) return { whole, fraction: fraction.padEnd(places, '0') };
-  const digits = (whole + fraction.slice(0, places)).split('').map(Number);
-  if (Number(fraction[places]) >= 5) {
-    let i = digits.length - 1;
-    while (i >= 0) { if (digits[i] === 9) { digits[i] = 0; i--; } else { digits[i] += 1; break; } }
-    if (i < 0) digits.unshift(1);
-  }
-  const joined = digits.join('');
-  const cut = joined.length - places;
-  return { whole: joined.slice(0, cut) || '0', fraction: places ? joined.slice(cut) : '' };
+  const [roundedWhole,roundedFraction='']=exactFormat(exactDecimal(`${whole}.${fraction||'0'}`),places).split('.');
+  return {whole:roundedWhole,fraction:roundedFraction};
 }
 
 /** ₹12,34,567.00 — exact, Indian grouping, 2 decimals by default. */
 export function formatMoney(value: Decimalish, { places = 2, symbol = true }: { places?: number; symbol?: boolean } = {}): string {
+  if(typeof value==='number'&&!Number.isSafeInteger(value))return '—';
   const parts = splitDecimal(value);
   if (!parts) return '—';
   const r = roundDecimal(parts.whole, parts.fraction, places);
@@ -45,12 +40,13 @@ export function formatMoney(value: Decimalish, { places = 2, symbol = true }: { 
 
 /** Compact money for cards: ₹12.3 L, ₹4.5 Cr (exact value belongs in a tooltip). */
 export function formatMoneyCompact(value: Decimalish): string {
+  if(typeof value==='number'&&!Number.isSafeInteger(value))return '—';
   const parts = splitDecimal(value);
   if (!parts) return '—';
-  const n = Number(`${parts.whole}.${parts.fraction || '0'}`);
+  const n = exactDecimal(`${parts.whole}.${parts.fraction || '0'}`);
   const sign = parts.negative ? '−' : '';
-  if (n >= 1e7) return `${sign}₹${(n / 1e7).toFixed(2)} Cr`;
-  if (n >= 1e5) return `${sign}₹${(n / 1e5).toFixed(2)} L`;
+  if (exactCompare(n,exactDecimal('10000000'))>=0) return `${sign}₹${exactFormat(exactDivide(n,exactDecimal('10000000')),2)} Cr`;
+  if (exactCompare(n,exactDecimal('100000'))>=0) return `${sign}₹${exactFormat(exactDivide(n,exactDecimal('100000')),2)} L`;
   return formatMoney(value, { places: 0 });
 }
 

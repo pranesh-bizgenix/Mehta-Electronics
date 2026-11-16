@@ -1,5 +1,6 @@
 import { conflict, forbidden, notFound, validationFailed } from '../../core/errors.js';
 import { installPermissionProvider } from '../../rbac.js';
+import { logisticsPermissions, restrictLogisticsPermissions } from '../../logistics-policy.js';
 
 /**
  * Holds the role/permission matrix in memory and refreshes it when the
@@ -48,7 +49,7 @@ export class AccessService {
 
   can(user, permission) {
     const entry = this.matrix.get(user?.role);
-    return Boolean(entry?.active && (entry.allPermissions || entry.permissions.has(permission)));
+    return Boolean(entry?.active && restrictLogisticsPermissions(user.role, entry.allPermissions ? ['*'] : [...entry.permissions]).some(p => p === '*' || p === permission));
   }
 
   require(user, permission) {
@@ -72,7 +73,7 @@ export class AccessService {
     const [roles, permissions, grants, history] = await Promise.all([this.repository.roles(), this.repository.permissions(), this.repository.grants(), this.repository.history(100)]);
     const granted = new Set(grants.map((g) => `${g.role_key}|${g.permission_key}`));
     return {
-      roles: roles.map((r) => ({ key: r.key, name: r.name, description: r.description, requiresMfa: r.requires_mfa, allPermissions: r.all_permissions, isSystem: r.is_system, status: r.status })),
+      roles: roles.map((r) => ({ key: r.key, name: r.name, description: r.description, requiresMfa: r.requires_mfa, allPermissions: r.all_permissions, isSystem: r.is_system, status: r.status, ...(Object.hasOwn(logisticsPermissions,r.key)?{allowedPermissions:logisticsPermissions[r.key]}:{}) })),
       permissions: permissions.map((p) => ({ key: p.key, resource: p.resource, action: p.action, description: p.description, ownerOnly: p.owner_only, grantedTo: roles.filter((r) => r.all_permissions || granted.has(`${r.key}|${p.key}`)).map((r) => r.key) })),
       history: history.map((h) => ({ id: Number(h.id), role: h.role_key, permission: h.permission_key, change: h.change, oldValue: h.old_value, newValue: h.new_value, reason: h.reason, changedAt: h.changed_at, changedBy: h.changed_by_name })),
       version: this.loadedVersion
@@ -81,6 +82,7 @@ export class AccessService {
 
   async setGrant(actor, { role, permission, granted, reason }) {
     this.require(actor, 'access.manage');
+    if (granted && Object.hasOwn(logisticsPermissions, role) && !logisticsPermissions[role].includes(permission)) throw forbidden('This logistics role is limited to its approved operational permissions.');
     return this.transactions.run(actor, reason, async () => {
       const roleRow = await this.repository.role(role);
       if (!roleRow) throw notFound('Role not found.');
@@ -101,6 +103,7 @@ export class AccessService {
 
   async createRole(actor, { key, name, description, requiresMfa, reason }) {
     this.require(actor, 'access.manage');
+    if (key === 'ADMIN' || name?.trim().toUpperCase() === 'ADMIN') throw validationFailed('Admin is undefined and cannot be created until its permissions are confirmed.');
     return this.transactions.run(actor, reason, async () => {
       if (await this.repository.role(key)) throw conflict('A role with this key already exists.', 'DUPLICATE');
       await this.repository.createRole({ key, name, description, requiresMfa }, actor.id);
@@ -113,6 +116,7 @@ export class AccessService {
 
   async updateRole(actor, key, { name, description, requiresMfa, status, reason }) {
     this.require(actor, 'access.manage');
+    if (name?.trim().toUpperCase() === 'ADMIN') throw validationFailed('Admin is undefined until its permissions are confirmed.');
     return this.transactions.run(actor, reason, async () => {
       const old = await this.repository.role(key);
       if (!old) throw notFound('Role not found.');

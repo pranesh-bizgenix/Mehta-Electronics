@@ -1,4 +1,5 @@
 import { TallyVisibilityRepository } from './tally-visibility-repository.js';
+import {tallyFreshness} from './tally-freshness.js';
 import { classifyLedgers, pagination, groupHierarchy } from './tally-read-service.js';
 import { tallyDisplay } from './tally-display.js';
 import { TALLY_ENTITY_DESCRIPTORS,describeTallyEntity } from '../public/tally-entity-descriptors.js';
@@ -8,6 +9,7 @@ const fail = (status, message) => Object.assign(new Error(message), { status });
 export const isTallyFinancial = user => ['OWNER','ACCOUNTS'].includes(user?.role);
 const optionalEntities = ['companies','stock_groups','categories','units','godowns','price_levels','cost_centres','vouchers'];
 const entityDatasets=Object.fromEntries(Object.values(TALLY_ENTITY_DESCRIPTORS).map(entity=>[entity.id,entity.dataset]));
+const freshnessDatasets=kind=>['quotations','enquiries'].includes(kind)?['vouchersXml','salesDocumentsXml']:[entityDatasets[kind]];
 export const visibilityKinds=Object.keys(TALLY_ENTITY_DESCRIPTORS);
 const qualityFilters = ['missing_gstin','has_gstin','invalid_gstin','missing_hsn','missing_state','negative_stock','zero_stock','has_balance','zero_value','encoding','duplicates'];
 export const visibilityPermission = kind => TALLY_ENTITY_DESCRIPTORS[kind]?.permission;
@@ -15,7 +17,7 @@ export const visibilityPermission = kind => TALLY_ENTITY_DESCRIPTORS[kind]?.perm
 /** @implements {import('./tally-visibility-contracts').TallyService} */
 export class TallyVisibilityService {
   /** @param {any} db @param {{repository?:import('./tally-visibility-contracts').TallyRepository}} dependencies */
-  constructor(db,{repository=new TallyVisibilityRepository(db)}={}) { this.repository = repository; }
+  constructor(db,{repository=new TallyVisibilityRepository(db)}={}) { this.repository = repository; this.db=db; }
   async overview(url,user) {
     const ctx=await this.context('groups',url,user);
     return {company:ctx.company,source:'Stored Tally import (source labelled when recorded)',asOf:new Date().toISOString(),financial:ctx.financial,
@@ -36,10 +38,11 @@ export class TallyVisibilityService {
     const ctx=await this.context('groups',url,user);
     return {...await this.repository.quarantined(ctx.company?.id,ctx.query,ctx.financial),financial:ctx.financial,source:'Stored connector quarantine',asOf:new Date().toISOString()};
   }
-  async replay(sessionId,user,ip) {
+  async replay(sessionId,url,user,ip) {
     if(!['OWNER','MANAGER'].includes(user.role))throw fail(403,'Replay requires Manager or Owner.');
-    if(!/^[0-9a-f-]{36}$/i.test(sessionId||''))throw fail(422,'Choose a saved upload session.');
-    const result=await this.repository.replay(sessionId);
+    if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sessionId||''))throw fail(422,'Choose a saved upload session.');
+    const ctx=await this.context('groups',url,user);
+    const result=await this.repository.replay(ctx.company.id,sessionId);
     const summary={payloads:result.payloads,indexed:result.indexed,errors:result.errors};
     await this.repository.audit({userId:user.id,entity:'TALLY_VISIBILITY',recordId:sessionId,action:'REPLAY_INDEX',newValue:summary,ipAddress:ip});
     return {...summary,note:'Replayed into field index only. Original quarantine and payloads retained.'};
@@ -47,6 +50,7 @@ export class TallyVisibilityService {
   async context(kind, url, user) {
     if (!visibilityKinds.includes(kind)) throw fail(404,'Unknown Tally entity.');
     const companyId = url.searchParams.get('companyId');
+      if(url.searchParams.getAll('companyId').length!==1||!companyId)throw fail(422,'Select exactly one imported company. companyId is required.');
     if (companyId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(companyId)) throw fail(422,'Invalid company identifier.');
     const company = await this.repository.company(companyId);
     if (companyId && !company) throw fail(404,'Imported company not found.');
@@ -87,7 +91,7 @@ export class TallyVisibilityService {
     const receipt=ctx.company&&entityDatasets[kind] ? await this.repository.receipt(ctx.company.id,entityDatasets[kind]) : null;
     const filtered=ctx.query.search||ctx.query.group||ctx.query.state||ctx.query.quality||ctx.query.fromDate||ctx.query.toDate||ctx.query.customer||ctx.query.voucherStatus||ctx.query.optional;
     const publicColumns=ctx.scope ? await this.repository.catalogue(this.repository.scope(ctx.company.id,ctx.entity,false,ctx.scope.parents)) : [];
-    return {...result,columns,descriptor:describeTallyEntity(kind,columns,publicColumns),company:ctx.company,financial:ctx.financial,lastUpdated:metadata?.last_updated||null,source:'Stored Tally import (source is labelled per row when recorded)',
+    return {...result,freshness:await tallyFreshness(this.db,ctx.company.id,freshnessDatasets(kind)),columns,descriptor:describeTallyEntity(kind,columns,publicColumns),company:ctx.company,financial:ctx.financial,lastUpdated:metadata?.last_updated||null,source:'Stored Tally import (source is labelled per row when recorded)',
       asOf:new Date().toISOString(),emptyReason: !ctx.company ? 'No sync yet' : filtered ? 'No records match the selected filters.' : ['quotations','enquiries'].includes(kind) ? `No Tally ${kind} have been indexed. Check the selected company, voucher types and completed voucher imports. Existing CRM records are separate.` : kind === 'vouchers' ? 'Awaiting voucher data: structured voucher IDs, dates, ledger and inventory entries have not arrived.' : optionalEntities.includes(kind) ? receipt?.status==='failed' ? 'The last collection could not be indexed. Its raw data is retained for inspection/replay.' : receipt ? 'Tally delivered this collection with zero records.' : 'No records indexed for this entity. The connector must deliver its collection.' : 'No records match the selected filters.',
       data:result.data.map(r=>({...r,display_name:tallyDisplay(r.name),display_fields:Object.fromEntries(Object.entries(r.fields).map(([key,value])=>[key,tallyDisplay(value)]))}))};
   }
@@ -110,7 +114,7 @@ export class TallyVisibilityService {
     const publicFields=(await this.repository.history(ctx.company.id,ctx.entity,key,false)).find(row=>row.id===selected.id)?.fields||{};
     const document=['quotations','enquiries'].includes(kind)&&ctx.financial?mapTallySalesDocument(selected.raw_record):null;
     if(document)document.relationships=await this.repository.salesRelationships(ctx.company.id,document);
-    return {descriptor:describeTallyEntity(kind,Object.keys(selected.fields),Object.keys(publicFields)),data:{...selected,display_name:tallyDisplay(selected.name),display_fields:Object.fromEntries(Object.entries(selected.fields).map(([key,value])=>[key,tallyDisplay(value)]))},...(document?{document}:{}),history,changes,links,payloads,financial:ctx.financial,source:selected.source_system||'Stored Tally import (connector source unrecorded)',rawNote:ctx.financial?'Original parsed JSON; original XML is retained in payloads.':'Raw financial payload is restricted. This JSON contains permitted fields only.'};
+    return {freshness:await tallyFreshness(this.db,ctx.company.id,freshnessDatasets(kind)),descriptor:describeTallyEntity(kind,Object.keys(selected.fields),Object.keys(publicFields)),data:{...selected,display_name:tallyDisplay(selected.name),display_fields:Object.fromEntries(Object.entries(selected.fields).map(([key,value])=>[key,tallyDisplay(value)]))},...(document?{document}:{}),history,changes,links,payloads,financial:ctx.financial,source:selected.source_system||'Stored Tally import (connector source unrecorded)',rawNote:ctx.financial?'Original parsed JSON; original XML is retained in payloads.':'Raw financial payload is restricted. This JSON contains permitted fields only.'};
   }
   async quality(kind,url,user) {
     const ctx=await this.context(kind,url,user),counts={};
@@ -158,7 +162,7 @@ export class TallyVisibilityService {
       row.crm=link ? await this.repository.crmRecord(crmKind,link.crm_id) : null;
       row.conflicts=[];
       if(row.crm) {
-        for(const [key,stored] of [['name','name'],...(crmKind==='item'?[['hsn','hsn'],['uom','base_unit']]:[['gstin','gstin']])]) {
+        for(const [key,stored] of [...(crmKind==='item'&&link?.identity_confirmed?[]:[['name','name']]),...(crmKind==='item'?[['hsn','hsn'],['uom','base_unit']]:[['gstin','gstin']])]) {
           const before=row.fields[`/stored/${stored}`] ?? null,after=row.crm[key] ?? null;
           if(before!==after)row.conflicts.push({field:key,tally:before,crm:after});
         }

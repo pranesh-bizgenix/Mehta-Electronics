@@ -1,0 +1,2 @@
+# Offline PDF table extraction dependency tested by the synthetic PDF fixtures.
+pypdf==6.14.2

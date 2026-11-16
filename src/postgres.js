@@ -1,13 +1,14 @@
 import postgres from 'postgres';
 import { AsyncLocalStorage } from 'node:async_hooks';
+import { assertDatabaseTarget, guardDatabaseClient } from './database-guard.js';
 
 export function connectPostgres(databaseUrl, options = {}) {
-  if (!databaseUrl) throw new Error('DATABASE_URL is required. Configure PostgreSQL before starting the CRM.');
-  return postgres(databaseUrl, {
+  assertDatabaseTarget(databaseUrl, { ...options.postgresOptions, schema: options.schema });
+  return guardDatabaseClient(postgres(databaseUrl, {
     max: 10, prepare: false,
     connection: { timezone: 'UTC', ...(options.schema ? { search_path: `${options.schema},public` } : {}) },
     types: {
-      numeric: { to: 1700, from: [1700], serialize: String, parse: Number },
+      numeric: { to: 1700, from: [1700], serialize: String, parse: String },
       count: { to: 20, from: [20], serialize: String, parse(value) {
         const parsed = Number(value);
         if (!Number.isSafeInteger(parsed)) throw new Error('Database integer exceeds the supported range.');
@@ -16,7 +17,7 @@ export function connectPostgres(databaseUrl, options = {}) {
     },
     onnotice: () => {},
     ...options.postgresOptions
-  });
+  }));
 }
 
 export function parameterize(query) {
@@ -30,6 +31,7 @@ export function createDatabase(config) {
   const current = () => context.getStore() || sql;
   const db = {
     sql,
+    ready: () => sql.ready(),
     async withConnection(callback) {
       if (context.getStore()) return callback();
       const connection = await sql.reserve();

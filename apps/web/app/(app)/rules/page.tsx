@@ -9,17 +9,27 @@ import {
   Button, Card, CardSkeleton, DataTable, Drawer, EmptyState, ErrorState, Modal, Notice, PageHeader, ReasonDialog, StatusBadge, Switch, TabPanel, Tabs, TextAreaField, Timeline, useAsync, useToast
 } from '@/components/ds';
 
-interface Rule { key: string; label: string; group: string; description: string; dependents: string[]; configured: boolean; value: unknown; version: number; updatedAt: string | null; updatedBy: string | null; reason: string | null; external: boolean }
+interface Rule { key: string; label: string; group: string; description: string; dependents: string[]; configured: boolean; value: unknown; version: number; updatedAt: string | null; updatedBy: string | null; reason: string | null; external: boolean; shape?: string | null }
 interface Version { version: number; value: unknown; cleared: boolean; reason: string; at: string; by: string }
 interface SwitchRow { key: string; name: string; description: string; enabled: boolean; rolloutStage: 'DRAFT_AND_APPROVAL' | 'SELECTIVE'; updatedAt: string; updatedBy: string | null }
 interface Change { field: string; oldValue: string; newValue: string; reason: string; at: string; by: string }
 
-/** Shape hints only: every number must be entered by the owner. */
-const SHAPES: Record<string, unknown> = {
-  'sla.policy': { timezone: 'Asia/Kolkata', businessDays: ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'], businessHours: { start: '09:30', end: '18:30' }, holidays: [], turnaroundMinutes: { ENQUIRY: 0 } },
-  'escalation.policy': { toBackupAfterMinutes: 0, toManagerAfterMinutes: 0 },
-  'discount.levels': { level1: { min: '0', max: '0' }, level2: { min: '0', max: '0' }, level3: { min: '0', max: '0' } },
-  'customers.potential_threshold': { metric: 'ORDER_COUNT', threshold: 0, periodDays: 0 }
+/** Descriptions only. New values always start empty. */
+const SHAPES: Record<string,string> = {
+ 'sla.policy':'Object: timezone, businessDays, businessHours {start,end}, holidays, turnaroundMinutes keyed by record type.',
+ 'escalation.policy':'Object: toBackupAfterMinutes, toManagerAfterMinutes (whole minutes).',
+ 'tasks.reminder_interval_minutes':'A positive whole number of minutes.',
+ 'discount.levels':'Object: level1, level2, level3; each has min and max as decimal strings. Bands must increase without overlap.',
+ 'quotation.approval_levels':'Array: {name, permission, appliesTo, sequence?}. appliesTo is ALL, DISCOUNT_LEVEL_2, DISCOUNT_LEVEL_3 or BELOW_MARGIN_FLOOR. Multiple matching stages need unique explicit sequence numbers and a confirmed reviewer reuse policy.',
+ 'quotation.approval_reviewer_policy':'Object: {reuse: DISTINCT_REVIEWERS or ALLOW_REUSE, instructions}. Required only for multiple matching quotation approval stages; no reuse or sequence is assumed.',
+ 'credit.default_limit_new_customer':'Non-negative INR amount as a decimal string.',
+ 'customers.potential_threshold':'Object: metric (ORDER_COUNT or INVOICE_COUNT), threshold, periodDays.',
+ 'audit.retention_days':'Positive whole number of days. No automatic archival/deletion is enabled.',
+ 'warranty.policy':'Object: periodMonths, firstResponseHours (positive integers), technicalFaultsOnly (boolean).',
+ 'credit.validation':'Object: exposureBasis (DEBIT_BALANCE_ONLY or DEBIT_BALANCE_PLUS_OPEN_ORDERS), maximumSourceAgeMinutes, allowUnavailableOwnerReview (boolean).',
+ 'payments.authorisation':'Object: maximumAmount as decimal string, checks as an array of confirmed checks.',
+ 'email.poll_interval_minutes':'A whole number of minutes accepted by the existing channel configuration.',
+ 'margin.floor_percent':'Percentage as a decimal string. The quotation policy must already exist.'
 };
 
 function RulesAndSwitches() {
@@ -42,6 +52,8 @@ function RulesTab() {
   const api = useApi();
   const { can } = useSession();
   const toast = useToast();
+  const {state:session}=useSession();
+  const owner=session.kind==='ready'&&session.user.role==='OWNER'&&can('rules.manage');
   const [rules, reload] = useAsync(() => api.data<Rule[]>('GET', '/api/v1/rules'), []);
   const [editing, setEditing] = useState<Rule | null>(null);
   const [draft, setDraft] = useState('');
@@ -55,7 +67,7 @@ function RulesTab() {
   const list = rules.data ?? [];
   const groups = [...new Set(list.map((r) => r.group))];
   const unset = list.filter((r) => !r.configured).length;
-  const open = (r: Rule) => { setEditing(r); setParseError(undefined); setDraft(JSON.stringify(r.configured ? r.value : SHAPES[r.key] ?? '', null, 2)); };
+  const open = (r: Rule) => { setEditing(r); setParseError(undefined); setDraft(r.configured ? JSON.stringify(r.value,null,2) : ''); };
   const parse = () => { try { setParseError(undefined); return JSON.parse(draft) as unknown; } catch { setParseError('Enter valid JSON: numbers as digits, text in double quotes.'); return undefined; } };
 
   return (
@@ -69,13 +81,13 @@ function RulesTab() {
                 <div className="cluster-between">
                   <div style={{ minWidth: 0 }}><strong>{r.label}</strong><p className="ds-cell-secondary mono">{r.key}</p></div>
                   <div className="cluster">
-                    <StatusBadge status={r.configured ? 'ACTIVE' : 'NOT_CONFIGURED'} label={r.configured ? `Set · v${r.version}` : 'Not configured'} />
+                    <StatusBadge status={r.configured ? 'ACTIVE' : 'NOT_CONFIGURED'} label={r.configured ? `Set · v${r.version}` : 'Not set'} />
                     {!r.external && r.version > 0 && <Button size="sm" variant="ghost" icon="clock" onClick={() => setHistory(r)}>History</Button>}
-                    {can('rules.manage') && <Button size="sm" variant={r.configured ? 'secondary' : 'primary'} onClick={() => open(r)}>{r.configured ? 'Change' : 'Set value'}</Button>}
+                    {owner && <Button size="sm" variant={r.configured ? 'secondary' : 'primary'} onClick={() => open(r)}>{r.configured ? 'Change' : 'Set value'}</Button>}
                   </div>
                 </div>
                 <p className="muted">{r.description}</p>
-                <p className="ds-cell-secondary"><strong>Blocks when empty:</strong> {r.dependents.join(', ')}</p>
+                <p className="ds-cell-secondary">{r.configured ? <>Depends on this rule: {r.dependents.join(', ')}</> : <strong>{`Not set \u2014 blocks: ${r.dependents.join(', ')}`}</strong>}</p>
                 {r.configured && <pre className="ds-secret" style={{ textAlign: 'start', whiteSpace: 'pre-wrap', fontSize: 'var(--text-sm)' }}>{JSON.stringify(r.value, null, 2)}</pre>}
                 {r.updatedAt && <p className="ds-cell-secondary">Changed {formatRelative(r.updatedAt)}{r.updatedBy ? ` by ${r.updatedBy}` : ''}{r.reason ? ` — ${r.reason}` : ''}</p>}
               </li>
@@ -88,7 +100,7 @@ function RulesTab() {
         <Button variant="ghost" onClick={() => setEditing(null)}>Cancel</Button>
         <Button onClick={() => { if (parse() !== undefined) setConfirm('save'); }}>Review and save</Button>
       </>}>
-        {editing && !editing.configured && SHAPES[editing.key] !== undefined && <Notice tone="info">The shape below has zeros as placeholders. Replace each value with the client’s decision.</Notice>}
+        {editing && <Notice tone="info">Enter only Owner-confirmed values. No defaults are supplied. {editing.shape ?? SHAPES[editing.key]}</Notice>}
         <TextAreaField label="Value (JSON)" rows={12} className="mono" value={draft} onChange={(e) => setDraft(e.target.value)} error={parseError} spellCheck={false} />
       </Modal>
       <ReasonDialog open={confirm !== null} title={confirm === 'clear' ? 'Clear rule' : 'Save new version'} danger={confirm === 'clear'} confirmLabel={confirm === 'clear' ? 'Clear rule' : 'Save version'} onClose={() => setConfirm(null)}

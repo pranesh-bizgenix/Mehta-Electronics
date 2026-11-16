@@ -9,7 +9,7 @@ import {
   Badge, Button, Card, CardSkeleton, Combobox, DataTable, EmptyState, ErrorState, Facts, Icon, Modal, Notice, ReasonDialog, StatCard, StatusBadge, TabPanel, Tabs, TextField,
   Timeline, Truncate, useAsync, useToast, type Option
 } from '@/components/ds';
-import { screenHref } from '@/components/shell/nav-config';
+import { customerEnquiryHref,commercialRecordHref } from '../../../../../../public/crm-navigation.js';
 import { useCustomer } from '@/features/customers/hooks';
 import { CustomerForm } from '@/features/customers/customer-form';
 import { CustomerOperations } from '@/features/workflows/customer-operations';
@@ -19,11 +19,13 @@ type Tab = 'overview' | 'contacts' | 'parts' | 'enquiries' | 'quotes' | 'orders'
 
 export default function Customer360({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const api = useApi();
   const { can } = useSession();
   const toast = useToast();
   const { state, customer, reload } = useCustomer(id);
   const [tab, setTab] = useState<Tab>('overview');
   const [editing, setEditing] = useState(false);
+  const [decision, setDecision] = useState<'APPROVE' | 'REJECT' | null>(null);
 
   if (state.status === 'error' && !customer) return <ErrorState error={state.error} onRetry={reload} />;
   if (!customer) return <div className="stack"><CardSkeleton lines={2} /><div className="grid-kpis"><CardSkeleton /><CardSkeleton /><CardSkeleton /></div></div>;
@@ -48,16 +50,17 @@ export default function Customer360({ params }: { params: Promise<{ id: string }
       <header className="ds-record page-enter">
         <span className="ds-record-avatar" aria-hidden="true">{initials(customer.name)}</span>
         <div style={{ minWidth: 0 }}>
-          <div className="cluster"><h1 className="truncate" title={customer.name}>{customer.name}</h1><StatusBadge status={customer.status} />{customer.tally.linked ? <Badge tone="success">Tally linked</Badge> : <Badge tone="neutral">CRM only</Badge>}</div>
+          <div className="cluster"><h1 className="truncate" title={customer.name}>{customer.name}</h1><StatusBadge status={customer.status} />{customer.tally.linked ? <Badge tone="success">Tally linked</Badge> : <Badge tone="neutral">CRM only</Badge>}{customer.onboarding ? <StatusBadge status={customer.onboarding.status} /> : <Badge tone="neutral">Established record</Badge>}</div>
           <div className="ds-record-meta">
             {customer.gstin && <span className="mono"><Icon name="shield" />{customer.gstin}</span>}
             {customer.customer_code && <span><Icon name="audit" />{customer.customer_code}</span>}
+            {customer.owner_name && <span><Icon name="user" />Owner: {customer.owner_name}</span>}
             {primary && <span><Icon name="user" />{primary.name}{primary.phone ? ` · ${primary.phone}` : ''}</span>}
             {primary?.email && <a href={`mailto:${primary.email}`} style={{ display: 'inline-flex', gap: 'var(--space-0-5)', alignItems: 'center' }}><Icon name="mail" />{primary.email}</a>}
           </div>
         </div>
         <div className="ds-record-actions">
-          {can('enquiries.create') && <a className="ds-button" data-variant="secondary" href={screenHref('/enquiries?new=1')}><Icon name="inbox" /><span>New enquiry</span></a>}
+          {can('enquiries.create') && <Link className="ds-button" data-variant="secondary" href={customerEnquiryHref(customer.id)}><Icon name="inbox" /><span>New enquiry</span></Link>}
           {can('customers.update') && <Button icon="settings" onClick={() => setEditing(true)}>Edit</Button>}
         </div>
       </header>
@@ -67,6 +70,11 @@ export default function Customer360({ params }: { params: Promise<{ id: string }
         <StatCard label="Payment terms" value={<span style={{ fontSize: 'var(--text-lg)' }}>{customer.profile.payment_terms ?? 'Not set'}</span>} footnote={customer.profile.state_code ? `Place of supply state ${customer.profile.state_code}` : undefined} />
         {customer.dues.financialAccess && <StatCard label="Tally balance" value={customer.dues.available ? balanceText(customer, 0) : 'Unavailable'} footnote={customer.dues.available ? `Fetched ${formatDateTime(customer.dues.fetchedAt)}` : 'Link the exact Tally ledger to see it'} />}
       </section>
+
+      {customer.onboarding && <Notice tone={customer.onboarding.status === 'APPROVED' ? 'success' : customer.onboarding.status === 'REJECTED' ? 'danger' : 'warning'} title={customer.onboarding.status === 'PENDING_APPROVAL' ? 'Customer awaiting independent billing review' : `Customer onboarding ${customer.onboarding.status.toLowerCase()}`}>
+        Version {customer.onboarding.version} was submitted by {customer.onboarding.submitted_by_name}. {customer.onboarding.decision_reason ? `Last decision: ${customer.onboarding.decision_reason}` : 'A different eligible reviewer must decide it.'}
+        {customer.onboarding.status === 'PENDING_APPROVAL' && can('customers.approve') && <span className="cluster" style={{ marginTop: 'var(--space-2)' }}><Button size="sm" onClick={() => setDecision('APPROVE')}>Approve for billing</Button><Button size="sm" variant="secondary" onClick={() => setDecision('REJECT')}>Reject</Button></span>}
+      </Notice>}
 
       <Tabs label="Customer sections" value={tab} onChange={(t) => setTab(t as Tab)} items={tabs} />
       <TabPanel id={tab}>
@@ -81,6 +89,7 @@ export default function Customer360({ params }: { params: Promise<{ id: string }
       </TabPanel>
 
       <CustomerForm open={editing} customer={customer} onClose={() => setEditing(false)} onSaved={() => { setEditing(false); toast('success', 'Customer updated.'); reload(); }} />
+      <ReasonDialog open={decision !== null} title={decision === 'APPROVE' ? 'Approve customer for billing' : 'Reject customer onboarding'} danger={decision === 'REJECT'} confirmLabel={decision === 'APPROVE' ? 'Approve' : 'Reject'} description="Your reason and identity will be retained in the audit trail. The person who last submitted this customer cannot decide it." onClose={() => setDecision(null)} onConfirm={async reason => { if (!decision || !customer.onboarding) return; await api.data('POST', `/api/crm/customers/${customer.id}/onboarding-decision`, { decision, version: customer.onboarding.version, reason }); setDecision(null); toast('success', decision === 'APPROVE' ? 'Customer approved for billing.' : 'Customer onboarding rejected.'); reload(); }} />
     </>
   );
 }
@@ -97,8 +106,14 @@ function OverviewTab({ customer }: { customer: Customer }) {
       <Card title="Details">
         <Facts items={[
           { label: 'Registered name', value: customer.name }, { label: 'GSTIN', value: customer.gstin ? <span className="mono">{customer.gstin}</span> : '—' },
-          { label: 'State code', value: customer.profile.state_code ?? '—' }, { label: 'Customer code', value: customer.customer_code ?? '—' },
-          { label: 'Billing address', value: customer.billing_address ?? '—' }, { label: 'Customer since', value: formatDate(customer.created_at) }
+          { label: 'PAN', value: customer.pan ? <span className="mono">{customer.pan}</span> : '—' }, { label: 'State code', value: customer.profile.state_code ?? '—' },
+          { label: 'Customer code', value: customer.customer_code ?? '—' }, { label: 'Account owner', value: customer.owner_name ?? 'Not assigned' },
+          { label: 'Backup owner', value: customer.profile.backup_owner_name ?? 'Not assigned' }, { label: 'Territory', value: customer.profile.territory ?? '—' },
+          { label: 'Billing address', value: customer.billing_address ?? '—' }, { label: 'Shipping / site address', value: customer.shipping_address ?? '—' },
+          { label: 'Location', value: [customer.city, customer.state, customer.pincode].filter(Boolean).join(', ') || '—' },
+          { label: 'Dealership / relationship', value: customer.profile.dealership ?? '—' },
+          { label: 'Brand relationships', value: customer.profile.brand_relationships?.join(', ') || '—' },
+          { label: 'Customer since', value: formatDate(customer.created_at) }, { label: 'Internal notes', value: customer.notes ?? '—' }
         ]} />
       </Card>
       <Card title="Tally link">
@@ -169,7 +184,6 @@ function PartsTab({ customer, onChanged }: { customer: Customer; onChanged: () =
   );
 }
 
-const HISTORY_PATH: Record<string, string> = { enquiries: '/enquiries', quotes: '/quotations', orders: '/orders' };
 function HistoryTab({ customerId, tab }: { customerId: number; tab: 'enquiries' | 'quotes' | 'orders' }) {
   const api = useApi();
   const [state, reload] = useAsync((signal) => api.get<{ data: HistoryRow[] }>(`/api/crm/customers/${customerId}/history/${tab}`, { signal }), [customerId, tab]);
@@ -179,7 +193,7 @@ function HistoryTab({ customerId, tab }: { customerId: number; tab: 'enquiries' 
     <DataTable<HistoryRow> id={`customer-${tab}`} caption={`Customer ${label}`} rows={rows} rowKey={(r) => r.id} loading={state.status === 'loading'} error={state.status === 'error' ? state.error : undefined} onRetry={reload}
       empty={<EmptyState title={`No ${label} yet`} />}
       columns={[
-        { key: 'number', header: 'Number', render: (r) => <a className="mono ds-cell-primary" href={screenHref(HISTORY_PATH[tab])}>{r.number}</a> },
+        { key: 'number', header: 'Number', render: (r) => <Link className="mono ds-cell-primary" href={r.href??commercialRecordHref(tab,r.id,r.managed)}>{r.number}</Link> },
         { key: 'status', header: 'Status', render: (r) => <StatusBadge status={r.status} /> },
         { key: 'created', header: 'Created', render: (r) => <span className="num">{formatDate(r.created_at)}</span> },
         { key: 'updated', header: 'Last updated', render: (r) => <span className="ds-cell-secondary">{formatDateTime(r.updated_at)}</span> }

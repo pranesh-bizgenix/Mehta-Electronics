@@ -9,6 +9,7 @@ import { importTallySession,parseCollection,markFinalizeFailed } from '../src/ta
 const config=getConfig();
 if(new URL(config.databaseUrl).pathname!=='/mehta_electronics_local')throw new Error('Unexpected DATABASE_URL database.');
 const db=createDatabase(config),store=createConnectorStore(config);
+await db.ready();
 const escape=value=>String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[c]));
 const definitions=[['companiesXml','Company','COMPANY'],['groupsXml','Group','GROUP'],['ledgersXml','Ledger','LEDGER'],['stockXml','StockItem','STOCKITEM'],['stockGroupsXml','StockGroup','STOCKGROUP'],['stockCategoriesXml','StockCategory','STOCKCATEGORY'],['unitsXml','Unit','UNIT'],['godownsXml','Godown','GODOWN'],['priceLevelsXml','PriceLevel','PRICELEVEL'],['costCentresXml','CostCentre','COSTCENTRE']];
 const requested=process.argv.find(arg=>arg.startsWith('--only='))?.slice(7);

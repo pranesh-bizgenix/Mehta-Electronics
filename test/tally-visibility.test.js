@@ -1,8 +1,7 @@
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import { test } from 'node:test';
-import { temporaryDatabase } from '../test-support/postgres.js';
-import { createDatabase } from '../src/postgres.js';
+import { withTestTransaction } from '../test-support/transaction.js';
 import { TallyVisibilityService } from '../src/tally-visibility-service.js';
 import { getConfig } from '../src/config.js';
 import { tallyDisplay } from '../src/tally-display.js';
@@ -15,9 +14,7 @@ test('modern display repair preserves Unicode and changes no source identity',()
   assert.equal(tallyDisplay('भारत · Müller'),'भारत · Müller');
 });
 
-test('all-field index: additive capture, role-safe search/detail/sort/export, pagination and history',async()=>{
-  const temporary=await temporaryDatabase('visibility');
-  const db=createDatabase({databaseUrl:temporary.databaseUrl});
+test('all-field index: additive capture, role-safe search/detail/sort/export, pagination and history',()=>withTestTransaction(async db=>{
   try {
     const company=crypto.randomUUID(),connector=crypto.randomUUID(),session=crypto.randomUUID();
     await db.sql`INSERT INTO users(id,name,email,role,password_hash) VALUES(900,'Fixture','fixture-visibility@example.invalid','OWNER','unused')`;
@@ -75,6 +72,6 @@ test('all-field index: additive capture, role-safe search/detail/sort/export, pa
     const exportedAll=await service.export('items',url,owner,['/stored/name','/stored/closing_value']);
     assert.equal(exportedAll.count,102);assert.ok(exportedAll.content.includes('Bulk 101'));assert.ok(exportedAll.content.includes('9007199254740993.12'));
     assert.ok((await service.export('items',url,manager,['/stored/name'],'excel')).content.includes('ss:Type="String"'));
-    await assert.rejects(db.sql`DELETE FROM tally_visibility_records`,/append-only/);
-  } finally {await db.close();await temporary.close();}
-});
+    await assert.rejects(db.sql`DELETE FROM tally_visibility_records WHERE company_id=${company}`,/append-only/);
+  } finally {}
+}));

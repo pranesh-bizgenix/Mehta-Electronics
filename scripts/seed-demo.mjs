@@ -1,3 +1,4 @@
+throw new Error('Demo seeding is disabled by MASTER RULES. Never seed invented business records into mehta_electronics_local.');
 import { getConfig } from '../src/config.js';
 import { openDatabase } from '../src/db.js';
 import { seedDemoData } from './lib/demo-data.mjs';

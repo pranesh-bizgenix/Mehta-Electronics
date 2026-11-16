@@ -62,6 +62,10 @@ public sealed class RefreshResponse
 
 public sealed class HeartbeatRequest
 {
+    public TallyConnector.Core.Write.WriteCapability WriteCapability { get; set; } = new();
+
+    public string ConnectorVersion { get; set; } = "";
+
     public string AgentVersion { get; set; } = "";
 
     public string? ProfileName { get; set; }
@@ -94,6 +98,7 @@ public sealed class OpenCompanyIdentity
 
 public sealed class HeartbeatResponse
 {
+    public List<string> ReadRequestIds { get; set; } = [];
     public bool Ok { get; set; }
 
     public string ConnectorId { get; set; } = "";

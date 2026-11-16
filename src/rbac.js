@@ -6,9 +6,11 @@
 // the seed it was created from and is only used when no provider is installed
 // (unit tests that call services directly).
 
-export const ROLES = ['EXECUTIVE', 'MANAGER', 'ACCOUNTS', 'OWNER'];
+import { logisticsPermissions, restrictLogisticsPermissions } from './logistics-policy.js';
+export const ROLES = ['EXECUTIVE', 'MANAGER', 'ACCOUNTS', 'OWNER', 'LOGISTICS_LEAD', 'STORE_STAFF'];
 
 const seedPermissions = {
+  ...logisticsPermissions,
   EXECUTIVE: ['dashboard.read', 'customers.read', 'customers.create', 'customers.update', 'customers.duplicates', 'items.read', 'enquiries.read', 'enquiries.create', 'enquiries.update', 'quotations.read', 'quotations.create', 'quotations.update', 'orders.read', 'orders.create', 'orders.update', 'work.read', 'tasks.read', 'tasks.write', 'exceptions.raise'],
   MANAGER: ['dashboard.read', 'users.read', 'customers.read', 'customers.create', 'customers.update', 'customers.duplicates', 'items.read', 'items.create', 'items.update', 'enquiries.read', 'enquiries.create', 'enquiries.update', 'quotations.read', 'quotations.create', 'quotations.update', 'quotations.status', 'quotations.send', 'quotations.approve', 'quotations.cost.read', 'orders.read', 'orders.create', 'orders.update', 'orders.review', 'orders.dispatch', 'purchasing.read', 'purchasing.write', 'purchasing.approve', 'tally.read', 'tally.sync', 'items.list_price.read', 'work.read', 'tasks.read', 'tasks.write', 'exceptions.raise'],
   ACCOUNTS: ['dashboard.read', 'customers.read', 'customers.update', 'customers.duplicates', 'items.read', 'enquiries.read', 'quotations.read', 'orders.read', 'tally.read', 'tally.sync', 'customers.dues.read', 'work.read', 'tasks.read', 'tasks.write', 'exceptions.raise'],
@@ -26,7 +28,7 @@ let provider = seedProvider;
 export function installPermissionProvider(next) { provider = next ?? seedProvider; }
 
 export function permissionsFor(role) {
-  return provider.permissionsFor(role);
+  return restrictLogisticsPermissions(role, provider.permissionsFor(role));
 }
 
 export function hasPermission(user, permission) {

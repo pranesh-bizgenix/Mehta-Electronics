@@ -111,14 +111,19 @@ export async function importTallySession(db,sessionId,{replay=false,requiredData
       if(!session)throw new Error('Upload session not found.');
       if(session.status==='stored' && session.import_summary && !replay)return session.import_summary;
       await tx`INSERT INTO tally_companies(id,name,tally_guid) VALUES(${crypto.randomUUID()},${session.company_name},${session.company_guid}) ON CONFLICT(name) DO NOTHING`;
-      const [company]=await tx`SELECT id FROM tally_companies WHERE name=${session.company_name}`;
+      const [company]=await tx`SELECT id,tally_guid FROM tally_companies WHERE name=${session.company_name} FOR UPDATE`;
+      if(company.tally_guid&&(!session.company_guid||company.tally_guid.trim().toLowerCase()!==session.company_guid.trim().toLowerCase()))throw new Error('Tally company GUID does not match the imported company identity; upload retained without indexing.');
+      if(!company.tally_guid&&session.company_guid){
+        await tx`UPDATE tally_companies SET tally_guid=${session.company_guid} WHERE id=${company.id} AND tally_guid IS NULL`;
+        await audit(tx,sessionId,'COMPANY_IDENTITY_RECORDED',{companyId:company.id,companyGuid:session.company_guid});
+      }
       const datasets=await tx`SELECT field_name,string_agg(content,'' ORDER BY sequence) AS content,count(*)::integer AS chunks,min(sequence) AS first,max(sequence) AS last
         FROM tally_upload_chunks WHERE session_id=${sessionId} GROUP BY field_name`;
       const summary={companyId:company.id,sessionId,datasets:{},customers:0,items:0,groups:0,vouchers:0,warnings:0,quarantined:0};
       await indexCompanyMetadata(tx,company.id,sessionId,session.created_at);
       for(const dataset of datasets){
-        await tx`INSERT INTO tally_raw_payloads(id,company_id,session_id,run_id,dataset,content_hash,content)
-          VALUES(${crypto.randomUUID()},${company.id},${sessionId},${session.sync_job_id},${dataset.field_name},${digest(dataset.content)},${dataset.content}) ON CONFLICT DO NOTHING`;
+        await tx`INSERT INTO tally_raw_payloads(id,company_id,session_id,run_id,dataset,content_hash,content,received_at)
+          VALUES(${crypto.randomUUID()},${company.id},${sessionId},${session.sync_job_id},${dataset.field_name},${digest(dataset.content)},${dataset.content},clock_timestamp()) ON CONFLICT DO NOTHING`;
         let payloadCount=0,imported=0,quarantined=0,error=null,state='retained';
         try{
           if(dataset.first!==0 || dataset.last+1!==dataset.chunks)throw new Error('Missing chunk sequence; raw content retained.');
@@ -140,10 +145,19 @@ export async function importTallySession(db,sessionId,{replay=false,requiredData
             summary.warnings+=prepared.warnings.length;
             summary[kind==='ledgers'?'customers':kind]=imported;
             state=quarantined?'partial':'imported';
-          } else if(['vouchersXml','salesDocumentsXml'].includes(dataset.field_name)) {
-            parseCollection(dataset.content,'VOUCHER'); // Validate envelope and LINEERROR before extracting structured records.
+          } else if(['vouchersXml','salesDocumentsXml','salesOrdersXml','purchaseOrdersXml','logisticsDocumentsXml'].includes(dataset.field_name)) {
+            const collected=parseCollection(dataset.content,'VOUCHER');
             const records=parseStructuredVouchers(dataset.content);payloadCount=records.length;
+            if(dataset.field_name==='logisticsDocumentsXml'&&(records.length!==collected.length||records.some(record=>!first(record,['GUID','MASTERID']))))throw new Error('Logistics collection contains a voucher without a stable source ID; original data retained for review.');
+            if(dataset.field_name==='logisticsDocumentsXml'&&records.some(record=>!['Delivery Note','Receipt Note','Stock Journal','Physical Stock','Rejections In','Rejections Out'].includes(String(first(record,['VOUCHERTYPENAME'])||'').trim())))throw new Error('Logistics collection contains an unsupported voucher type; retained for review.');
             if(dataset.field_name==='salesDocumentsXml')summary.salesDocuments={quotations:records.filter(r=>tallySalesDocumentKind(r)==='quotations').length,enquiries:records.filter(r=>tallySalesDocumentKind(r)==='enquiries').length};
+            if(['salesOrdersXml','purchaseOrdersXml'].includes(dataset.field_name)) {
+              const expected=dataset.field_name==='salesOrdersXml'?'Sales Order':'Purchase Order';
+              if(records.length!==collected.length||records.some(record=>!first(record,['GUID','MASTERID'])))throw new Error(`${expected} collection contains a voucher without a stable source ID; original data retained for review.`);
+              if(records.some(record=>String(first(record,['VOUCHERTYPENAME'])||record['@_VCHTYPE']||'').trim()!==expected))throw new Error(`Tally returned a non-${expected} voucher in the order collection.`);
+              summary.orderDocuments ||= {salesOrders:0,purchaseOrders:0};
+              summary.orderDocuments[dataset.field_name==='salesOrdersXml'?'salesOrders':'purchaseOrders']=records.length;
+            }
             summary.vouchers+=payloadCount;imported=payloadCount;
             state=payloadCount?'imported':'received_empty';
           }
@@ -158,17 +172,29 @@ export async function importTallySession(db,sessionId,{replay=false,requiredData
           }
         }
         await tx`INSERT INTO tally_run_datasets(company_id,session_id,dataset,status,payload_count,imported_count,quarantined_count,error,processed_at)
-          VALUES(${company.id},${sessionId},${dataset.field_name},${state},${payloadCount},${imported},${quarantined},${error},now())
-          ON CONFLICT(session_id,dataset) DO UPDATE SET status=EXCLUDED.status,payload_count=EXCLUDED.payload_count,imported_count=EXCLUDED.imported_count,quarantined_count=EXCLUDED.quarantined_count,error=EXCLUDED.error,processed_at=now()`;
+          VALUES(${company.id},${sessionId},${dataset.field_name},${state},${payloadCount},${imported},${quarantined},${error},clock_timestamp())
+          ON CONFLICT(session_id,dataset) DO UPDATE SET status=EXCLUDED.status,payload_count=EXCLUDED.payload_count,imported_count=EXCLUDED.imported_count,quarantined_count=EXCLUDED.quarantined_count,error=EXCLUDED.error,processed_at=clock_timestamp()`;
         summary.datasets[dataset.field_name]={status:state,payloadCount,imported,quarantined,error};summary.quarantined+=quarantined;
       }
       for(const required of requiredDatasets)if(!summary.datasets[required])summary.datasets[required]={status:'failed',error:'Required dataset has not arrived.'};
       const failures=Object.values(summary.datasets).filter(item=>item.status==='failed');
       summary.status=failures.length?'failed':summary.quarantined?'partial':'stored';
-      const message=failures.length?failures.map(item=>item.error).join('; ').slice(0,1000):`Imported ${summary.customers} ledgers, ${summary.items} items, ${summary.groups} groups; ${summary.vouchers} structured vouchers. ${summary.quarantined} quarantined.`;
+      const orderNote=summary.orderDocuments?` ${summary.orderDocuments.salesOrders} Sales Orders and ${summary.orderDocuments.purchaseOrders} Purchase Orders.`:'';
+      const message=failures.length?failures.map(item=>item.error).join('; ').slice(0,1000):`Imported ${summary.customers} ledgers, ${summary.items} items, ${summary.groups} groups; ${summary.vouchers} structured vouchers.${orderNote} ${summary.quarantined} quarantined.`;
       await tx`UPDATE tally_upload_sessions SET status=${failures.length?'failed':'stored'},completed_at=now(),import_summary=${tx.json(summary)} WHERE id=${sessionId}`;
       if(session.sync_job_id)await tx`UPDATE tally_sync_jobs SET status=${summary.status},message=${message},record_count=${summary.customers+summary.items+summary.groups+summary.vouchers},last_progress_at=now(),completed_at=now() WHERE id=${session.sync_job_id}`;
       if(!failures.length)await tx`UPDATE tally_connectors SET last_seen_at=now(),last_sync_at=now() WHERE id=${session.connector_id}`;
+      if(session.read_request_ids?.length){
+        const requests=await tx`SELECT id,entity_kind FROM tally_read_requests WHERE id IN (SELECT jsonb_array_elements_text(${JSON.stringify(session.read_request_ids)}::text::jsonb)::uuid) AND company_id=${company.id} AND connector_id=${session.connector_id} AND status='REQUESTED' FOR UPDATE`;
+        for(const request of requests){
+          const dataset={customers:'ledgersXml',vendors:'ledgersXml',items:'stockXml',sales_order:'salesOrdersXml',purchase_order:'purchaseOrdersXml'}[request.entity_kind];
+          const receipt=dataset?summary.datasets[dataset]:null;
+          const complete=summary.status==='stored'&&(!dataset||receipt&&['imported','received_empty'].includes(receipt.status)&&receipt.quarantined===0);
+          const state=complete?'INDEXED':'FAILED',errorCode=complete?null:dataset&&!receipt?'REQUESTED_DATASET_NOT_DELIVERED':'IMPORT_INCOMPLETE';
+          await tx`UPDATE tally_read_requests SET status=${state},last_session_id=${sessionId},completed_at=now(),error_code=${errorCode} WHERE id=${request.id}`;
+          await tx`INSERT INTO audit_logs(entity,record_id,action,new_value,reason) VALUES('TALLY_READ_REQUEST',${request.id},${state},${JSON.stringify({sessionId,status:state,errorCode})},'Authenticated connector delivered the requested company read; indexing outcome recorded.')`;
+        }
+      }
       await audit(tx,sessionId,failures.length?'IMPORT_FAILED':'IMPORT_COMPLETED',{...summary,datasets:summary.datasets});
       if(summary.quarantined)await audit(tx,sessionId,'RECORDS_QUARANTINED',{count:summary.quarantined});
       return summary;
@@ -184,6 +210,9 @@ export async function markFinalizeFailed(db,sessionId,error) {
     const message=error.code?`Finalize failed (${error.code}); raw upload retained.`:String(error.message).slice(0,1000);
     await tx`UPDATE tally_upload_sessions SET status='failed',completed_at=now() WHERE id=${sessionId}`;
     await tx`UPDATE tally_sync_jobs SET status='failed',message=${message},completed_at=now() WHERE id=(SELECT sync_job_id FROM tally_upload_sessions WHERE id=${sessionId})`;
+    const requests=await tx`UPDATE tally_read_requests r SET status='FAILED',completed_at=now(),last_session_id=${sessionId},error_code='FINALIZE_FAILED'
+      FROM tally_upload_sessions s,tally_companies c WHERE s.id=${sessionId} AND c.name=s.company_name AND r.id=ANY(s.read_request_ids) AND r.company_id=c.id AND r.connector_id=s.connector_id AND r.status='REQUESTED' RETURNING r.id`;
+    for(const request of requests)await tx`INSERT INTO audit_logs(entity,record_id,action,new_value,reason) VALUES('TALLY_READ_REQUEST',${request.id},'FAILED',${JSON.stringify({sessionId,errorCode:'FINALIZE_FAILED'})},'Requested source read could not be indexed; retained upload requires review.')`;
     await audit(tx,sessionId,'FINALIZE_FAILED',{message});
   });
 }

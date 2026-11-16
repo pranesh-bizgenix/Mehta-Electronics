@@ -1,0 +1,18 @@
+{
+  "mode": "development",
+  "checkedAt": "2026-11-02T07:55:36.737Z",
+  "checks": [
+    "CRM customers and authenticated API share one origin and session",
+    "Native Tally browser opens within the same application",
+    "Native connector setup, pairing, authenticated heartbeat, exact company binding and audited issuance work on the same listener",
+    "Connector screen has desktop/mobile light/dark captures and no serious structural accessibility issues",
+    "Manager denied connector administration on API and screen"
+  ],
+  "pageErrors": [],
+  "screenshots": [
+    "connector-1440-light.png",
+    "connector-390-light.png",
+    "connector-1440-dark.png",
+    "connector-390-dark.png"
+  ]
+}

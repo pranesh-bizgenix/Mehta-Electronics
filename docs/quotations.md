@@ -1,6 +1,6 @@
 # Quotations
 
-Open **Quotations** in the existing CRM. The project remains stopped; start it normally when ready to use the changes.
+Open **Quotations** in the existing CRM. The New quotation editor is at `/quotations/new`. See the quotation review in `docs/reference-requirements-register.md` for the supplied RFQ and F4 drafting requirements, including pricing features still pending.
 
 ## First use
 
@@ -15,7 +15,7 @@ No default floor or guessed seller state is activated in the real database. Miss
 
 ## Margin, tax and rounding policy
 
-The default basis is gross margin on discounted sales before GST: `(net sales − extended CRM cost) / net sales × 100`. The owner chooses **every line and total** (default) or **total only**. Every submitted quotation goes through independent review, including quotations above the floor. The creator and the latest version's editor cannot approve it.
+The implemented calculation is gross margin on discounted sales before GST: `(net sales − extended CRM cost) / net sales × 100`. The Owner must explicitly choose **every line and total** or **total only**; neither basis is preselected in setup. Every submitted quotation goes through independent review, including quotations above the floor. The creator and the latest version's editor cannot approve it. This implementation does not establish that the client confirmed the cost basis; F4 records that decision as blocked.
 
 Inputs accept up to 12 whole and six decimal places. Shared browser/server BigInt arithmetic rounds each line's discounted amount, extended cost and tax component half-up to paise. Totals sum those rounded amounts. Floor comparisons use exact integer cross multiplication; displayed percentages truncate to two decimal places. A zero net-sales quotation cannot be submitted. Currency is INR.
 
@@ -26,6 +26,11 @@ Validity is checked using the India calendar date. Expiry is an explicit, audite
 ## Approval and version integrity
 
 `DRAFT → PENDING_APPROVAL → APPROVED → SENT → WON / LOST`
+
+For multiple matching approval levels, Owner supplies explicit sequence numbers
+and confirms reviewer reuse. Each stage stays pending until all required reviews
+finish. The editor shows eligible next-step progress; retries and return/resubmit
+cannot skip stages. See [staged quotation approvals](quotation-staged-approvals.md).
 
 Managers can return pending drafts for changes. Active non-terminal quotations can be cancelled, with a reason. Elapsed drafts, pending, approved or sent quotations can be explicitly expired.
 
@@ -113,3 +118,13 @@ Files changed for this module:
 - Seven evidence files under `output/quotations/`, linked above.
 
 The unrelated existing edit to `apps/web/next-env.d.ts` is preserved and excluded from these commits. No connector file is changed. No project service is started by this delivery.
+
+## RFQ-specific drafting fields (4 November 2026)
+
+New and existing workflow quotations support an optional RFQ reference and original quantity instructions. When quantity instructions are present, staff must review final line quantities before submitting; a draft can be saved unresolved. Revisions retain the previous state in history. Duplicating a quotation clears quantity confirmation for a new review.
+
+Expand **customer references, specifications & delivery** under a line to enter its original line/customer part reference, equipment tag, quoted make and requested specification. This preserves separate occurrences of the same CRM item. The quantity column is the final quoted quantity; no set/colour multiplier or item merging is automatic.
+
+Availability is an explicitly entered quotation statement. Enter its check date and source; incomplete or future-dated checks block saving. Blank availability means not supplied, never zero stock. Delivery lead time is entered explicitly and labelled as measured from PO date. Requested standards are requirements, not an asserted compliance certificate.
+
+Print/PDF includes public RFQ and line information. Availability sources remain in internal review/detail/history and are not printed. Existing private cost, margin and discount exclusion is retained. These fields use the existing immutable JSON snapshots; no new migration or business data seed is needed. Automatic pricing and live source-backed stock/lead-time resolution are separate remaining work.

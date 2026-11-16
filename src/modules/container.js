@@ -13,9 +13,11 @@ import { MfaRepository } from './mfa/mfa-repository.js';
 import { MfaService } from './mfa/mfa-service.js';
 import { MfaController } from './mfa/mfa-controller.js';
 import { F1_RULES, RuleRegistry } from './rules/rule-definitions.js';
+import {BUSINESS_RULES} from './rules/business-rule-definitions.js';
 import { RuleRepository } from './rules/rule-repository.js';
 import { RuleService } from './rules/rule-service.js';
 import { RuleController } from './rules/rule-controller.js';
+import {DecisionController} from './decisions/controller.js';
 import { QuotationPolicyFloorSource, marginFloorDefinition } from './rules/quotation-policy-source.js';
 import { NotificationRepository, NotificationService } from './notifications/notification-service.js';
 import { WorkRepository } from './work/work-repository.js';
@@ -34,6 +36,9 @@ import { TaskService } from './tasks/task-service.js';
 import { TaskController } from './tasks/task-controller.js';
 import { AuditController, AuditQueryRepository, AuditService } from './admin/audit-service.js';
 import { UserAdminController, UserAdminRepository, UserAdminService } from './admin/user-admin-service.js';
+import { SetupController, SetupRepository, SetupService } from './admin/setup-service.js';
+import {CustomerWizardController,CustomerWizardRepository,CustomerWizardService} from './admin/tally-customer-wizard.js';
+import {ItemWizardController,ItemWizardRepository,ItemWizardService} from './admin/tally-item-wizard.js';
 import { DashboardController, DashboardRepository, DashboardService } from './dashboard/dashboard.js';
 import { BadgeRepository, BadgeService, PreferencesController, PreferencesRepository, PreferencesService } from './preferences/preferences.js';
 import {OperationsRepository} from './operations/operations-repository.js';
@@ -47,8 +52,9 @@ export function createModules({ db, config, clock = new SystemClock(), outboundM
   const audit = new AuditRepository(db);
 
   const access = new AccessService({ repository: new AccessRepository(db), transactions, audit, mfaEnabled: Boolean(config.mfaEnabled) });
-  const registry = new RuleRegistry([...F1_RULES,...OPERATIONS_RULES]).register(marginFloorDefinition(new QuotationPolicyFloorSource({ db })));
+  const registry = new RuleRegistry([...F1_RULES,...OPERATIONS_RULES,...BUSINESS_RULES]).register(marginFloorDefinition(new QuotationPolicyFloorSource({ db })));
   const rules = new RuleService({ registry, repository: new RuleRepository(db), transactions, audit, access });
+  const decisions=rules.decisions;
   const automation = new AutomationService({ repository: new AutomationRepository(db), transactions, audit, access });
   const notifications = new NotificationService({ repository: new NotificationRepository(db) });
   const mfa = new MfaService({ repository: new MfaRepository(db), totp: new Totp(), secretBox: new SecretBox(config.appEncryptionKey), clock, transactions, audit, access });
@@ -65,6 +71,10 @@ export function createModules({ db, config, clock = new SystemClock(), outboundM
   const userAdmin = new UserAdminService({ repository: new UserAdminRepository(db), access, work, tasks, transactions, audit });
 
   const controllers = [
+    new DecisionController({decisions}),
+    new ItemWizardController({wizard:new ItemWizardService({repository:new ItemWizardRepository(db),access,transactions,audit})}),
+    new CustomerWizardController({wizard:new CustomerWizardService({repository:new CustomerWizardRepository(db),access,transactions,audit})}),
+    new SetupController({setup:new SetupService({repository:new SetupRepository(db),users:new UserAdminRepository(db),access,rules,clock})}),
     new OperationsController({operations}),
     new ContractsController({contracts}),
     new AccessController({ access }), new MfaController({ mfa }), new RuleController({ rules }), new WorkController({ work }),
@@ -81,7 +91,7 @@ export function createModules({ db, config, clock = new SystemClock(), outboundM
 
   let loading = null;
   return {
-    services: { access, rules, automation, notifications, mfa, work, exceptions, tasks, outbound, auditQuery, userAdmin, operations, contracts },
+    services: { access, rules, decisions, automation, notifications, mfa, work, exceptions, tasks, outbound, auditQuery, userAdmin, operations, contracts },
     transactions, audit, scheduler, clock,
     idempotency: new IdempotencyRepository(db),
     routeDefinitions: () => controllers.flatMap((c) => c.routes()),

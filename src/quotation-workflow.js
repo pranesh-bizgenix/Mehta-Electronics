@@ -1,9 +1,18 @@
 import crypto from 'node:crypto';
+import {sumMoney} from '../public/money.js';
+import {bindQuotationLevel} from './modules/pricing/quotation-source.js';
 import {transaction,id,validDate,validateTax} from './crm-modules.js';
+import {quotationRequest,quotationLineRequest,quotationRequestBlock} from '../public/quotation-request.js';
 import {writeAudit,recordQuotationRevision,quotationView} from './db.js';
 import {hasPermission} from './rbac.js';
 import {calculateQuotation,scaled} from '../public/quotation-math.js';
 import {quotationPdf} from './quotation-document.js';
+import {costErrors,policyErrors} from '../public/quotation-setup-validation.js';
+import {validationFailed,conflict} from './core/errors.js';
+import {pricingRuleVersions,requirePricingRules} from './modules/rules/workflow-rules.js';
+import {DecisionService,requireSetting} from './modules/decisions/service.js';
+import {createQuotationReview,quotationApprovalFingerprint,validateQuotationReview,requireQuotationReviewer,quotationApprovalCommand,requireQuotationStageCommand,quotationApprovalProjection} from './quotation-approvals.js';
+const checkSetup=errors=>{if(Object.keys(errors).length)throw validationFailed('Correct the highlighted setup fields.',{fields:Object.entries(errors).map(([path,message])=>({path,message}))});};
 
 const fail=(status,message)=>{throw Object.assign(new Error(message),{status});};
 const text=(v,max=2000)=>{if(typeof v!=='string'||v.length>max)fail(422,`Enter text of at most ${max} characters.`);return v.trim();};
@@ -20,28 +29,43 @@ async function event(db,user,q,action,why,detail={},privateDetail={}){
  await writeAudit(db,{userId:user.id,entity:'QUOTATION_WORKFLOW',recordId:q?.quotation_id??'POLICY',action,reason:why,newValue:detail});
 }
 export async function quotePolicy(db){return await db.prepare('SELECT *,floor_percent::text AS floor_percent FROM crm_quotation_policy WHERE singleton').get()||null;}
-export async function saveQuotePolicy(db,b,user){can(user,'quotations.policy.manage');const why=reason(b),floor=String(b.floorPercent),basis=b.marginBasis;
+export async function saveQuotePolicy(db,b,user){can(user,'quotations.policy.manage');checkSetup(policyErrors(b));const why=reason(b),floor=b.floorPercent,basis=b.marginBasis;
  try{if(scaled(floor)>100000000n)fail(422,'Invalid margin floor.');}catch(e){fail(422,e.message);}
  if(!['LINE_AND_TOTAL','TOTAL'].includes(basis))fail(422,'Select a margin basis.');
  const seller=state(b.sellerState),letterhead={name:text(b.letterhead?.name??'',200),address:text(b.letterhead?.address??'',1000),gstin:text(b.letterhead?.gstin??'',15).toUpperCase(),email:text(b.letterhead?.email??'',200),phone:text(b.letterhead?.phone??'',60)};
  if(!letterhead.name)fail(422,'Company name is required.');validateTax(letterhead.gstin,seller);
+ if(Object.hasOwn(b,'expectedRevision')&&b.expectedRevision!==null&&(!Number.isSafeInteger(b.expectedRevision)||b.expectedRevision<1))throw validationFailed('Reload the current quotation policy revision before saving.');
  return work(db,user,why,async()=>{const old=await quotePolicy(db);
+ if(Object.hasOwn(b,'expectedRevision')&&b.expectedRevision!==(old?.revision??null))throw conflict('Quotation policy changed. Reload Policy and letterhead before saving.','POLICY_VERSION_CHANGED');
  if(old)await db.prepare('UPDATE crm_quotation_policy SET floor_percent=?,margin_basis=?,seller_state=?,letterhead=?::text::jsonb,revision=revision+1 WHERE id=?').run(floor,basis,seller,JSON.stringify(letterhead),old.id);
  else await db.prepare('INSERT INTO crm_quotation_policy(floor_percent,margin_basis,seller_state,letterhead,created_by) VALUES(?,?,?,?::text::jsonb,?)').run(floor,basis,seller,JSON.stringify(letterhead),user.id);
- const updated=await quotePolicy(db);await event(db,user,null,'POLICY_CHANGED',why,{revision:updated.revision},{before:old,after:updated});return updated;
+ const updated=await quotePolicy(db);await event(db,user,null,'POLICY_CHANGED',why,{revision:updated.revision},{before:old,after:updated});
+ await new DecisionService({db}).confirmLegacy(user,'margin.floor_percent',updated.floor_percent,why,{withinTransaction:true});
+ return updated;
  });
 }
 export async function quoteCost(db,itemId,user){can(user,'quotations.cost.read');return await db.prepare('SELECT item_id,unit_cost::text AS unit_cost,updated_at FROM crm_quotation_costs WHERE item_id=?').get(id(itemId))||{item_id:id(itemId),unit_cost:null};}
 export async function pricingHistory(db,itemId,user){can(user,'quotations.cost.read');
  return db.prepare("SELECT e.*,u.name AS actor FROM crm_quotation_events e JOIN users u ON u.id=e.created_by WHERE e.quotation_id IS NULL AND ((?='' AND e.action='POLICY_CHANGED') OR (e.action='COST_CHANGED' AND e.public_detail->>'itemId'=?)) ORDER BY e.id DESC").all(itemId?String(id(itemId)):'',itemId?String(id(itemId)):'');
 }
-export async function saveQuoteCost(db,itemId,b,user){can(user,'quotations.cost.manage');const why=reason(b),cost=String(b.unitCost);try{scaled(cost);}catch(e){fail(422,e.message);}
- return work(db,user,why,async()=>{
+async function writeCost(db,itemId,cost,why,user,source={}){
  if(!await db.prepare("SELECT id FROM items WHERE id=? AND status='ACTIVE'").get(id(itemId)))fail(422,'Select an active CRM item.');
  const old=await quoteCost(db,itemId,user);
  if(old.unit_cost!==null)await db.prepare('UPDATE crm_quotation_costs SET unit_cost=? WHERE item_id=?').run(cost,id(itemId));
  else await db.prepare('INSERT INTO crm_quotation_costs(item_id,unit_cost,created_by) VALUES(?,?,?)').run(id(itemId),cost,user.id);
- await event(db,user,null,'COST_CHANGED',why,{itemId:id(itemId)},{before:old.unit_cost,after:cost});return quoteCost(db,itemId,user);
+ await event(db,user,null,'COST_CHANGED',why,{itemId:id(itemId),...source},{before:old.unit_cost,after:cost});return quoteCost(db,itemId,user);
+}
+export async function saveQuoteCost(db,itemId,b,user){can(user,'quotations.cost.manage');checkSetup(costErrors(b));
+ return work(db,user,reason(b),()=>writeCost(db,itemId,b.unitCost,reason(b),user));
+}
+// Rebuild the preview under the same lock used by manual cost/policy changes.
+export async function importQuoteCosts(db,b,user,preview){can(user,'quotations.cost.manage');can(user,'quotations.cost.read');
+ return work(db,user,reason(b),async()=>{
+ const plan=await preview(db,b,user,true);
+ if(!plan.canSave)fail(422,'Fix every import row before saving.');
+ if(typeof b.fingerprint!=='string'||b.fingerprint!==plan.fingerprint)fail(409,'Costs or item details changed after preview. Review the file again.');
+ for(const row of plan.rows)await writeCost(db,row.itemId,row.unitCost,reason(b),user,{sourceFile:b.filename});
+ return {saved:plan.rows.length};
  });
 }
 function visible(row,user){const out={...row.public_snapshot,id:row.quotation_id,status:row.status,version:row.version,created_by:row.created_by,updated_at:row.updated_at,duplicateOf:row.duplicate_of};
@@ -56,10 +80,15 @@ export async function quotationEnquiry(db,enquiryId,user){can(user,'quotations.c
 }
 export async function legacyQuoteView(db,quoteId){const q=await quotationView(db,quoteId);if(!q)return q;
  const row=await db.prepare('SELECT public_snapshot,status FROM crm_quotation_workflows WHERE quotation_id=?').get(quoteId);
- if(row){const p=row.public_snapshot;q.subtotal=Number(p.subtotal);q.tax_total=Number((Number(p.cgst)+Number(p.sgst)+Number(p.igst)).toFixed(2));q.total=Number(p.total);q.workflowStatus=row.status;}
+ if(row){const p=row.public_snapshot;q.subtotal=p.subtotal;q.tax_total=sumMoney([p.cgst,p.sgst,p.igst]);q.total=p.total;q.workflowStatus=row.status;}
  return q;
 }
-export async function quoteDetail(db,quoteId,user){can(user,'quotations.read');return visible(await rowFor(db,quoteId),user);}
+async function visibleWithApproval(db,row,user){
+ const out=visible(row,user),approval=await quotationApprovalProjection(db,row,user);
+ if(approval){if(['PENDING_APPROVAL','APPROVED'].includes(row.status))try{await ensureCurrent(db,row);}catch{approval.canApprove=false;approval.blocked=true;approval.note='Approval evidence or reviewer eligibility changed. Return to draft and review the current quotation.';}out.approval=approval;}
+ return out;
+}
+export async function quoteDetail(db,quoteId,user){can(user,'quotations.read');return visibleWithApproval(db,await rowFor(db,quoteId),user);}
 export async function quoteForDocument(db,quoteId,user){can(user,'quotations.read');const row=await rowFor(db,quoteId),out=visible(row,{role:'EXECUTIVE'});
  if(row.status==='APPROVED')try{await ensureCurrent(db,row);}catch{out.status='DRAFT';}
  return out;
@@ -72,7 +101,9 @@ export async function quoteList(db,url,user){can(user,'quotations.read');const p
  return {data:data.map(r=>visible(r,user)),legacyCount:legacy.n,pagination:{page,pageSize,total:count.n,pages:Math.ceil(count.n/pageSize)}};
 }
 async function snapshot(db,b,number,enquiryId=null){
- const policy=await quotePolicy(db);if(!policy)fail(409,'The owner must configure quotation policy and company letterhead first.');
+ let request;try{request=quotationRequest(b.request);}catch(error){fail(422,error.message);}
+ const policy=await quotePolicy(db);if(!policy)fail(409,'Quotation creation is blocked: ask the owner to open Quotations → Policy and letterhead and save the margin floor, margin basis, seller state and company name.');
+ await requireSetting(db,'margin.floor_percent');
  const customer=await db.prepare("SELECT c.*,p.state_code FROM customers c LEFT JOIN crm_customer_profiles p ON p.customer_id=c.id WHERE c.id=? AND c.status='ACTIVE'").get(id(b.customerId));
  if(!customer)fail(422,'Select an active customer.');
  const pos=state(b.placeOfSupply||customer.state_code||customer.gstin?.slice(0,2));
@@ -84,14 +115,16 @@ async function snapshot(db,b,number,enquiryId=null){
  for(const l of b.lines){const item=await db.prepare("SELECT *,pack_size::text AS pack_size FROM items WHERE id=? AND status='ACTIVE'").get(id(l.itemId));if(!item)fail(422,'Every line must reference an active CRM item.');
  const c=await db.prepare('SELECT unit_cost::text AS value FROM crm_quotation_costs WHERE item_id=?').get(item.id);costs[String(item.id)]=c?.value??null;
  lines.push({itemId:item.id,partCode:item.part_code,hsn:item.hsn||'',description:text(l.description??item.description,1000),uom:item.uom,quantity:String(l.quantity),unitPrice:String(l.unitPrice),discountPercent:String(l.discountPercent??'0'),taxPercent:String(l.taxPercent??'0')});
+ try{lines.at(-1).requestDetails=quotationLineRequest(l.requestDetails,today());}catch(error){fail(422,`Line ${lines.length}: ${error.message}`);}
  lines.at(-1).rateContractId=await contractForLine(db,customer.id,lines.at(-1),today());
+ const selection=await bindQuotationLevel(db,lines.at(-1),l.pricingSelection);if(selection)lines.at(-1).pricingSelection=selection;
  }
  let math;try{math=calculateQuotation(lines,policy.seller_state,pos,costs,policy.floor_percent,policy.margin_basis);}catch(e){fail(422,e.message);}
  if(scaled(math.total)>999999999999000000n)fail(422,'Quotation total exceeds the supported limit.');
  const {cost,missingCost,marginPercent,belowFloor,...publicMath}=math;
  const privateLines=math.lines.map(({itemId,unitCost,cost,marginPercent,belowFloor})=>({itemId,unitCost,cost,marginPercent,belowFloor}));
  publicMath.lines=math.lines.map(({unitCost:ignored,cost:ignored2,marginPercent:ignored3,belowFloor:ignored4,...l})=>l);
- return {policy,public:{quotation_number:number,customerId:customer.id,customer_name:customer.name,customerGstin:customer.gstin||'',customerAddress:customer.billing_address||'',enquiryId,validUntil:b.validUntil,placeOfSupply:pos,sellerState:policy.seller_state,supplyType:'DOMESTIC_STANDARD',terms:text(b.terms??'',10000),notes:text(b.notes??'',10000),letterhead:policy.letterhead,...publicMath},private:{cost,missingCost,marginPercent,belowFloor,floorPercent:policy.floor_percent,marginBasis:policy.margin_basis,lines:privateLines}};
+ return {policy,public:{quotation_number:number,customerId:customer.id,customer_name:customer.name,customerGstin:customer.gstin||'',customerAddress:customer.billing_address||'',enquiryId,request,validUntil:b.validUntil,placeOfSupply:pos,sellerState:policy.seller_state,supplyType:'DOMESTIC_STANDARD',terms:text(b.terms??'',10000),notes:text(b.notes??'',10000),letterhead:policy.letterhead,...publicMath},private:{cost,missingCost,marginPercent,belowFloor,floorPercent:policy.floor_percent,marginBasis:policy.margin_basis,lines:privateLines}};
 }
 async function persistVersion(db,row,user,why){
  await db.prepare('INSERT INTO crm_quotation_versions(quotation_id,version,public_snapshot,private_snapshot,reason,created_by) VALUES(?,?,?::text::jsonb,?::text::jsonb,?,?)').run(row.quotation_id,row.version,JSON.stringify(row.public_snapshot),JSON.stringify(row.private_snapshot),why,user.id);
@@ -108,6 +141,7 @@ export async function saveQuote(db,quoteId,b,user,duplicateOf=null){can(user,quo
  if(old&&(!['DRAFT','APPROVED','PENDING_APPROVAL'].includes(old.status)||b.version!==old.version))fail(409,'Quotation changed or cannot be edited. Reload; sent quotations must be duplicated.');
  const number=old?.public_snapshot.quotation_number||`QTN-${new Date().getUTCFullYear()}-${crypto.randomBytes(5).toString('hex').toUpperCase()}`;
  const enquiryId=b.enquiryId?id(b.enquiryId):null,s=await snapshot(db,b,number,enquiryId);
+ s.private.businessRuleVersions=await pricingRuleVersions(db);s.private.pricingAuthorRole=user.role;
  let qid=old?.quotation_id;
  if(!qid)qid=(await db.prepare('INSERT INTO quotations(quotation_number,customer_id,enquiry_id,valid_until,terms,notes,created_by,updated_by) VALUES(?,?,?,?,?,?,?,?)').run(number,s.public.customerId,enquiryId,b.validUntil,s.public.terms,s.public.notes,user.id,user.id)).insertedId;
  else await db.prepare("UPDATE quotations SET customer_id=?,enquiry_id=?,valid_until=?,terms=?,notes=?,status='DRAFT',updated_by=?,updated_at=now() WHERE id=?").run(s.public.customerId,enquiryId,b.validUntil,s.public.terms,s.public.notes,user.id,qid);
@@ -118,22 +152,37 @@ export async function saveQuote(db,quoteId,b,user,duplicateOf=null){can(user,quo
  const row=await rowFor(db,qid);await persistVersion(db,row,user,why);await event(db,user,row,duplicateOf?'DUPLICATED':old?'REVISED':'CREATED',why,{status:'DRAFT',version:row.version,...(duplicateOf?{sourceId:duplicateOf}:{})});return visible(row,user);
  });
 }
-async function ensureCurrent(db,row){await requireQuotableCustomer(db,row.public_snapshot.customerId);for(const line of row.public_snapshot.lines)await contractForLine(db,row.public_snapshot.customerId,line,today());const p=await quotePolicy(db);if(!p||p.revision!==row.policy_revision)fail(409,'Policy changed. Revise and resubmit the quotation.');
- for(const l of row.private_snapshot.lines){const c=await db.prepare('SELECT unit_cost::text AS value FROM crm_quotation_costs WHERE item_id=?').get(l.itemId);if(c?.value==null||scaled(c.value)!==scaled(l.unitCost??'0'))fail(409,'Item costs changed or are missing. Revise and resubmit the quotation.');}
- if(row.private_snapshot.missingCost)fail(422,'The owner must enter costs for every item before submission.');
+async function ensureCurrent(db,row,{complete=false,review=true}={}){const requestBlock=quotationRequestBlock(row.public_snapshot.request);if(requestBlock)fail(422,requestBlock);await requireQuotableCustomer(db,row.public_snapshot.customerId);for(const line of row.public_snapshot.lines){await requireContractBinding(db,row.public_snapshot.customerId,line,today());await bindQuotationLevel(db,line,line.pricingSelection);}const p=await quotePolicy(db);if(!p||p.revision!==row.policy_revision)fail(409,'Policy changed. Revise and resubmit the quotation.');
+ const margin=await requireSetting(db,'margin.floor_percent');
+ if(row.private_snapshot.missingCost)fail(422,'Submission is blocked: ask the owner to enter costs for every item in Quotations → Item costs, then save the draft again to capture those costs.');
+ for(const l of row.private_snapshot.lines){const c=await db.prepare('SELECT unit_cost::text AS value FROM crm_quotation_costs WHERE item_id=?').get(l.itemId);if(c?.value==null||scaled(c.value)!==scaled(l.unitCost??'0'))fail(409,'Item costs changed or are missing. Open Quotations → Item costs, then revise and resubmit the quotation.');}
  if(row.public_snapshot.subtotal==='0.00')fail(422,'A quotation must have a positive net sales amount before submission.');
  if(row.public_snapshot.validUntil<today())fail(422,'Quotation validity has expired.');
+ const plan=await requirePricingRules(db,row,null),sourceFingerprint=quotationApprovalFingerprint(row,plan,margin);
+ if(review&&row.private_snapshot.approvalReview)await validateQuotationReview(db,row,plan,row.private_snapshot.approvalReview,sourceFingerprint,{complete:complete||row.status==='APPROVED'});
+ else if(review&&plan.stages.length>1&&(complete||row.status!=='DRAFT'))throw conflict('This quotation needs a fresh staged approval round. Return to draft and submit it again.','QUOTATION_APPROVAL_INCOMPLETE');
+ return {plan,sourceFingerprint};
 }
+/** Conversion checks current complete evidence without changing historical issued documents. */
+export async function requireQuotationApproval(db,quoteId){return ensureCurrent(db,await rowFor(db,quoteId),{complete:true});}
 export async function quoteAction(db,quoteId,b,user){const why=reason(b),action=b.action;
  can(user,action==='APPROVE'||action==='RETURN'?'quotations.approve':action==='SUBMIT'?'quotations.update':'quotations.status');
- return work(db,user,why,async()=>{const row=await rowFor(db,quoteId);if(b.version!==row.version)fail(409,'Quotation changed. Reload before continuing.');
- let next;
- if(action==='SUBMIT'&&row.status==='DRAFT'){await ensureCurrent(db,row);next='PENDING_APPROVAL';}
+ return work(db,user,why,async()=>{const row=await rowFor(db,quoteId);
+ const requestHash=action==='APPROVE'?quotationApprovalCommand(b,user,row.quotation_id):null;
+ if(action==='APPROVE'&&b.requestKey){const receipt=await db.prepare("SELECT quotation_id,created_by,public_detail,private_detail FROM crm_quotation_events WHERE action='APPROVE' AND public_detail->>'requestKey'=? ORDER BY id LIMIT 1").get(b.requestKey);if(receipt){if(receipt.quotation_id!==row.quotation_id||receipt.created_by!==user.id||receipt.private_detail.approvalRequestHash!==requestHash)throw conflict('This approval requestKey was used for another command.','IDEMPOTENCY_KEY_REUSED');return {...await visibleWithApproval(db,row,user),replayed:true};}}
+ if(b.version!==row.version)fail(409,'Quotation changed. Reload before continuing.');
+ let next,reviewDetail=null,reviewEvidence=null;
+ if(action==='SUBMIT'&&row.status==='DRAFT'){const {plan,sourceFingerprint}=await ensureCurrent(db,row,{review:false});const approvalReview=createQuotationReview(row,plan,sourceFingerprint);await db.prepare('UPDATE crm_quotation_workflows SET private_snapshot=?::text::jsonb WHERE quotation_id=?').run(JSON.stringify({...row.private_snapshot,approvalReview}),row.quotation_id);next='PENDING_APPROVAL';reviewEvidence=approvalReview;reviewDetail={roundId:approvalReview.roundId,total:approvalReview.stages.length};}
  else if(action==='APPROVE'&&row.status==='PENDING_APPROVAL'){
-  await ensureCurrent(db,row);const last=await db.prepare('SELECT created_by FROM crm_quotation_versions WHERE quotation_id=? AND version=?').get(row.quotation_id,row.version);
-  if(last.created_by===user.id||row.created_by===user.id)fail(403,'A different manager or owner must approve this quotation.');
-  if(row.private_snapshot.belowFloor&&b.overrideFloor!==true)fail(422,'Explicitly confirm the below-floor exception and provide its reason.');next='APPROVED';
- }else if(action==='RETURN'&&row.status==='PENDING_APPROVAL')next='DRAFT';
+  const {plan,sourceFingerprint}=await ensureCurrent(db,row),approvalReview=row.private_snapshot.approvalReview??createQuotationReview(row,plan,sourceFingerprint);
+  requireQuotationStageCommand(b,approvalReview);const stage=await requireQuotationReviewer(db,row,approvalReview,user);
+  if(row.private_snapshot.belowFloor&&b.overrideFloor!==true)fail(422,'Explicitly confirm the below-floor exception and provide its reason.');
+  approvalReview.completed.push({stageId:stage.stageId,reviewerId:user.id,at:new Date().toISOString(),requestKey:b.requestKey??null});
+  next=approvalReview.completed.length===approvalReview.stages.length?'APPROVED':'PENDING_APPROVAL';
+  await db.prepare('UPDATE crm_quotation_workflows SET private_snapshot=?::text::jsonb WHERE quotation_id=?').run(JSON.stringify({...row.private_snapshot,approvalReview}),row.quotation_id);
+  reviewEvidence=approvalReview;
+  reviewDetail={roundId:approvalReview.roundId,stageId:stage.stageId,completed:approvalReview.completed.length,total:approvalReview.stages.length,...(b.requestKey?{requestKey:b.requestKey}:{})};
+ }else if(action==='RETURN'&&row.status==='PENDING_APPROVAL'){const {approvalReview,...retained}=row.private_snapshot;await db.prepare('UPDATE crm_quotation_workflows SET private_snapshot=?::text::jsonb WHERE quotation_id=?').run(JSON.stringify(retained),row.quotation_id);next='DRAFT';reviewEvidence=approvalReview;reviewDetail={roundId:approvalReview?.roundId??null,completed:approvalReview?.completed.length??0};}
  else if(action==='SEND'&&row.status==='APPROVED'){await requireCustomerHandler(db,row.public_snapshot.customerId,user);await ensureCurrent(db,row);await bindFirstQuotationOwner(db,row.public_snapshot.customerId,row.created_by,user);next='SENT';}
  else if(['WON','LOST'].includes(action)&&row.status==='SENT')next=action;
  else if(action==='EXPIRE'&&['SENT','APPROVED','PENDING_APPROVAL','DRAFT'].includes(row.status)&&row.public_snapshot.validUntil<today())next='EXPIRED';
@@ -143,8 +192,8 @@ export async function quoteAction(db,quoteId,b,user){const why=reason(b),action=
  await db.prepare('UPDATE crm_quotation_workflows SET status=? WHERE quotation_id=?').run(next,row.quotation_id);
  await db.prepare('UPDATE quotations SET status=?,updated_by=?,updated_at=now() WHERE id=?').run(base,user.id,row.quotation_id);
  if(next==='SENT'&&row.public_snapshot.enquiryId)await db.prepare("UPDATE enquiries SET status='QUOTED',updated_by=?,updated_at=now() WHERE id=? AND status IN ('NEW','QUALIFIED')").run(user.id,row.public_snapshot.enquiryId);
- await event(db,user,row,action,why,{from:row.status,to:next,version:row.version},action==='APPROVE'?{overrideFloor:row.private_snapshot.belowFloor,pricing:row.private_snapshot}:{});
- return visible(await rowFor(db,quoteId),user);
+ await event(db,user,row,action,why,{from:row.status,to:next,version:row.version,...reviewDetail},{...(action==='APPROVE'?{overrideFloor:row.private_snapshot.belowFloor,pricing:row.private_snapshot,...(b.requestKey?{approvalRequestHash:requestHash}:{})}:{}),...(reviewEvidence?{approvalReview:reviewEvidence}:{})});
+ return visibleWithApproval(db,await rowFor(db,quoteId),user);
  });
 }
 export async function quoteHistory(db,quoteId,user){can(user,'quotations.read');await rowFor(db,quoteId);
@@ -154,7 +203,7 @@ export async function quoteHistory(db,quoteId,user){can(user,'quotations.read');
 }
 export async function duplicateQuote(db,quoteId,b,user){const source=await quoteDetail(db,quoteId,user),why=reason(b);
  // A fresh draft takes current costs/policy and never inherits approval.
- return saveQuote(db,null,{...source,...b,customerId:source.customerId,lines:source.lines,reason:why},user,id(quoteId));
+ return saveQuote(db,null,{...source,...b,request:source.request?{...source.request,quantityConfirmed:false}:undefined,customerId:source.customerId,lines:source.lines,reason:why},user,id(quoteId));
 }
 export async function emailWorkflowQuote(db,quoteId,b,user,config,sendMail){
  can(user,'quotations.send');const why=text(b.reason||'Approved quotation emailed');
@@ -177,4 +226,4 @@ export async function emailWorkflowQuote(db,quoteId,b,user,config,sendMail){
  await event(db,user,row,'EMAIL_SENT',why,{to:b.to,subject,version:row.version});return {ok:true,status:'SENT'};
  });}catch(err){if(attempted)await work(db,user,'Email attempt failed or delivery is uncertain',async()=>{const row=await rowFor(db,quoteId);await event(db,user,row,'EMAIL_FAILED_OR_UNCERTAIN','Email attempt failed or delivery is uncertain',{to:b.to,version:row.version,statusCode:err.status||500});});throw err;}
 }
-import {requireQuotableCustomer,requireCustomerHandler,contractForLine,bindFirstQuotationOwner} from './modules/operations/customer-gates.js';
+import {requireQuotableCustomer,requireCustomerHandler,contractForLine,requireContractBinding,bindFirstQuotationOwner} from './modules/operations/customer-gates.js';

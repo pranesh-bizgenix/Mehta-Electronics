@@ -1,0 +1,948 @@
+{
+  "roles": [
+    {
+      "key": "ACCOUNTS",
+      "name": "Accounts",
+      "requires_mfa": false,
+      "all_permissions": false,
+      "is_system": true,
+      "status": "ACTIVE"
+    },
+    {
+      "key": "EXECUTIVE",
+      "name": "Executive",
+      "requires_mfa": false,
+      "all_permissions": false,
+      "is_system": true,
+      "status": "ACTIVE"
+    },
+    {
+      "key": "LOGISTICS_LEAD",
+      "name": "Logistics lead",
+      "requires_mfa": false,
+      "all_permissions": false,
+      "is_system": true,
+      "status": "ACTIVE"
+    },
+    {
+      "key": "MANAGER",
+      "name": "Manager",
+      "requires_mfa": false,
+      "all_permissions": false,
+      "is_system": true,
+      "status": "ACTIVE"
+    },
+    {
+      "key": "OWNER",
+      "name": "Owner",
+      "requires_mfa": true,
+      "all_permissions": true,
+      "is_system": true,
+      "status": "ACTIVE"
+    },
+    {
+      "key": "STORE_STAFF",
+      "name": "Store staff",
+      "requires_mfa": false,
+      "all_permissions": false,
+      "is_system": true,
+      "status": "ACTIVE"
+    }
+  ],
+  "grants": [
+    {
+      "role_key": "ACCOUNTS",
+      "permission_key": "collections.approve"
+    },
+    {
+      "role_key": "ACCOUNTS",
+      "permission_key": "collections.read"
+    },
+    {
+      "role_key": "ACCOUNTS",
+      "permission_key": "collections.write"
+    },
+    {
+      "role_key": "ACCOUNTS",
+      "permission_key": "customers.dues.read"
+    },
+    {
+      "role_key": "ACCOUNTS",
+      "permission_key": "customers.duplicates"
+    },
+    {
+      "role_key": "ACCOUNTS",
+      "permission_key": "customers.read"
+    },
+    {
+      "role_key": "ACCOUNTS",
+      "permission_key": "customers.update"
+    },
+    {
+      "role_key": "ACCOUNTS",
+      "permission_key": "dashboard.read"
+    },
+    {
+      "role_key": "ACCOUNTS",
+      "permission_key": "enquiries.read"
+    },
+    {
+      "role_key": "ACCOUNTS",
+      "permission_key": "exceptions.raise"
+    },
+    {
+      "role_key": "ACCOUNTS",
+      "permission_key": "items.read"
+    },
+    {
+      "role_key": "ACCOUNTS",
+      "permission_key": "operations.read"
+    },
+    {
+      "role_key": "ACCOUNTS",
+      "permission_key": "operations.write"
+    },
+    {
+      "role_key": "ACCOUNTS",
+      "permission_key": "orders.read"
+    },
+    {
+      "role_key": "ACCOUNTS",
+      "permission_key": "quotations.read"
+    },
+    {
+      "role_key": "ACCOUNTS",
+      "permission_key": "tally.read"
+    },
+    {
+      "role_key": "ACCOUNTS",
+      "permission_key": "tally.sync"
+    },
+    {
+      "role_key": "ACCOUNTS",
+      "permission_key": "tasks.read"
+    },
+    {
+      "role_key": "ACCOUNTS",
+      "permission_key": "tasks.write"
+    },
+    {
+      "role_key": "ACCOUNTS",
+      "permission_key": "work.read"
+    },
+    {
+      "role_key": "EXECUTIVE",
+      "permission_key": "customers.create"
+    },
+    {
+      "role_key": "EXECUTIVE",
+      "permission_key": "customers.duplicates"
+    },
+    {
+      "role_key": "EXECUTIVE",
+      "permission_key": "customers.read"
+    },
+    {
+      "role_key": "EXECUTIVE",
+      "permission_key": "customers.update"
+    },
+    {
+      "role_key": "EXECUTIVE",
+      "permission_key": "dashboard.read"
+    },
+    {
+      "role_key": "EXECUTIVE",
+      "permission_key": "enquiries.create"
+    },
+    {
+      "role_key": "EXECUTIVE",
+      "permission_key": "enquiries.read"
+    },
+    {
+      "role_key": "EXECUTIVE",
+      "permission_key": "enquiries.update"
+    },
+    {
+      "role_key": "EXECUTIVE",
+      "permission_key": "exceptions.raise"
+    },
+    {
+      "role_key": "EXECUTIVE",
+      "permission_key": "items.read"
+    },
+    {
+      "role_key": "EXECUTIVE",
+      "permission_key": "operations.read"
+    },
+    {
+      "role_key": "EXECUTIVE",
+      "permission_key": "operations.write"
+    },
+    {
+      "role_key": "EXECUTIVE",
+      "permission_key": "orders.create"
+    },
+    {
+      "role_key": "EXECUTIVE",
+      "permission_key": "orders.read"
+    },
+    {
+      "role_key": "EXECUTIVE",
+      "permission_key": "orders.update"
+    },
+    {
+      "role_key": "EXECUTIVE",
+      "permission_key": "quotations.create"
+    },
+    {
+      "role_key": "EXECUTIVE",
+      "permission_key": "quotations.read"
+    },
+    {
+      "role_key": "EXECUTIVE",
+      "permission_key": "quotations.update"
+    },
+    {
+      "role_key": "EXECUTIVE",
+      "permission_key": "tasks.read"
+    },
+    {
+      "role_key": "EXECUTIVE",
+      "permission_key": "tasks.write"
+    },
+    {
+      "role_key": "EXECUTIVE",
+      "permission_key": "work.read"
+    },
+    {
+      "role_key": "LOGISTICS_LEAD",
+      "permission_key": "logistics.assignment.manage"
+    },
+    {
+      "role_key": "LOGISTICS_LEAD",
+      "permission_key": "logistics.dispatch.manage"
+    },
+    {
+      "role_key": "LOGISTICS_LEAD",
+      "permission_key": "logistics.evidence.write"
+    },
+    {
+      "role_key": "LOGISTICS_LEAD",
+      "permission_key": "logistics.grn.manage"
+    },
+    {
+      "role_key": "LOGISTICS_LEAD",
+      "permission_key": "logistics.grn.post"
+    },
+    {
+      "role_key": "LOGISTICS_LEAD",
+      "permission_key": "logistics.grn.read"
+    },
+    {
+      "role_key": "LOGISTICS_LEAD",
+      "permission_key": "logistics.orders.read"
+    },
+    {
+      "role_key": "LOGISTICS_LEAD",
+      "permission_key": "logistics.read"
+    },
+    {
+      "role_key": "MANAGER",
+      "permission_key": "customers.create"
+    },
+    {
+      "role_key": "MANAGER",
+      "permission_key": "customers.duplicates"
+    },
+    {
+      "role_key": "MANAGER",
+      "permission_key": "customers.read"
+    },
+    {
+      "role_key": "MANAGER",
+      "permission_key": "customers.update"
+    },
+    {
+      "role_key": "MANAGER",
+      "permission_key": "dashboard.read"
+    },
+    {
+      "role_key": "MANAGER",
+      "permission_key": "enquiries.create"
+    },
+    {
+      "role_key": "MANAGER",
+      "permission_key": "enquiries.read"
+    },
+    {
+      "role_key": "MANAGER",
+      "permission_key": "enquiries.update"
+    },
+    {
+      "role_key": "MANAGER",
+      "permission_key": "exceptions.raise"
+    },
+    {
+      "role_key": "MANAGER",
+      "permission_key": "items.create"
+    },
+    {
+      "role_key": "MANAGER",
+      "permission_key": "items.list_price.read"
+    },
+    {
+      "role_key": "MANAGER",
+      "permission_key": "items.read"
+    },
+    {
+      "role_key": "MANAGER",
+      "permission_key": "items.update"
+    },
+    {
+      "role_key": "MANAGER",
+      "permission_key": "operations.read"
+    },
+    {
+      "role_key": "MANAGER",
+      "permission_key": "operations.write"
+    },
+    {
+      "role_key": "MANAGER",
+      "permission_key": "orders.create"
+    },
+    {
+      "role_key": "MANAGER",
+      "permission_key": "orders.dispatch"
+    },
+    {
+      "role_key": "MANAGER",
+      "permission_key": "orders.read"
+    },
+    {
+      "role_key": "MANAGER",
+      "permission_key": "orders.review"
+    },
+    {
+      "role_key": "MANAGER",
+      "permission_key": "orders.update"
+    },
+    {
+      "role_key": "MANAGER",
+      "permission_key": "purchasing.approve"
+    },
+    {
+      "role_key": "MANAGER",
+      "permission_key": "purchasing.read"
+    },
+    {
+      "role_key": "MANAGER",
+      "permission_key": "purchasing.write"
+    },
+    {
+      "role_key": "MANAGER",
+      "permission_key": "quotations.approve"
+    },
+    {
+      "role_key": "MANAGER",
+      "permission_key": "quotations.cost.read"
+    },
+    {
+      "role_key": "MANAGER",
+      "permission_key": "quotations.create"
+    },
+    {
+      "role_key": "MANAGER",
+      "permission_key": "quotations.read"
+    },
+    {
+      "role_key": "MANAGER",
+      "permission_key": "quotations.send"
+    },
+    {
+      "role_key": "MANAGER",
+      "permission_key": "quotations.status"
+    },
+    {
+      "role_key": "MANAGER",
+      "permission_key": "quotations.update"
+    },
+    {
+      "role_key": "MANAGER",
+      "permission_key": "tally.read"
+    },
+    {
+      "role_key": "MANAGER",
+      "permission_key": "tally.sync"
+    },
+    {
+      "role_key": "MANAGER",
+      "permission_key": "tasks.read"
+    },
+    {
+      "role_key": "MANAGER",
+      "permission_key": "tasks.write"
+    },
+    {
+      "role_key": "MANAGER",
+      "permission_key": "users.read"
+    },
+    {
+      "role_key": "MANAGER",
+      "permission_key": "work.read"
+    },
+    {
+      "role_key": "STORE_STAFF",
+      "permission_key": "logistics.evidence.write"
+    },
+    {
+      "role_key": "STORE_STAFF",
+      "permission_key": "logistics.orders.assigned"
+    },
+    {
+      "role_key": "STORE_STAFF",
+      "permission_key": "logistics.read"
+    }
+  ],
+  "permissions": [
+    {
+      "key": "access.manage",
+      "resource": "access",
+      "action": "W",
+      "description": "Edit roles, permissions and field privacy",
+      "owner_only": true
+    },
+    {
+      "key": "access.read",
+      "resource": "access",
+      "action": "R",
+      "description": "View the role and permission matrix",
+      "owner_only": false
+    },
+    {
+      "key": "audit.read",
+      "resource": "audit",
+      "action": "R",
+      "description": "Search the audit trail",
+      "owner_only": false
+    },
+    {
+      "key": "automation.disable",
+      "resource": "automation",
+      "action": "W",
+      "description": "Turn automation switches OFF",
+      "owner_only": false
+    },
+    {
+      "key": "automation.enable",
+      "resource": "automation",
+      "action": "W",
+      "description": "Turn automation switches ON or change rollout stage",
+      "owner_only": true
+    },
+    {
+      "key": "automation.read",
+      "resource": "automation",
+      "action": "R",
+      "description": "View automation switches",
+      "owner_only": false
+    },
+    {
+      "key": "collections.approve",
+      "resource": "collections",
+      "action": "A",
+      "description": "Confirm receipts and authorise payments",
+      "owner_only": false
+    },
+    {
+      "key": "collections.read",
+      "resource": "collections",
+      "action": "R",
+      "description": "View invoice references, receipts and collections",
+      "owner_only": false
+    },
+    {
+      "key": "collections.write",
+      "resource": "collections",
+      "action": "W",
+      "description": "Record collections and receipts",
+      "owner_only": false
+    },
+    {
+      "key": "contracts.approve",
+      "resource": "contracts",
+      "action": "A",
+      "description": "Approve customer-specific rate contracts independently",
+      "owner_only": false
+    },
+    {
+      "key": "contracts.manage",
+      "resource": "contracts",
+      "action": "W",
+      "description": "Record fixed customer-specific rate contracts",
+      "owner_only": false
+    },
+    {
+      "key": "customers.approve",
+      "resource": "customers",
+      "action": "A",
+      "description": "Approve new customers for billing and merges",
+      "owner_only": false
+    },
+    {
+      "key": "customers.controls",
+      "resource": "customers",
+      "action": "W",
+      "description": "Set customer restrictions and credit exemption",
+      "owner_only": true
+    },
+    {
+      "key": "customers.create",
+      "resource": "customers",
+      "action": "W",
+      "description": "Create customers",
+      "owner_only": false
+    },
+    {
+      "key": "customers.credit_exempt",
+      "resource": "customers",
+      "action": "W",
+      "description": "Set the credit-exempt flag",
+      "owner_only": true
+    },
+    {
+      "key": "customers.do_not_quote",
+      "resource": "customers",
+      "action": "W",
+      "description": "Set or clear Do Not Quote",
+      "owner_only": false
+    },
+    {
+      "key": "customers.dues.read",
+      "resource": "customers",
+      "action": "F",
+      "description": "See customer dues and balances",
+      "owner_only": false
+    },
+    {
+      "key": "customers.duplicates",
+      "resource": "customers",
+      "action": "R",
+      "description": "Run duplicate checks",
+      "owner_only": false
+    },
+    {
+      "key": "customers.read",
+      "resource": "customers",
+      "action": "R",
+      "description": "View customers",
+      "owner_only": false
+    },
+    {
+      "key": "customers.update",
+      "resource": "customers",
+      "action": "W",
+      "description": "Edit customers",
+      "owner_only": false
+    },
+    {
+      "key": "dashboard.read",
+      "resource": "dashboard",
+      "action": "R",
+      "description": "View dashboards",
+      "owner_only": false
+    },
+    {
+      "key": "enquiries.create",
+      "resource": "enquiries",
+      "action": "W",
+      "description": "Create enquiries",
+      "owner_only": false
+    },
+    {
+      "key": "enquiries.read",
+      "resource": "enquiries",
+      "action": "R",
+      "description": "View enquiries",
+      "owner_only": false
+    },
+    {
+      "key": "enquiries.update",
+      "resource": "enquiries",
+      "action": "W",
+      "description": "Edit and assign enquiries",
+      "owner_only": false
+    },
+    {
+      "key": "exceptions.decide",
+      "resource": "exceptions",
+      "action": "A",
+      "description": "Approve or reject exceptions",
+      "owner_only": false
+    },
+    {
+      "key": "exceptions.raise",
+      "resource": "exceptions",
+      "action": "W",
+      "description": "Raise exceptions and backdating requests",
+      "owner_only": false
+    },
+    {
+      "key": "exceptions.read",
+      "resource": "exceptions",
+      "action": "R",
+      "description": "View the exception queue",
+      "owner_only": false
+    },
+    {
+      "key": "items.create",
+      "resource": "items",
+      "action": "W",
+      "description": "Create items",
+      "owner_only": false
+    },
+    {
+      "key": "items.list_price.read",
+      "resource": "items",
+      "action": "F",
+      "description": "See list price and discount (internal only)",
+      "owner_only": false
+    },
+    {
+      "key": "items.read",
+      "resource": "items",
+      "action": "R",
+      "description": "View items and price lists",
+      "owner_only": false
+    },
+    {
+      "key": "items.update",
+      "resource": "items",
+      "action": "W",
+      "description": "Edit items and price lists",
+      "owner_only": false
+    },
+    {
+      "key": "logistics.assignment.manage",
+      "resource": "logistics",
+      "action": "W",
+      "description": "Assign or revoke store staff access to an order",
+      "owner_only": false
+    },
+    {
+      "key": "logistics.dispatch.manage",
+      "resource": "logistics",
+      "action": "W",
+      "description": "Dispatch approved orders and confirm delivery",
+      "owner_only": false
+    },
+    {
+      "key": "logistics.evidence.write",
+      "resource": "logistics",
+      "action": "W",
+      "description": "Append photos and item-code observations on GRN and dispatch",
+      "owner_only": false
+    },
+    {
+      "key": "logistics.grn.manage",
+      "resource": "logistics",
+      "action": "W",
+      "description": "Create GRN with receipt quantities",
+      "owner_only": false
+    },
+    {
+      "key": "logistics.grn.post",
+      "resource": "logistics",
+      "action": "A",
+      "description": "Independently post non-financial GRN review",
+      "owner_only": false
+    },
+    {
+      "key": "logistics.grn.read",
+      "resource": "logistics",
+      "action": "R",
+      "description": "Read GRN and receiving lines without prices",
+      "owner_only": false
+    },
+    {
+      "key": "logistics.orders.assigned",
+      "resource": "logistics",
+      "action": "R",
+      "description": "Read only explicitly assigned orders",
+      "owner_only": false
+    },
+    {
+      "key": "logistics.orders.read",
+      "resource": "logistics",
+      "action": "R",
+      "description": "Read orders without financial fields",
+      "owner_only": false
+    },
+    {
+      "key": "logistics.read",
+      "resource": "logistics",
+      "action": "R",
+      "description": "Open the operational logistics workspace",
+      "owner_only": false
+    },
+    {
+      "key": "operations.approve",
+      "resource": "operations",
+      "action": "A",
+      "description": "Approve sensitive support decisions",
+      "owner_only": true
+    },
+    {
+      "key": "operations.read",
+      "resource": "operations",
+      "action": "R",
+      "description": "View customer support and incoming messages",
+      "owner_only": false
+    },
+    {
+      "key": "operations.write",
+      "resource": "operations",
+      "action": "W",
+      "description": "Create and progress customer support and intake",
+      "owner_only": false
+    },
+    {
+      "key": "orders.create",
+      "resource": "orders",
+      "action": "W",
+      "description": "Create sales orders",
+      "owner_only": false
+    },
+    {
+      "key": "orders.credit.review",
+      "resource": "orders",
+      "action": "A",
+      "description": "Approve credit exceptions",
+      "owner_only": true
+    },
+    {
+      "key": "orders.dispatch",
+      "resource": "orders",
+      "action": "W",
+      "description": "Dispatch and confirm delivery",
+      "owner_only": false
+    },
+    {
+      "key": "orders.read",
+      "resource": "orders",
+      "action": "R",
+      "description": "View sales orders",
+      "owner_only": false
+    },
+    {
+      "key": "orders.review",
+      "resource": "orders",
+      "action": "A",
+      "description": "Review held sales orders",
+      "owner_only": false
+    },
+    {
+      "key": "orders.update",
+      "resource": "orders",
+      "action": "W",
+      "description": "Edit and verify sales orders",
+      "owner_only": false
+    },
+    {
+      "key": "outbound.approve",
+      "resource": "outbound",
+      "action": "A",
+      "description": "Approve outbound drafts",
+      "owner_only": false
+    },
+    {
+      "key": "outbound.checklist.manage",
+      "resource": "outbound",
+      "action": "W",
+      "description": "Tick the customer/category checklist",
+      "owner_only": true
+    },
+    {
+      "key": "outbound.read",
+      "resource": "outbound",
+      "action": "R",
+      "description": "View outbound drafts",
+      "owner_only": false
+    },
+    {
+      "key": "purchasing.approve",
+      "resource": "purchasing",
+      "action": "A",
+      "description": "Approve purchasing records",
+      "owner_only": false
+    },
+    {
+      "key": "purchasing.read",
+      "resource": "purchasing",
+      "action": "R",
+      "description": "View purchasing",
+      "owner_only": false
+    },
+    {
+      "key": "purchasing.write",
+      "resource": "purchasing",
+      "action": "W",
+      "description": "Edit purchasing records",
+      "owner_only": false
+    },
+    {
+      "key": "quotations.approve",
+      "resource": "quotations",
+      "action": "A",
+      "description": "Approve quotations",
+      "owner_only": false
+    },
+    {
+      "key": "quotations.cost.manage",
+      "resource": "quotations",
+      "action": "W",
+      "description": "Enter item costs",
+      "owner_only": true
+    },
+    {
+      "key": "quotations.cost.read",
+      "resource": "quotations",
+      "action": "F",
+      "description": "See cost and margin",
+      "owner_only": false
+    },
+    {
+      "key": "quotations.create",
+      "resource": "quotations",
+      "action": "W",
+      "description": "Create quotations",
+      "owner_only": false
+    },
+    {
+      "key": "quotations.policy.manage",
+      "resource": "quotations",
+      "action": "W",
+      "description": "Edit quotation policy and letterhead",
+      "owner_only": true
+    },
+    {
+      "key": "quotations.read",
+      "resource": "quotations",
+      "action": "R",
+      "description": "View quotations",
+      "owner_only": false
+    },
+    {
+      "key": "quotations.send",
+      "resource": "quotations",
+      "action": "W",
+      "description": "Send approved quotations",
+      "owner_only": false
+    },
+    {
+      "key": "quotations.status",
+      "resource": "quotations",
+      "action": "W",
+      "description": "Record quotation outcomes",
+      "owner_only": false
+    },
+    {
+      "key": "quotations.update",
+      "resource": "quotations",
+      "action": "W",
+      "description": "Revise and submit quotations",
+      "owner_only": false
+    },
+    {
+      "key": "rules.manage",
+      "resource": "rules",
+      "action": "W",
+      "description": "Edit business rules",
+      "owner_only": true
+    },
+    {
+      "key": "rules.read",
+      "resource": "rules",
+      "action": "R",
+      "description": "View business rules",
+      "owner_only": false
+    },
+    {
+      "key": "tally.connector.manage",
+      "resource": "tally",
+      "action": "W",
+      "description": "Pair and revoke Tally connectors",
+      "owner_only": true
+    },
+    {
+      "key": "tally.read",
+      "resource": "tally",
+      "action": "R",
+      "description": "View stored Tally data",
+      "owner_only": false
+    },
+    {
+      "key": "tally.sync",
+      "resource": "tally",
+      "action": "W",
+      "description": "Request a Tally read",
+      "owner_only": false
+    },
+    {
+      "key": "tasks.assign",
+      "resource": "tasks",
+      "action": "A",
+      "description": "Assign tasks to other users",
+      "owner_only": false
+    },
+    {
+      "key": "tasks.read",
+      "resource": "tasks",
+      "action": "R",
+      "description": "View tasks",
+      "owner_only": false
+    },
+    {
+      "key": "tasks.write",
+      "resource": "tasks",
+      "action": "W",
+      "description": "Create, update and forward tasks",
+      "owner_only": false
+    },
+    {
+      "key": "users.create",
+      "resource": "users",
+      "action": "W",
+      "description": "Create users",
+      "owner_only": true
+    },
+    {
+      "key": "users.read",
+      "resource": "users",
+      "action": "R",
+      "description": "View users",
+      "owner_only": false
+    },
+    {
+      "key": "users.update",
+      "resource": "users",
+      "action": "W",
+      "description": "Edit users, reset passwords and MFA",
+      "owner_only": true
+    },
+    {
+      "key": "work.read",
+      "resource": "work",
+      "action": "R",
+      "description": "View owned work and SLA",
+      "owner_only": false
+    },
+    {
+      "key": "work.reassign",
+      "resource": "work",
+      "action": "W",
+      "description": "Reassign open work",
+      "owner_only": false
+    }
+  ],
+  "existingPermissionsUnchanged": true
+}

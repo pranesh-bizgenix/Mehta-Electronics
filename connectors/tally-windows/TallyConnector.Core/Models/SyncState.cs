@@ -2,6 +2,8 @@ namespace TallyConnector.Core.Models;
 
 public sealed class SyncState
 {
+    public VoucherCheckpoint? VoucherCheckpoint { get; set; }
+    public List<string> PendingReadRequestIds { get; set; } = [];
     public bool InitialHistoryComplete { get; set; }
 
     public DateOnly? NextHistoryFrom { get; set; }

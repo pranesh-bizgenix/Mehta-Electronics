@@ -1,0 +1,42 @@
+{
+  "checkedAt": "2026-10-30T12:34:04.452Z",
+  "schema": "test_tallybrowser_92831fea7f7e",
+  "checks": [
+    "owner: real pagination, 31 imported records",
+    "owner: search nested XML alias outside default columns",
+    "Owner: selectable custom field + filtered server export",
+    "Owner: historical fields remain searchable and open the exact stored snapshot",
+    "companies: browser, detail and every descriptor field rendered",
+    "groups: browser, detail and every descriptor field rendered",
+    "ledgers: browser, detail and every descriptor field rendered",
+    "customers: browser, detail and every descriptor field rendered",
+    "vendors: browser, detail and every descriptor field rendered",
+    "banks: browser, detail and every descriptor field rendered",
+    "expenses: browser, detail and every descriptor field rendered",
+    "other: browser, detail and every descriptor field rendered",
+    "items: browser, detail and every descriptor field rendered",
+    "stock_groups: browser, detail and every descriptor field rendered",
+    "categories: browser, detail and every descriptor field rendered",
+    "units: browser, detail and every descriptor field rendered",
+    "godowns: browser, detail and every descriptor field rendered",
+    "price_levels: honest unavailable collection state (no fixture invented)",
+    "cost_centres: honest unavailable collection state (no fixture invented)",
+    "vouchers: honest unavailable collection state (no fixture invented)",
+    "reports: browser, detail and every descriptor field rendered",
+    "manager: real pagination, 31 imported records",
+    "manager: search nested XML alias outside default columns",
+    "Manager: financial search, sorting, raw payload and detail denied server-side",
+    "Desktop/mobile, no page errors, no serious/critical accessibility findings"
+  ],
+  "consoleErrors": [],
+  "axe": [
+    {
+      "role": "owner",
+      "violations": []
+    },
+    {
+      "role": "manager",
+      "violations": []
+    }
+  ]
+}

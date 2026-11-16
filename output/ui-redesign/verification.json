@@ -1,0 +1,202 @@
+{
+  "checkedAt": "2026-11-02T09:13:04.487Z",
+  "fixture": "isolated test schema; no production records",
+  "screenshots": [
+    "dashboard-1440-light.png",
+    "dashboard-390-light.png",
+    "dashboard-1440-dark.png",
+    "dashboard-390-dark.png",
+    "customers-1440-light.png",
+    "customers-390-light.png",
+    "customers-1440-dark.png",
+    "customers-390-dark.png",
+    "customers-1-1440-light.png",
+    "customers-1-390-light.png",
+    "customers-1-1440-dark.png",
+    "customers-1-390-dark.png",
+    "enquiries-1440-light.png",
+    "enquiries-390-light.png",
+    "enquiries-1440-dark.png",
+    "enquiries-390-dark.png",
+    "quotations-1440-light.png",
+    "quotations-390-light.png",
+    "quotations-1440-dark.png",
+    "quotations-390-dark.png",
+    "quotations-new-1440-light.png",
+    "quotations-new-390-light.png",
+    "quotations-new-1440-dark.png",
+    "quotations-new-390-dark.png",
+    "orders-1440-light.png",
+    "orders-390-light.png",
+    "orders-1440-dark.png",
+    "orders-390-dark.png",
+    "items-1440-light.png",
+    "items-390-light.png",
+    "items-1440-dark.png",
+    "items-390-dark.png",
+    "purchasing-1440-light.png",
+    "purchasing-390-light.png",
+    "purchasing-1440-dark.png",
+    "purchasing-390-dark.png",
+    "operations-1440-light.png",
+    "operations-390-light.png",
+    "operations-1440-dark.png",
+    "operations-390-dark.png",
+    "contracts-customerId-1-1440-light.png",
+    "contracts-customerId-1-390-light.png",
+    "contracts-customerId-1-1440-dark.png",
+    "contracts-customerId-1-390-dark.png",
+    "tally-1440-light.png",
+    "tally-390-light.png",
+    "tally-1440-dark.png",
+    "tally-390-dark.png",
+    "tally-connector-1440-light.png",
+    "tally-connector-390-light.png",
+    "tally-connector-1440-dark.png",
+    "tally-connector-390-dark.png",
+    "rules-1440-light.png",
+    "rules-390-light.png",
+    "rules-1440-dark.png",
+    "rules-390-dark.png",
+    "users-1440-light.png",
+    "users-390-light.png",
+    "users-1440-dark.png",
+    "users-390-dark.png",
+    "tasks-1440-light.png",
+    "tasks-390-light.png",
+    "tasks-1440-dark.png",
+    "tasks-390-dark.png",
+    "exceptions-1440-light.png",
+    "exceptions-390-light.png",
+    "exceptions-1440-dark.png",
+    "exceptions-390-dark.png",
+    "work-1440-light.png",
+    "work-390-light.png",
+    "work-1440-dark.png",
+    "work-390-dark.png",
+    "messages-1440-light.png",
+    "messages-390-light.png",
+    "messages-1440-dark.png",
+    "messages-390-dark.png",
+    "settings-1440-light.png",
+    "settings-390-light.png",
+    "settings-1440-dark.png",
+    "settings-390-dark.png",
+    "audit-1440-light.png",
+    "audit-390-light.png",
+    "audit-1440-dark.png",
+    "audit-390-dark.png"
+  ],
+  "checks": [
+    "dashboard: desktop/mobile light/dark captured",
+    "customers: desktop/mobile light/dark captured",
+    "customers/1: desktop/mobile light/dark captured",
+    "enquiries: desktop/mobile light/dark captured",
+    "quotations: desktop/mobile light/dark captured",
+    "quotations/new: desktop/mobile light/dark captured",
+    "orders: desktop/mobile light/dark captured",
+    "items: desktop/mobile light/dark captured",
+    "purchasing: desktop/mobile light/dark captured",
+    "operations: desktop/mobile light/dark captured",
+    "contracts?customerId=1: desktop/mobile light/dark captured",
+    "tally: desktop/mobile light/dark captured",
+    "tally/connector: desktop/mobile light/dark captured",
+    "rules: desktop/mobile light/dark captured",
+    "users: desktop/mobile light/dark captured",
+    "tasks: desktop/mobile light/dark captured",
+    "exceptions: desktop/mobile light/dark captured",
+    "work: desktop/mobile light/dark captured",
+    "messages: desktop/mobile light/dark captured",
+    "settings: desktop/mobile light/dark captured",
+    "audit: desktop/mobile light/dark captured",
+    "Customer form, keyboard dismissal, mobile navigation and drawer close verified"
+  ],
+  "pageErrors": [],
+  "overflow": [],
+  "accessibility": [
+    {
+      "route": "dashboard",
+      "findings": []
+    },
+    {
+      "route": "customers",
+      "findings": []
+    },
+    {
+      "route": "customers/1",
+      "findings": []
+    },
+    {
+      "route": "enquiries",
+      "findings": []
+    },
+    {
+      "route": "quotations",
+      "findings": []
+    },
+    {
+      "route": "quotations/new",
+      "findings": []
+    },
+    {
+      "route": "orders",
+      "findings": []
+    },
+    {
+      "route": "items",
+      "findings": []
+    },
+    {
+      "route": "purchasing",
+      "findings": []
+    },
+    {
+      "route": "operations",
+      "findings": []
+    },
+    {
+      "route": "contracts?customerId=1",
+      "findings": []
+    },
+    {
+      "route": "tally",
+      "findings": []
+    },
+    {
+      "route": "tally/connector",
+      "findings": []
+    },
+    {
+      "route": "rules",
+      "findings": []
+    },
+    {
+      "route": "users",
+      "findings": []
+    },
+    {
+      "route": "tasks",
+      "findings": []
+    },
+    {
+      "route": "exceptions",
+      "findings": []
+    },
+    {
+      "route": "work",
+      "findings": []
+    },
+    {
+      "route": "messages",
+      "findings": []
+    },
+    {
+      "route": "settings",
+      "findings": []
+    },
+    {
+      "route": "audit",
+      "findings": []
+    }
+  ]
+}

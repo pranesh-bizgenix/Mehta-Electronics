@@ -1,0 +1,458 @@
+{
+  "authority": "Explicit user S0-S10 stage request, 5 November 2026; the named LLD and prompt-pack Markdown files are not present. This matrix does not substitute for their eventual requirement-by-requirement review.",
+  "workflows": [
+    {
+      "key": "staff-and-reviewers",
+      "stage": "S0",
+      "tables": {
+        "users": [
+          "id",
+          "role",
+          "status"
+        ],
+        "roles": [
+          "key"
+        ],
+        "role_permissions": [
+          "role_key",
+          "permission_key"
+        ]
+      }
+    },
+    {
+      "key": "customer-and-tally-link",
+      "stage": "S0",
+      "tables": {
+        "customers": [
+          "id"
+        ],
+        "crm_customer_profiles": [
+          "customer_id"
+        ],
+        "tally_visibility_crm_links": [
+          "company_id",
+          "record_key",
+          "crm_id"
+        ]
+      }
+    },
+    {
+      "key": "product-and-tally-link",
+      "stage": "S0",
+      "tables": {
+        "items": [
+          "id"
+        ],
+        "crm_tally_item_links": [
+          "item_id",
+          "company_id",
+          "tally_record_key"
+        ]
+      }
+    },
+    {
+      "key": "quotation-and-history",
+      "stage": "S1",
+      "tables": {
+        "quotations": [
+          "id"
+        ],
+        "crm_quotation_workflows": [
+          "quotation_id"
+        ],
+        "crm_quotation_versions": [
+          "quotation_id"
+        ],
+        "crm_quotation_events": [
+          "quotation_id"
+        ]
+      }
+    },
+    {
+      "key": "pricing-policy-costs-and-levels",
+      "stage": "S2",
+      "tables": {
+        "crm_quotation_policy": [
+          "revision"
+        ],
+        "crm_quotation_costs": [
+          "item_id"
+        ],
+        "crm_price_levels": [
+          "level_number",
+          "meaning",
+          "configuration"
+        ]
+      }
+    },
+    {
+      "key": "price-list-import-and-activation",
+      "stage": "S2",
+      "tables": {
+        "source_documents": [
+          "content_sha256",
+          "document_type"
+        ],
+        "price_list_imports": [
+          "source_document_id",
+          "status"
+        ],
+        "price_list_import_rows": [
+          "import_id",
+          "validation_state"
+        ],
+        "crm_price_lists": [
+          "id"
+        ],
+        "crm_price_list_items": [
+          "price_list_id",
+          "item_id"
+        ]
+      }
+    },
+    {
+      "key": "customer-rate-contract",
+      "stage": "S2",
+      "tables": {
+        "crm_customer_rate_contracts": [
+          "customer_id",
+          "item_id",
+          "valid_from",
+          "valid_to",
+          "approved_by"
+        ]
+      }
+    },
+    {
+      "key": "stock-check-and-unit-conversion",
+      "stage": "S2",
+      "tables": {
+        "stock_check_log": [
+          "company_id",
+          "item_id",
+          "free_quantity",
+          "source_session_id"
+        ],
+        "item_pack_factors": [
+          "item_id",
+          "from_uom",
+          "to_uom",
+          "factor"
+        ]
+      }
+    },
+    {
+      "key": "customer-po-versions-and-review",
+      "stage": "S3",
+      "tables": {
+        "customer_pos": [
+          "id",
+          "source_document_id"
+        ],
+        "customer_po_lines": [
+          "customer_po_id"
+        ],
+        "customer_po_versions": [
+          "customer_po_id"
+        ]
+      }
+    },
+    {
+      "key": "order-credit-lock-and-history",
+      "stage": "S3",
+      "tables": {
+        "sales_orders": [
+          "id",
+          "customer_id",
+          "customer_po_id"
+        ],
+        "crm_order_workflows": [
+          "sales_order_id",
+          "status"
+        ],
+        "crm_order_versions": [
+          "sales_order_id"
+        ],
+        "crm_order_events": [
+          "sales_order_id"
+        ]
+      }
+    },
+    {
+      "key": "customer-open-order-schedules",
+      "stage": "S3",
+      "tables": {
+        "customer_schedule_imports": [
+          "customer_id",
+          "company_id",
+          "file_sha256"
+        ],
+        "customer_open_order_lines": [
+          "import_id",
+          "schedule_date",
+          "order_line_id"
+        ]
+      }
+    },
+    {
+      "key": "supplier-document-review",
+      "stage": "S3",
+      "tables": {
+        "crm_supplier_documents": [
+          "supplier_po_id",
+          "sha256",
+          "status"
+        ],
+        "source_documents": [
+          "id"
+        ]
+      }
+    },
+    {
+      "key": "procurement-rfq-winner-and-po",
+      "stage": "S4",
+      "tables": {
+        "crm_purchase_requests": [
+          "id"
+        ],
+        "crm_rfqs": [
+          "winner_reply_id"
+        ],
+        "crm_rfq_vendor_replies": [
+          "rfq_id"
+        ],
+        "crm_supplier_pos": [
+          "vendor_id",
+          "approved_by"
+        ]
+      }
+    },
+    {
+      "key": "receiving-and-differences",
+      "stage": "S4",
+      "tables": {
+        "crm_grns": [
+          "supplier_po_id",
+          "status"
+        ],
+        "crm_procurement_events": [
+          "entity",
+          "record_id"
+        ]
+      }
+    },
+    {
+      "key": "packing-photos-and-picking",
+      "stage": "S4",
+      "tables": {
+        "packing_boxes": [
+          "sales_order_id",
+          "box_number"
+        ],
+        "packing_box_items": [
+          "order_line_id",
+          "quantity"
+        ],
+        "packing_box_photos": [
+          "evidence_id"
+        ],
+        "pick_scans": [
+          "request_key",
+          "order_line_id",
+          "status"
+        ],
+        "logistics_evidence": [
+          "photo_sha256"
+        ]
+      }
+    },
+    {
+      "key": "dispatch-and-pod",
+      "stage": "S4",
+      "tables": {
+        "crm_shipments": [
+          "sales_order_id",
+          "status"
+        ],
+        "crm_shipment_items": [
+          "shipment_id",
+          "quantity"
+        ],
+        "crm_order_documents": [
+          "sales_order_id"
+        ]
+      }
+    },
+    {
+      "key": "invoice-receipt-payment-and-collections",
+      "stage": "S5",
+      "tables": {
+        "crm_operations": [
+          "kind",
+          "status",
+          "payload"
+        ],
+        "crm_operation_events": [
+          "record_id",
+          "action"
+        ],
+        "sales_invoices": [
+          "source_voucher_id",
+          "source_company_id"
+        ]
+      }
+    },
+    {
+      "key": "bank-import-and-brs",
+      "stage": "S5",
+      "tables": {
+        "bank_accounts": [
+          "company_id"
+        ],
+        "bank_statement_imports": [
+          "file_sha256",
+          "bank_account_id"
+        ],
+        "bank_statement_lines": [
+          "utr",
+          "amount"
+        ],
+        "bank_reconciliation_matches": [
+          "operation_id",
+          "confirmed_by"
+        ]
+      }
+    },
+    {
+      "key": "vendor-payables-and-advices",
+      "stage": "S5",
+      "tables": {
+        "vendor_statements": [
+          "vendor_id",
+          "source_document_id"
+        ],
+        "vendor_due_lines": [
+          "statement_id",
+          "due_date"
+        ],
+        "vendor_debit_notes": [
+          "vendor_id",
+          "amount"
+        ],
+        "vendor_payment_advices": [
+          "vendor_id",
+          "tds_amount",
+          "interest_amount"
+        ]
+      }
+    },
+    {
+      "key": "claims-including-wrong-item",
+      "stage": "S6",
+      "tables": {
+        "crm_claims": [
+          "claim_type",
+          "approved_reply_at"
+        ],
+        "crm_operations": [
+          "first_response_at"
+        ]
+      }
+    },
+    {
+      "key": "tasks-handover-and-notifications",
+      "stage": "S6",
+      "tables": {
+        "tasks": [
+          "id"
+        ],
+        "task_events": [
+          "task_id"
+        ],
+        "work_items": [
+          "owner_user_id",
+          "backup_user_id"
+        ],
+        "notifications": [
+          "user_id",
+          "delivery_state"
+        ]
+      }
+    },
+    {
+      "key": "kpi-confirmed-events-and-empty-formulas",
+      "stage": "S6",
+      "tables": {
+        "kpi_confirmed_events": [
+          "actor_id",
+          "action",
+          "created_at"
+        ],
+        "kpi_formula_settings": [
+          "metric_key",
+          "formula"
+        ]
+      }
+    },
+    {
+      "key": "tally-scope-freshness-recovery",
+      "stage": "S7",
+      "tables": {
+        "tally_companies": [
+          "id"
+        ],
+        "tally_run_datasets": [
+          "company_id",
+          "processed_at"
+        ],
+        "tally_read_requests": [
+          "company_id",
+          "status"
+        ],
+        "tally_conflicts": [
+          "company_id",
+          "status"
+        ]
+      }
+    },
+    {
+      "key": "tally-disabled-write-side",
+      "stage": "S7",
+      "tables": {
+        "tally_write_category_config": [
+          "company_id",
+          "enabled",
+          "direction",
+          "conflict_winner"
+        ],
+        "tally_outbox": [
+          "company_id",
+          "idempotency_key",
+          "dry_run"
+        ]
+      }
+    },
+    {
+      "key": "security-and-backup-provenance",
+      "stage": "S8-S9",
+      "tables": {
+        "sessions": [
+          "user_id"
+        ],
+        "user_mfa": [
+          "user_id"
+        ],
+        "audit_logs": [
+          "entity",
+          "action",
+          "created_at"
+        ]
+      }
+    }
+  ],
+  "limits": [
+    "A matching table is schema coverage, not functional acceptance.",
+    "Statutory CRM invoice issuance and external GST provider calls remain disabled and decision-dependent.",
+    "PWA offline behavior and operational health are application concerns, not proved by this schema matrix."
+  ]
+}

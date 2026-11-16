@@ -16,6 +16,7 @@ For a production build:
 
 ```powershell
 npm.cmd run build
+npm.cmd run db:backup
 npm.cmd start
 ```
 
@@ -47,13 +48,7 @@ Purchasing, billing/posting, collections, dispatch quantities, and advanced MIS 
 
 ## Demo data
 
-Load a repeatable sample dataset into the configured database:
-
-```powershell
-npm run seed:demo
-```
-
-This adds three fictional customers, four Siemens sample items, three enquiries, two quotations, and one sales order. It is safe to run again: the importer records its version and will not duplicate the dataset. Demo records are never added automatically.
+Demo seeding is disabled by the root MASTER RULES. Never add invented business records to `mehta_electronics_local`.
 
 ## Quotation email delivery
 
@@ -82,7 +77,7 @@ npm.cmd run db:migrate:postgres
 npm.cmd start
 ```
 
-Open `http://127.0.0.1:3000`. On a new database the bootstrap owner is read from `SEED_OWNER_EMAIL` and `SEED_OWNER_PASSWORD`. Change the temporary password at first login. Never use the example password in production.
+Open `http://127.0.0.1:3000`. Startup requires an existing active Owner account in an active Owner role. It never creates an account or seeds a password. If no eligible Owner exists, startup refuses with `ACTIVE_OWNER_REQUIRED`; obtain an explicitly approved provisioning or recovery procedure from the deployment owner. There is no first-account provisioning CLI in this repository. Existing Owners manage staff through `/users`. See [Owner startup and recovery](docs/owner-startup.md).
 
 The server loads simple `KEY=value` entries from `.env`, then fills unset values from `.env.local`; shell environment variables take precedence. `DATABASE_URL` is required. Startup applies pending PostgreSQL migrations before listening.
 
@@ -94,9 +89,11 @@ npm run lint
 npm run build
 ```
 
-Tests never create databases. Each run creates a uniquely named `test_<random>` schema inside the single database in `DATABASE_URL`, applies migrations into it, and drops it in a `finally` block; relations of the real `public` schema are shadowed so tests cannot read or write application data. The database user needs permission to create schemas. PostgreSQL client tools are required for the backup/restore test (it dumps and restores only its own test schema); set `PG_BIN` if they are not on PATH.
+The legacy full suite is currently blocked: schema-per-test helpers fail before opening a database and several integration tests still require conversion to rollback transactions or self-cleaning `ZZTEST_` rows without extra listeners. Run the focused safety checks described in [docs/database-guard.md](docs/database-guard.md); do not treat the historical `npm test` command above as permission to restore old test schemas.
 
-Create a PostgreSQL archive with `npm.cmd run db:backup -- ./data/backups/crm.dump`. Existing destinations are never overwritten. Restore into a separate empty database with `pg_restore --exit-on-error --no-owner --no-acl --dbname=<target> <archive>`, then verify it before switching `DATABASE_URL`. See `docs/database-migration-plan.md`.
+The five formerly skipped CRM module, Tally read, quotation, sales-order and procurement database suites now use one shared rollback helper and run unconditionally. `npm.cmd test` checks for `ZZTEST_` residue across public tables before and after the test process, failing without deleting detected records. See [transactional test usage and limitations](docs/transaction-tests.md). Other legacy suites using disabled schema helpers still fail visibly until converted.
+
+`npm.cmd run db:backup` (or `node scripts/backup-db`) makes a verified non-empty, timestamped archive in git-ignored `./backups`. Pending migrations require a matching backup made within the last ten minutes; production rejects the development override. See [backup commands and migration gate](docs/database-backups.md). Restore execution and create/drop options are disabled. Never restore into, copy to, or switch to another database. Historical migration/backup documents do not override `AGENTS.md`.
 
 ## Security model
 

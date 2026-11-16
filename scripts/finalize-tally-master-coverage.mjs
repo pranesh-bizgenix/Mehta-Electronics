@@ -5,6 +5,7 @@ import { importTallySession } from '../src/tally-import.js';
 const config=getConfig();
 if(new URL(config.databaseUrl).pathname!=='/mehta_electronics_local')throw new Error('Unexpected database.');
 const db=createDatabase(config);
+await db.ready();
 try {
  const session=await db.prepare("SELECT s.id FROM tally_upload_sessions s JOIN tally_connectors c ON c.id=s.connector_id WHERE c.profile_name='Local XML master export' ORDER BY s.created_at DESC LIMIT 1").get();
  if(!session)throw new Error('No retained master export.');

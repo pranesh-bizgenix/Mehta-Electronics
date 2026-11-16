@@ -5,7 +5,7 @@ import { s } from '../../core/schema.js';
 // Later slices register more definitions with registry.register(...).
 
 const minutes = (max = 60 * 24 * 60) => s.int({ min: 1, max });
-const percent = () => s.decimal({ min: 0, max: 100 });
+const percent = () => s.string({pattern:/^(?:\d{1,2}(?:\.\d{1,6})?|100(?:\.0{1,6})?)$/});
 const weekday = s.enum(['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN']);
 const hhmm = s.string({ pattern: /^([01]\d|2[0-3]):[0-5]\d$/ });
 
@@ -54,17 +54,29 @@ export const F1_RULES = [
       level3: s.object({ min: percent(), max: percent() })
     }),
     validate(v) {
-      const n = (x) => Number(x);
+      const n = (x) => {const [a,b='']=x.split('.');return BigInt(a)*1000000n+BigInt(b.padEnd(6,'0'));};
       for (const level of ['level1', 'level2', 'level3']) if (n(v[level].min) > n(v[level].max)) return `${level}.min must not exceed ${level}.max`;
-      if (n(v.level1.max) > n(v.level2.min) || n(v.level2.max) > n(v.level3.min)) return 'levels must not overlap and must increase from level 1 to level 3';
+      if (n(v.level1.max) >= n(v.level2.min) || n(v.level2.max) >= n(v.level3.min)) return 'Inclusive discount bands must not overlap, including their endpoints, and must increase from level 1 to level 3';
       return null;
     }
   },
   {
     key: 'quotation.approval_levels', group: 'Pricing', label: 'Quotation approval levels',
     description: 'Who must approve which quotations. The client has two conflicting statements (Level 2 manager / Level 3 director vs only Level 3); this stays empty until decided.',
-    dependents: ['Multi-level quotation approval'],
-    schema: s.array(s.object({ name: s.string({ min: 1, max: 60 }), permission: s.string({ min: 3, max: 80 }), appliesTo: s.enum(['DISCOUNT_LEVEL_2', 'DISCOUNT_LEVEL_3', 'BELOW_MARGIN_FLOOR', 'ALL']) }), { min: 1, max: 5 })
+    dependents: ['Quotation submission and approval'],
+    schema: s.array(s.object({ name: s.string({ min: 1, max: 60 }), permission: s.string({ min: 3, max: 80 }), appliesTo: s.enum(['DISCOUNT_LEVEL_2', 'DISCOUNT_LEVEL_3', 'BELOW_MARGIN_FLOOR', 'ALL']), sequence:s.int({min:1,max:1000}).optional() }), { min: 1, max: 5 }),
+    validate(value) {
+      if(new Set(value.map(row=>row.name.normalize('NFKC').toLowerCase())).size!==value.length)return 'Approval stage names must be unique';
+      const sequence=value.filter(row=>row.sequence!==undefined).map(row=>row.sequence);
+      return new Set(sequence).size===sequence.length?null:'Explicit approval sequence numbers must be unique';
+    }
+  },
+  {
+    key:'quotation.approval_reviewer_policy',group:'Pricing',label:'Reviewer reuse for staged quotation approval',
+    description:'Confirm whether the same eligible independent employee may complete more than one stage. Multiple matching stages require this decision and explicit sequence numbers; no role hierarchy or reviewer reuse is assumed.',
+    dependents:['Quotations requiring multiple approval stages'],
+    shape:'{ "reuse": "DISTINCT_REVIEWERS" | "ALLOW_REUSE", "instructions": confirmed text }',
+    schema:s.object({reuse:s.enum(['DISTINCT_REVIEWERS','ALLOW_REUSE']),instructions:s.reason()})
   },
   {
     key: 'credit.default_limit_new_customer', group: 'Credit', label: 'Default credit limit for new customers (INR)',
@@ -80,7 +92,7 @@ export const F1_RULES = [
   {
     key: 'audit.retention_days', group: 'Controls', label: 'Audit retention period (days)',
     description: 'How long audit records must be kept. Audit records are never deleted by the system; this records the client decision (A-23).',
-    dependents: ['Audit archival (not automated)'], schema: s.int({ min: 365, max: 36500 })
+    dependents: ['Audit archival (not automated)'], schema: s.int({ min: 1, max: 36500 })
   }
 ];
 

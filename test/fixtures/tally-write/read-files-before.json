@@ -1,0 +1,15 @@
+{
+  "src/tally-import.js": "c659cc93f962ac9f9f97a6b125fd9a395b18a0d1fb0c0d9be7f6a94aaed59675",
+  "src/tally-read-service.js": "0977b0df48c1b59ceebcff07c6975f571501426cb1b866051f7ea4717ee1317c",
+  "src/tally-visibility-repository.js": "8d0e59250755ac3605738beaa4428f1e2e621aa1a2670d237b0be6f31656b994",
+  "src/tally-sales-documents.js": "e146d4874ca7fd3ff450da8a9628d23de188753c333c76d9f3ae02620a6ef33b",
+  "src/connector-store.js": "8e37562fc6d01fcf7f02e7ac2cbfdff704fdddf9bc5dc69cb84a05d69151dea8",
+  "connectors/tally-windows/TallyConnector.Core/Services/TallyXmlRequests.cs": "e7bcd4fe25f661801466f4430a3fd773d7e694dd5d9c1677fb5e8c708a86f971",
+  "connectors/tally-windows/TallyConnector.Core/Services/SyncService.cs": "66d36b742264a47960580ac80f86f5a22ca0515fe107df6bae7d703e7d6fd8ed",
+  "connectors/tally-windows/TallyConnector.Core/Services/SyncStateService.cs": "35b77076dd71a7369b6b4578a69ea511814dd070488a85a95dbeb0a96489e05f",
+  "connectors/tally-windows/TallyConnector.Core/Services/QueueService.cs": "971ba6c4145ae9b32d42714126ea8b0070e155bc2bdead6fcb0f9b06edef55a2",
+  "connectors/tally-windows/TallyConnector.Core/Services/ApiService.cs": "0a19521113d91f0172aef5cff138bb578f365186a595ae4724cff293730a5d96",
+  "connectors/tally-windows/TallyConnector.Core/Services/CredentialProtector.cs": "6bd697f3277c39ee51130024a1d5087e1b8e32aab9f60c40633d6393d4c75cd9",
+  "connectors/tally-windows/TallyConnector.Core/Services/TallyService.cs": "0a39bfd47dc13d32567b900a2ae89508b0ff1b043ef559cb71b00a6448c423e6",
+  "connectors/tally-windows/TallyConnector.Service/Worker.cs": "491b434cdd7c491ff6f2adc0c0d6c009f32c3b93b7fa56545badb3d6fa2f9312"
+}

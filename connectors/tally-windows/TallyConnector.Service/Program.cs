@@ -1,6 +1,20 @@
 using TallyConnector.Core.Services;
 using TallyConnector.Service;
 
+if (args.Contains("--verify-write", StringComparer.Ordinal))
+{
+    if (args.Length != 1) throw new ArgumentException("Use --verify-write alone.");
+    await TallyConnector.Service.Write.WriteVerification.RunAsync();
+    return;
+}
+
+if (args.Contains("--verify-incremental", StringComparer.Ordinal))
+{
+    if (args.Length != 1) throw new ArgumentException("Use --verify-incremental alone.");
+    IncrementalVerification.Run();
+    return;
+}
+
 string profileId = ResolveProfileId(args);
 ConnectorPaths.SetCurrentProfile(profileId);
 
@@ -18,6 +32,7 @@ builder.Services.AddSingleton<ApiService>();
 builder.Services.AddSingleton<TallyService>();
 builder.Services.AddSingleton<SyncService>();
 builder.Services.AddHostedService<Worker>();
+builder.Services.AddHostedService<TallyConnector.Service.Write.WriteWorker>();
 
 IHost host = builder.Build();
 host.Run();

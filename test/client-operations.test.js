@@ -1,14 +1,13 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {temporaryDatabase} from '../test-support/postgres.js';
-import {createDatabase} from '../src/postgres.js';
+import {withTestTransaction} from '../test-support/transaction.js';
 import {createModules} from '../src/modules/container.js';
 import {FixedClock} from '../src/core/runtime.js';
 import {requireQuotableCustomer,contractForLine,requireCustomerHandler,bindFirstQuotationOwner} from '../src/modules/operations/customer-gates.js';
 import {saveQuote} from '../src/quotation-workflow.js';
 
-test('client plan: intake dedupe, bank suppression, customer blocks, receipt review and warranty policy',async()=>{
- const temporary=await temporaryDatabase('clientplan'),db=createDatabase({databaseUrl:temporary.databaseUrl});let modules;
+test('client plan: intake dedupe, bank suppression, customer blocks, receipt review and warranty policy',()=>withTestTransaction(async db=>{
+ let modules;
  try{
   await db.sql`INSERT INTO users(id,name,email,role,password_hash) VALUES
    (801,'Owner','owner@clientplan.invalid','OWNER','unused'),(802,'Accounts','accounts@clientplan.invalid','ACCOUNTS','unused'),
@@ -29,7 +28,7 @@ test('client plan: intake dedupe, bank suppression, customer blocks, receipt rev
   await service.controls(owner,customer,{classification:'DO_NOT_QUOTE',creditExempt:false,version:0,reason:'Owner requests Admin review'});
   await assert.rejects(requireQuotableCustomer(db,customer),{code:'DO_NOT_QUOTE'});
   await assert.rejects(saveQuote(db,null,{customerId:customer,reason:'Attempt ordinary quotation'},owner),{code:'DO_NOT_QUOTE'});
-  await service.controls(owner,customer,{classification:'EXISTING',creditExempt:true,version:1,reason:'Owner cleared restriction and authorised exemption'});
+  await service.controls(reviewer,customer,{classification:'EXISTING',creditExempt:true,version:1,reason:'Independent Owner cleared restriction and authorised exemption'});
   await requireQuotableCustomer(db,customer);
   const invoice=(await service.create(owner,'INVOICE',{...base,payload:{invoiceNumber:'FIXTURE-INV-1',invoiceDate:'2026-10-31',amount:'100.00',sourceReference:'Fixture existing invoice',sourceObservedAt:'2026-11-02T07:00:00Z'}})).record;
   await assert.rejects(service.detail(sales,invoice.id),{status:403});
@@ -76,5 +75,5 @@ test('client plan: intake dedupe, bank suppression, customer blocks, receipt rev
   await modules.services.rules.set(owner,'payments.authorisation',{maximumAmount:'100.00',checks:['Invoice matched']},'Test-only payment control');
   await assert.rejects(service.act(accounts,payment.id,{action:'APPROVE',version:2,reason:'Evidence missing'}),{status:422});
   assert.equal((await service.act(accounts,payment.id,{action:'APPROVE',version:2,reason:'Checks completed',checks:{'Invoice matched':'Fixture source checked'}})).record.status,'APPROVED');
- }finally{await modules?.scheduler.stop();await db.close();await temporary.close();}
-});
+ }finally{await modules?.scheduler.stop();}
+}));

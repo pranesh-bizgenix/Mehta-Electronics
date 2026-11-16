@@ -1,0 +1,54 @@
+{
+  "readOnlyRealImportedData": true,
+  "productionAuthSessionCreated": false,
+  "checks": [
+    "source tabs",
+    "real source records",
+    "original item breakdown",
+    "non-optional count reconciled against database",
+    "cancelled filter",
+    "empty enquiries",
+    "separate CRM records",
+    "desktop/mobile",
+    "light/dark",
+    "no overflow"
+  ],
+  "requests": [
+    {
+      "path": "/api/v1/tally/visibility/quotations",
+      "total": 570
+    },
+    {
+      "path": "/api/v1/tally/visibility/quotations",
+      "total": 570
+    },
+    {
+      "path": "/api/v1/tally/visibility/quotations",
+      "total": 570
+    },
+    {
+      "path": "/api/v1/tally/visibility/quotations/63d4afbe13a50f1f6b2c9c65083e5fe430b67527d6d5f786c729a0630e5d5bc5"
+    },
+    {
+      "path": "/api/v1/tally/visibility/quotations",
+      "total": 123
+    },
+    {
+      "path": "/api/v1/tally/visibility/quotations",
+      "total": 447
+    },
+    {
+      "path": "/api/v1/tally/visibility/quotations",
+      "total": 1
+    },
+    {
+      "path": "/api/v1/tally/visibility/enquiries",
+      "total": 0
+    },
+    {
+      "path": "/api/v1/tally/visibility/enquiries",
+      "total": 0
+    }
+  ],
+  "errors": []
+}
