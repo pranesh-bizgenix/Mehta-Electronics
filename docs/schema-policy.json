@@ -828,6 +828,14 @@
     "automation_service_credential_events": {
       "status": "ACTIVE",
       "reason": "V2 A2 isolated scoped service credential lifecycle and authentication; no users/credentials seeded, no messaging transport or switch change."
+    },
+    "crm_customer_onboarding": {
+      "status": "ACTIVE",
+      "reason": "Current customer onboarding decisions and independent billing review, introduced by migration 0057."
+    },
+    "crm_customer_onboarding_events": {
+      "status": "ACTIVE",
+      "reason": "Append-only customer onboarding review events retained by migration 0057."
     }
   },
   "exceptions": {
@@ -876,7 +884,13 @@
     "foreign-key:tw_document_links:entity_id": "Category-qualified polymorphic CRM source identity; the write service loads the real canonical CRM entity and validates company/version before queueing. Never matched by name."
   },
   "statusDomains": {
-    "decision_register.status": ["EMPTY", "PROPOSED", "ENTERED", "CONFIRMED", "REJECTED"],
+    "decision_register.status": [
+      "EMPTY",
+      "PROPOSED",
+      "ENTERED",
+      "CONFIRMED",
+      "REJECTED"
+    ],
     "approval_requests.status": [
       "PENDING",
       "APPROVED",

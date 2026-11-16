@@ -760,3 +760,10 @@ The real Owner UI and API returned all ten checks with explanations and repair l
 Orders now displays retained Tally on-hand, reserved and free balances separately, alongside the selected stock basis and explicit dispatch availability. The text distinguishes retained source balances from an invented live balance and explains unresolved movement holds. No inferred subtraction, automatic reconciliation or stock policy default was introduced.
 
 Real browser/API/DB acceptance with rollback fixtures verified a saved immutable company binding, rejection of dispatch with zero free stock, one valid four-unit dispatch, persisted immutable stock consumption and Owner pending-movement visibility. Existing tests separately cover audit rollback and independent reconciliation. Evidence: verification-output/2026-11-16/company-binding-check.json, dispatch-check.json, movement-check.json and browser-results.json. Real live Tally freshness remains unverified.
+
+
+## 16 November 2026 - Customer review schema integrity and UI verification
+
+Prepared and displayed additive migration 0058_customer_review_integrity_indexes.sql before execution. The existing backup command verified a 219744653-byte archive; only then did the existing runner apply six missing FK indexes and the nullable onboarding from-status check. No customer, approval, role grant or business policy was seeded by the migration. Updated schema classifications for the two existing onboarding tables. Read-only verification reports 58 matching checksums and zero pending migrations; focused schema/comparison tests passed six tests.
+
+Browser acceptance separately checks customer creation, creator denial, blocked pre-review orders, independent Owner approval, duplicate review, immediate permission saving, live-session access changes and audit entries. Those outcomes are recorded in the dated browser evidence, not inferred from the migration or historic test notes.
