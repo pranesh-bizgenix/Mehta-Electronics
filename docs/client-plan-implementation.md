@@ -748,3 +748,8 @@ Changed the customer document currency prefix from a question mark to the rupee 
 Converted fixture identifiers to VERIFY- while retaining single-database rollback isolation. Removed inherited-local-matrix assumptions from CRM/foundation/dashboard fixtures; tests explicitly arrange seed-role grants inside their rollback transaction. Replaced colliding sample GST IDs, corrected case-insensitive identity fixtures and the registered quotation recipient, and made the reminder test rule explicit. Historical connector schema snapshots remain unchanged: tests preserve every original object exactly while permitting additive objects checked by the schema audit. No sending or approval control was weakened.
 
 Focused repair rerun passed 65 of 66 tests with no cancellations; the remaining new comparison fixture was then corrected and passed its separate run. Final full-suite totals are recorded in verification-output/2026-11-16/full-suite-final.log, rather than inferred from earlier reports.
+
+
+## 16 November 2026 - Owner setup checklist acceptance
+
+The real Owner UI and API returned all ten checks with explanations and repair links; no prerequisite was forced ready. The pre-change real-data snapshot had zero of ten ready. Staff readiness, independent reviewers, exact customer/item links, quotation policy and costs, unset business rules, connector/company status, MFA and backup age remain independently reported. Business values remain BLOCKED: NEEDS CLIENT DECISION wherever not confirmed. See verification-output/2026-11-16/live-setup.json for actual gaps and setup-ui-check.json for controlled UI acceptance. The verified migration backup created today may legitimately change the backup check; it does not configure any business policy.
