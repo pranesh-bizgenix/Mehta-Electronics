@@ -10,7 +10,7 @@ import { applyMigrations } from '../src/migrations.js';
 // Files only: SQL below is a protocol spy, never a database or connection.
 function fixtures(t) {
   fs.mkdirSync(backupsDirectory, { recursive: true });
-  const directory = fs.mkdtempSync(path.join(backupsDirectory, 'ZZTEST_backup_'));
+  const directory = fs.mkdtempSync(path.join(backupsDirectory, 'VERIFY-backup_'));
   t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
   return directory;
 }

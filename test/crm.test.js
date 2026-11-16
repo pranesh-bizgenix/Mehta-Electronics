@@ -1,3 +1,4 @@
+import {fixturePermissions} from '../test-support/permission-fixture.js';
 import assert from 'node:assert/strict';
 import { gzipSync } from 'node:zlib';
 import { after, before, describe, test } from 'node:test';
@@ -19,7 +20,7 @@ let db, base, app, temporary, fetch, customerId, itemId, importedCompanyId, fixt
 const owner = { cookie: '', csrf: '' };
 const executive = { cookie: '', csrf: '' };
 
-const customersXml = `<ENVELOPE><BODY><DATA><COLLECTION><LEDGER><GUID>tc-1</GUID><NAME>Acme Industries</NAME><PARTYGSTIN>27ABCDE1234F1Z5</PARTYGSTIN><INCOMETAXNUMBER>ABCDE1234F</INCOMETAXNUMBER><LEDGERPHONE>9876543210</LEDGERPHONE><EMAIL>buy@acme.test</EMAIL></LEDGER></COLLECTION></DATA></BODY></ENVELOPE>`;
+const customersXml = `<ENVELOPE><BODY><DATA><COLLECTION><LEDGER><GUID>tc-1</GUID><NAME>Acme Industries</NAME><PARTYGSTIN>27ZZZZZ0041Z1Z5</PARTYGSTIN><INCOMETAXNUMBER>ZZZZZ0041Z</INCOMETAXNUMBER><LEDGERPHONE>9876543210</LEDGERPHONE><EMAIL>buy@acme.test</EMAIL></LEDGER></COLLECTION></DATA></BODY></ENVELOPE>`;
 const itemsXml = `<ENVELOPE><BODY><DATA><COLLECTION><STOCKITEM><GUID>ti-1</GUID><NAME>3RT1016</NAME><DESCRIPTION>Contactor</DESCRIPTION><BRAND>Siemens</BRAND><HSNCODE>8536</HSNCODE><BASEUNITS>NOS</BASEUNITS></STOCKITEM></COLLECTION></DATA></BODY></ENVELOPE>`;
 let tallyCall = 0;
 const sentMail=[];
@@ -52,7 +53,7 @@ describe('Windows connector upload contract',()=>{
 });
 
 async function request(path, { method='GET', body, auth, csrf=true } = {}) {
-  if(path==='/api/users'&&method==='POST'){const {status,...fields}=body;body={...fields,ownerUserId:owner.id,reason:'ZZTEST provisioning regression'};}
+  if(path==='/api/users'&&method==='POST'){const {status,...fields}=body;body={...fields,ownerUserId:owner.id,reason:'VERIFY- provisioning regression'};}
   const headers = {};
   if (body !== undefined) headers['content-type']='application/json';
   if (auth?.cookie) headers.cookie=auth.cookie;
@@ -73,10 +74,10 @@ async function login(email,password,target) {
 }
 
 before(async()=>{
-  temporary=await openTestTransactionScope();db=temporary.db;
+  temporary=await openTestTransactionScope();db=temporary.db;await fixturePermissions(db);
   const config=getConfig({localReviewAccess:false,seedOwnerEmail:'owner@test.local',seedOwnerPassword:'OwnerPass123!',tallyUrl:'http://tally.test',tallyMaxRetries:2,tallyTimeoutMs:1000,appEncryptionKey:TEST_ENCRYPTION_KEY});
-  await db.sql`INSERT INTO users(name,email,role,password_hash,must_change_password) VALUES('ZZTEST_CRM Owner','owner@test.local','OWNER',${hashPassword('OwnerPass123!')},0)`;
-  importedCompanyId=crypto.randomUUID();await db.sql`INSERT INTO tally_companies(id,name) VALUES(${importedCompanyId},'ZZTEST_CRM scope')`;
+  await db.sql`INSERT INTO users(name,email,role,password_hash,must_change_password) VALUES('VERIFY-CRM Owner','owner@test.local','OWNER',${hashPassword('OwnerPass123!')},0)`;
+  importedCompanyId=crypto.randomUUID();await db.sql`INSERT INTO tally_companies(id,name) VALUES(${importedCompanyId},'VERIFY-CRM scope')`;
   const fetchImpl=async(_url,options)=>{assert.match(options.body,/<TALLYREQUEST>Export<\/TALLYREQUEST>/);assert.doesNotMatch(options.body,/Import|Voucher|Create/i);tallyCall+=1;return new Response(tallyCall%2===1?customersXml:itemsXml,{status:200});};
   const sendMailImpl=async(_config,payload)=>{sentMail.push(payload);return {messageId:'test-message'}};
   app=createApp({db,config,fetchImpl,sendMailImpl,clock:mfa.clock});fetch=testFetch(app);base='http://127.0.0.1:3000';
@@ -107,8 +108,8 @@ describe('users and RBAC',()=>{
 });
 
 describe('customer master and duplicate detection',()=>{
-  test('creates and retrieves customer',async()=>{const body={customerCode:'C001',name:'Acme Industries',gstin:'27ABCDE1234F1Z5',pan:'ABCDE1234F',creditLimit:100000,creditDays:30,status:'ACTIVE',billingAddress:'Mumbai',contacts:[{name:'Buyer',phone:'9876543210',email:'buy@acme.test',isPrimary:true}]};const {response,data}=await request('/api/customers',{method:'POST',auth:executive,body});assert.equal(response.status,201);customerId=data.data.id;const read=await request(`/api/customers/${data.data.id}`,{auth:executive});assert.equal(read.response.status,200);assert.equal(read.data.data.contacts.length,1)});
-  test('blocks potential duplicate without explicit reason',async()=>{const {response,data}=await request('/api/customers',{method:'POST',auth:executive,body:{name:'Acme Industries Duplicate',gstin:'27ABCDE1234F1Z5',pan:'ZZZZZ9999Z',creditLimit:0,creditDays:0,status:'ACTIVE',contacts:[]}});assert.equal(response.status,409);assert.ok(data.details.duplicates.length)});
+  test('creates and retrieves customer',async()=>{const body={customerCode:'C001',name:'Acme Industries',gstin:'27ZZZZZ0041Z1Z5',pan:'ZZZZZ0041Z',creditLimit:100000,creditDays:30,status:'ACTIVE',billingAddress:'Mumbai',contacts:[{name:'Buyer',phone:'9876543210',email:'buy@acme.test',isPrimary:true}]};const {response,data}=await request('/api/customers',{method:'POST',auth:executive,body});assert.equal(response.status,201);customerId=data.data.id;const read=await request(`/api/customers/${data.data.id}`,{auth:executive});assert.equal(read.response.status,200);assert.equal(read.data.data.contacts.length,1)});
+  test('blocks potential duplicate without explicit reason',async()=>{const {response,data}=await request('/api/customers',{method:'POST',auth:executive,body:{name:'Acme Industries Duplicate',gstin:'27ZZZZZ0041Z1Z5',pan:'ZZZZZ9999Z',creditLimit:0,creditDays:0,status:'ACTIVE',contacts:[]}});assert.equal(response.status,409);assert.ok(data.details.duplicates.length)});
   test('has no hard delete route',async()=>{const {response}=await request('/api/customers/1',{method:'DELETE',auth:owner});assert.equal(response.status,405)});
   test('rejects IDOR-shaped invalid identifier',async()=>{const {response}=await request('/api/customers/1%20OR%201=1',{auth:owner});assert.equal(response.status,400)});
 });
@@ -178,12 +179,12 @@ describe('audit and Tally read integration',()=>{
 
 describe('Windows connector PostgreSQL lifecycle',()=>{
   test('pairs, rotates credentials, stores a snapshot, and revokes access',async()=>{
-    const created=await request('/api/tally-connector/pairing',{method:'POST',auth:owner,body:{profileName:'ZZTEST_CRM PC',companyName:'Mehta Electronics',apiBaseUrl:base}});
+    const created=await request('/api/tally-connector/pairing',{method:'POST',auth:owner,body:{profileName:'VERIFY-CRM PC',companyName:'Mehta Electronics',apiBaseUrl:base}});
     assert.equal(created.response.status,201);
     const pairing=created.data.pairing;fixtureConnectorId=pairing.id;
     const pending=await request('/api/tally-connector/status',{auth:owner});
     assert.equal(pending.data.connectors.find(row=>row.id===pairing.id).connection_state,'awaiting_pairing');
-    const paired=await request('/api/connectors/pair',{method:'POST',body:{pairingCode:pairing.pairingCode,installationId:crypto.randomUUID(),machineName:'ZZTEST_CRM-PC',agentVersion:'1.0.0'}});
+    const paired=await request('/api/connectors/pair',{method:'POST',body:{pairingCode:pairing.pairingCode,installationId:crypto.randomUUID(),machineName:'VERIFY-CRM-PC',agentVersion:'1.0.0'}});
     assert.equal(paired.response.status,200);
     const refreshed=await request('/api/connectors/refresh',{method:'POST',body:{refreshToken:paired.data.refreshToken}});
     assert.equal(refreshed.response.status,200);
@@ -262,13 +263,13 @@ test('Accounts can read the financial overview without gaining connector adminis
 
 test('legacy quote edits keep exact financial strings, explicit tax and actual line archive provenance',async()=>{
   let quoteId;
-  await transaction(db,owner,'ZZTEST exact legacy quote fixture',async()=>{
+  await transaction(db,owner,'VERIFY- exact legacy quote fixture',async()=>{
     quoteId=(await db.sql`INSERT INTO quotations(quotation_number,customer_id,valid_until,created_by,updated_by)
-      VALUES('ZZTEST_EXACT_LEGACY',${customerId},'2099-12-31',${owner.id},${owner.id}) RETURNING id`)[0].id;
+      VALUES('VERIFY-EXACT_LEGACY',${customerId},'2099-12-31',${owner.id},${owner.id}) RETURNING id`)[0].id;
     await db.sql`INSERT INTO quotation_lines(quotation_id,item_id,description,uom,quantity,unit_price,discount_percent,tax_percent)
-      VALUES(${quoteId},${itemId},'ZZTEST legacy line','NOS',1,1.005,0,0)`;
+      VALUES(${quoteId},${itemId},'VERIFY- legacy line','NOS',1,1.005,0,0)`;
   });
-  const body={customerId,validUntil:'2099-12-31',reason:'ZZTEST exact legacy price correction',lines:[{itemId,description:'ZZTEST revised line',uom:'NOS',quantity:'1',unitPrice:'99999999.123456',discountPercent:'0',taxPercent:'0'}]};
+  const body={customerId,validUntil:'2099-12-31',reason:'VERIFY- exact legacy price correction',lines:[{itemId,description:'VERIFY- revised line',uom:'NOS',quantity:'1',unitPrice:'99999999.123456',discountPercent:'0',taxPercent:'0'}]};
   const missingTax={...body,lines:[{...body.lines[0],taxPercent:undefined}]};
   assert.equal((await request(`/api/quotations/${quoteId}`,{method:'PUT',auth:executive,body:missingTax})).response.status,422);
   const revised=await request(`/api/quotations/${quoteId}`,{method:'PUT',auth:executive,body});

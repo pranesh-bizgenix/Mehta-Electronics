@@ -14,7 +14,7 @@ import {testFetch} from '../test-support/http-client.js';
 test('payload stream obeys backpressure, bounds its chunks and stops after a disconnected download',async()=>{
  const response=new EventEmitter();let writes=0,pulls=0;
  response.write=()=>{writes++;return writes!==1;};
- async function* chunks(){pulls++;yield Buffer.from('ZZTEST first');pulls++;yield Buffer.from('ZZTEST second');}
+ async function* chunks(){pulls++;yield Buffer.from('VERIFY- first');pulls++;yield Buffer.from('VERIFY- second');}
  const pending=writePayloadChunks(response,chunks());await new Promise(resolve=>setImmediate(resolve));
  assert.equal(pulls,1);assert.equal(writes,1);response.emit('drain');await pending;assert.equal(writes,2);
  response.destroyed=true;await assert.rejects(()=>writePayloadChunks(response,[Buffer.from('ZZTEST')]),/disconnected/);response.destroyed=false;
@@ -23,7 +23,7 @@ test('payload stream obeys backpressure, bounds its chunks and stops after a dis
  const disconnected=writePayloadChunks(response,[Buffer.from('ZZTEST')]);await new Promise(resolve=>setImmediate(resolve));response.emit('close');await assert.rejects(disconnected,/disconnected/);
  assert.equal(response.listenerCount('drain'),0);assert.equal(response.listenerCount('error'),0);assert.equal(response.listenerCount('close'),0);
  await assert.rejects(()=>writePayloadChunks(response,[Buffer.from('ZZTEST')],{drainTimeoutMs:5}),/time limit/);
- const abort=new AbortController(),aborted=writePayloadChunks(response,[Buffer.from('ZZTEST')],{signal:abort.signal});await new Promise(resolve=>setImmediate(resolve));abort.abort(new Error('ZZTEST deadline'));await assert.rejects(aborted,/ZZTEST deadline/);
+ const abort=new AbortController(),aborted=writePayloadChunks(response,[Buffer.from('ZZTEST')],{signal:abort.signal});await new Promise(resolve=>setImmediate(resolve));abort.abort(new Error('VERIFY- deadline'));await assert.rejects(aborted,/VERIFY- deadline/);
  assert.equal(response.listenerCount('drain'),0);assert.equal(response.listenerCount('close'),0);
 });
 
@@ -32,9 +32,9 @@ test('an interrupted payload handler rolls back and releases its connection even
  const response=new EventEmitter();Object.assign(response,{headersSent:false,writeHead(){this.headersSent=true;},write(){setImmediate(()=>this.emit('close'));return false;},destroy(){destroyed=true;this.destroyed=true;},end(){assert.fail('An interrupted XML must not be ended as a successful attachment.');}});
  const protocol={
   async withConnection(run){try{return await run();}finally{released=true;}},
-  async exec(sql){statements.push(sql);if(sql==='ROLLBACK')throw new Error('ZZTEST already closed connection');},
+  async exec(sql){statements.push(sql);if(sql==='ROLLBACK')throw new Error('VERIFY- already closed connection');},
   prepare(sql){statements.push(sql);return {
-   async get(){if(sql.startsWith('SELECT id,name'))return {id:company,name:'ZZTEST download'};if(sql.startsWith('SELECT id,octet_length'))return {id:payload,bytes:6};if(sql.startsWith('FETCH')){fetches++;return {chunk:Buffer.from('ZZTEST')};}throw new Error('Unexpected protocol statement.');},
+   async get(){if(sql.startsWith('SELECT id,name'))return {id:company,name:'VERIFY- download'};if(sql.startsWith('SELECT id,octet_length'))return {id:payload,bytes:6};if(sql.startsWith('FETCH')){fetches++;return {chunk:Buffer.from('ZZTEST')};}throw new Error('Unexpected protocol statement.');},
    async all(){assert.ok(sql.startsWith('DECLARE'));return [];}
   };}
  };
@@ -43,16 +43,16 @@ test('an interrupted payload handler rolls back and releases its connection even
 });
 
 test('large retained XML downloads exactly through both aliases with session, financial and company checks',()=>withTestTransaction(async db=>{
- const a=await tallyFixture(db,'ZZTEST payload A'),b=await tallyFixture(db,'ZZTEST payload B'),payloadId=randomUUID();
+ const a=await tallyFixture(db,'VERIFY- payload A'),b=await tallyFixture(db,'VERIFY- payload B'),payloadId=randomUUID();
  // Above the former 16MiB ceiling, with multibyte characters crossing byte slices.
- const content='<ENVELOPE>ZZTEST '+('₹अ🙂'.repeat(1800000))+'</ENVELOPE>',original=Buffer.from(content);
+ const content='<ENVELOPE>VERIFY- '+('₹अ🙂'.repeat(1800000))+'</ENVELOPE>',original=Buffer.from(content);
  assert.ok(original.length>16777216);
  const digest=createHash('sha256').update(original).digest('hex');
  await db.sql`INSERT INTO tally_raw_payloads(id,company_id,session_id,dataset,content_hash,content) VALUES(${payloadId},${a.company},${a.session},'vouchersXml',${digest},${content})`;
  const headers={};
  for(const role of ['OWNER','ACCOUNTS','MANAGER','EXECUTIVE','STORE_STAFF']){
-  const token=randomUUID(),[person]=await db.sql`INSERT INTO users(name,email,role,password_hash,must_change_password) VALUES(${`ZZTEST payload ${role}`},${`ZZTEST_payload_${role}@example.test`},${role},'not-a-login',0) RETURNING id`;
-  await db.sql`INSERT INTO sessions(user_id,token_hash,csrf_token,expires_at) VALUES(${person.id},${tokenDigest(token)},'ZZTEST csrf',now()+interval '1 hour')`;
+  const token=randomUUID(),[person]=await db.sql`INSERT INTO users(name,email,role,password_hash,must_change_password) VALUES(${`VERIFY- payload ${role}`},${`VERIFY-payload_${role}@example.test`},${role},'not-a-login',0) RETURNING id`;
+  await db.sql`INSERT INTO sessions(user_id,token_hash,csrf_token,expires_at) VALUES(${person.id},${tokenDigest(token)},'VERIFY- csrf',now()+interval '1 hour')`;
   headers[role]={cookie:`crm_session=${token}`};
  }
  const app=createApp({db,config:getConfig({mfaEnabled:false,localReviewAccess:false})}),fetch=testFetch(app);

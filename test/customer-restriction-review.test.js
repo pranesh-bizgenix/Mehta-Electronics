@@ -9,9 +9,9 @@ import {requireQuotableCustomer,requireCustomerHandler} from '../src/modules/ope
 
 test('Do Not Quote requires a different Owner; unrelated edits cannot replace the restriction maker',()=>withTestTransaction(async db=>{
  const f=await quotationFixture(db),modules=createModules({db,config:getConfig({mfaEnabled:false})});await modules.ready();
- const reviewer={id:(await db.sql`INSERT INTO users(name,email,role,password_hash,must_change_password) VALUES('ZZTEST_Restriction Reviewer','ZZTEST_restriction_reviewer@example.test','OWNER','not-a-login',0) RETURNING id`)[0].id,role:'OWNER'};
+ const reviewer={id:(await db.sql`INSERT INTO users(name,email,role,password_hash,must_change_password) VALUES('VERIFY-Restriction Reviewer','VERIFY-restriction_reviewer@example.test','OWNER','not-a-login',0) RETURNING id`)[0].id,role:'OWNER'};
  const service=modules.services.operations;
- const save=(actor,classification,version)=>service.controls(actor,f.customer.id,{classification,creditExempt:false,version,reason:'ZZTEST reviewed customer restriction'});
+ const save=(actor,classification,version)=>service.controls(actor,f.customer.id,{classification,creditExempt:false,version,reason:'VERIFY- reviewed customer restriction'});
  try{
   await save(f.owner,'DO_NOT_QUOTE',0);
   await assert.rejects(requireQuotableCustomer(db,f.customer.id),error=>error.code==='DO_NOT_QUOTE'&&error.details.review.href===`/customers/${f.customer.id}`&&/Owner/.test(error.message));

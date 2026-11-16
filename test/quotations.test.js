@@ -58,9 +58,9 @@ test('quotation workflow: approval safety, revision binding, confidentiality, ar
  q=await quoteAction(db,q.id,{action:'APPROVE',version:q.version,overrideFloor:true,reason:'Owner approves exception independently'},owner);
  await assert.rejects(guardLegacyQuote(db,q.id),{status:409});
  await assert.rejects(db.prepare("UPDATE quotations SET status='SENT' WHERE id=?").run(q.id),/workflow/i);
- await assert.rejects(emailWorkflowQuote(db,q.id,{to:'buyer@example.test',version:q.version},manager,{},async()=>{throw Object.assign(new Error('Not configured'),{code:'SMTP_NOT_CONFIGURED'});}),{status:503});
+ await assert.rejects(emailWorkflowQuote(db,q.id,{to:'verify-quotation-buyer@example.test',version:q.version},manager,{},async()=>{throw Object.assign(new Error('Not configured'),{code:'SMTP_NOT_CONFIGURED'});}),{status:503});
  assert.equal((await quoteDetail(db,q.id,manager)).status,'APPROVED');
- let mailCount=0;await emailWorkflowQuote(db,q.id,{to:'buyer@example.test',version:q.version},manager,{},async(config,payload)=>{mailCount++;assert.equal(payload.quote.pricing,undefined);assert.equal(payload.pdf.subarray(0,4).toString(),'%PDF');});assert.equal(mailCount,1);
+ let mailCount=0;await emailWorkflowQuote(db,q.id,{to:'verify-quotation-buyer@example.test',version:q.version},manager,{},async(config,payload)=>{mailCount++;assert.equal(payload.quote.pricing,undefined);assert.equal(payload.pdf.subarray(0,4).toString(),'%PDF');});assert.equal(mailCount,1);
  q=await quoteDetail(db,q.id,manager);assert.equal(q.status,'SENT');
  await assert.rejects(saveQuote(db,q.id,{...body,version:q.version,reason:'Mutate sent document'},executive),{status:409});
  const external=await quoteDetail(db,q.id,accounts),h=await quoteHistory(db,q.id,accounts);

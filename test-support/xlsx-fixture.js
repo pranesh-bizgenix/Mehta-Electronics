@@ -14,5 +14,5 @@ const escape=value=>String(value).replaceAll('&','&amp;').replaceAll('<','&lt;')
 export function priceWorkbookFixture(rows,extra={}){
  const column=index=>String.fromCharCode(65+index);
  const sheet='<worksheet><sheetData>'+rows.map((values,i)=>`<row r="${i+1}">${values.map((cell,c)=>cell===null?'':`<c r="${column(c)}${i+1}"${typeof cell==='object'?'':' t="inlineStr"'}>${typeof cell==='object'?`${cell.formula?'<f>'+escape(cell.formula)+'</f>':''}<v>${escape(cell.value)}</v>`:'<is><t>'+escape(cell)+'</t></is>'}</c>`).join('')}</row>`).join('')+'</sheetData></worksheet>';
- return fixtureZip({'xl/workbook.xml':'<workbook><sheets><sheet name="ZZTEST Prices" r:id="r1"/></sheets></workbook>','xl/_rels/workbook.xml.rels':'<Relationships><Relationship Id="r1" Target="worksheets/sheet1.xml"/></Relationships>','xl/worksheets/sheet1.xml':sheet,...extra});
+ return fixtureZip({'xl/workbook.xml':'<workbook><sheets><sheet name="VERIFY- Prices" r:id="r1"/></sheets></workbook>','xl/_rels/workbook.xml.rels':'<Relationships><Relationship Id="r1" Target="worksheets/sheet1.xml"/></Relationships>','xl/worksheets/sheet1.xml':sheet,...extra});
 }

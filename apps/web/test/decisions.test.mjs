@@ -41,7 +41,7 @@ test('decision workflow links remain in the CRM origin',()=>{
 test('plain tier, role and payment forms preserve decimal strings and supply no numeric defaults',()=>{
  assert.deepEqual(initialStructuredDrafts({key:'credit.tiers',value:null}),[]);
  assert.deepEqual(initialStructuredDrafts({key:'payments.authorisation',value:null}),[{maximumAmount:'',checks:''}]);
- assert.deepEqual(structuredDecisionValue('credit.tiers',[{name:'ZZTEST_TIER',criteria:'Explicit fixture criteria',limit:'99999999999999.123456'}]),[{name:'ZZTEST_TIER',criteria:'Explicit fixture criteria',limit:'99999999999999.123456'}]);
+ assert.deepEqual(structuredDecisionValue('credit.tiers',[{name:'VERIFY-TIER',criteria:'Explicit fixture criteria',limit:'99999999999999.123456'}]),[{name:'VERIFY-TIER',criteria:'Explicit fixture criteria',limit:'99999999999999.123456'}]);
  assert.deepEqual(structuredDecisionValue('payments.authorisation',[{maximumAmount:'0.10',checks:'Fixture check one\nFixture check two'}]),{maximumAmount:'0.10',checks:['Fixture check one','Fixture check two']});
  assert.throws(()=>structuredDecisionValue('credit.tiers',[]),/explicit entry/);
  assert.throws(()=>structuredDecisionValue('payments.authorisation',[{maximumAmount:'1e4',checks:'Fixture check'}]),/exact number/);

@@ -24,18 +24,18 @@ test('collection evidence validates dates, extraction mode, source times and exa
  assert.throws(()=>collectionMetadata({arbitrary:row}),{status:422});
 });
 test('dataset freshness uses the last successful receipt without hiding a later failed attempt and never crosses companies',()=>withTestTransaction(async db=>{
- const a=await tallyFixture(db,'ZZTEST_freshness_A'),b=await tallyFixture(db,'ZZTEST_freshness_B');
+ const a=await tallyFixture(db,'VERIFY-freshness_A'),b=await tallyFixture(db,'VERIFY-freshness_B');
  for(const source of [a,b])await db.sql`INSERT INTO tally_run_datasets(company_id,session_id,dataset,status,processed_at) VALUES(${source.company},${source.session},'stockXml',${source===a?'imported':'failed'},now()-interval '2 hours')`;
  const [own]=await tallyFreshness(db,a.company,['stockXml']);assert.ok(own.lastSuccessfulSync);assert.equal(own.sourceTimestamp,null);
  const [foreign]=await tallyFreshness(db,b.company,['stockXml']);assert.equal(foreign.lastSuccessfulSync,null);assert.equal(foreign.state,'LAST_ATTEMPT_INCOMPLETE');
- const retry=crypto.randomUUID();await db.sql`INSERT INTO tally_upload_sessions(id,connector_id,company_name,sync_from,sync_to,status) VALUES(${retry},${a.connector},'ZZTEST_freshness_A','2026-01-01','2026-12-31','failed')`;
+ const retry=crypto.randomUUID();await db.sql`INSERT INTO tally_upload_sessions(id,connector_id,company_name,sync_from,sync_to,status) VALUES(${retry},${a.connector},'VERIFY-freshness_A','2026-01-01','2026-12-31','failed')`;
  await db.sql`INSERT INTO tally_run_datasets(company_id,session_id,dataset,status,processed_at) VALUES(${a.company},${retry},'stockXml','partial',now())`;
  const [afterFailure]=await tallyFreshness(db,a.company,['stockXml']);assert.equal(afterFailure.lastSuccessfulSync,own.lastSuccessfulSync);assert.equal(afterFailure.state,'LAST_ATTEMPT_INCOMPLETE');assert.equal(afterFailure.latestAttempt.status,'partial');
 }));
 test('connector stores validated per-collection evidence with the upload audit, and rejects malformed metadata before starting a job',()=>withTestTransaction(async db=>{
- const source=await tallyFixture(db,'ZZTEST_metadata_company'),store=createConnectorStore(getConfig(),{database:db.sql});await store.ready();
+ const source=await tallyFixture(db,'VERIFY-metadata_company'),store=createConnectorStore(getConfig(),{database:db.sql});await store.ready();
  try{
-  const connector={id:source.connector,expected_company_name:'ZZTEST_metadata_company'},body={company:'ZZTEST_metadata_company',from:'2026-04-01',to:'2026-11-04',collectionMetadata:{salesOrdersXml:{mode:'DATE_WINDOW',from:'2023-04-01',to:'2026-11-04',capturedAt:'2026-11-04T07:00:00Z',sourceTimestamp:null}}};
+  const connector={id:source.connector,expected_company_name:'VERIFY-metadata_company'},body={company:'VERIFY-metadata_company',from:'2026-04-01',to:'2026-11-04',collectionMetadata:{salesOrdersXml:{mode:'DATE_WINDOW',from:'2023-04-01',to:'2026-11-04',capturedAt:'2026-11-04T07:00:00Z',sourceTimestamp:null}}};
   const result=await store.start(connector,body),stored=await db.prepare('SELECT collection_metadata FROM tally_upload_sessions WHERE id=?').get(result.sessionId);assert.equal(stored.collection_metadata.salesOrdersXml.from,'2023-04-01');
   assert.ok(await db.prepare("SELECT id FROM audit_logs WHERE entity='TALLY_UPLOAD' AND record_id=? AND action='SESSION_STARTED'").get(result.sessionId));
   const before=(await db.prepare('SELECT count(*) AS n FROM tally_sync_jobs WHERE connector_id=?').get(source.connector)).n;

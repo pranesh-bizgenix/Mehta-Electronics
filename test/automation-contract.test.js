@@ -18,9 +18,9 @@ test('A1 proposed OpenAPI matches the versioned manifest, bounds writes and has 
  }
 });
 test('A9 metadata contract detects a removed column, changed permission or endpoint and accepts additive members',()=>{
- const added=structuredClone(baseline);added.columns.push({...added.columns[0],name:'ZZTEST_added_column'});assert.deepEqual(compatibilityDifferences(baseline,added),[]);
+ const added=structuredClone(baseline);added.columns.push({...added.columns[0],name:'VERIFY-added_column'});assert.deepEqual(compatibilityDifferences(baseline,added),[]);
  for(const group of ['columns','constraints','permissions','endpoints']){const missing=structuredClone(baseline);missing[group].shift();assert.ok(compatibilityDifferences(baseline,missing).some(d=>d.startsWith(group+': removed')));}
- const changed=structuredClone(baseline);changed.endpoints[0].permission='ZZTEST_weakened';assert.ok(compatibilityDifferences(baseline,changed).some(d=>d.startsWith('endpoints: changed')));
+ const changed=structuredClone(baseline);changed.endpoints[0].permission='VERIFY-weakened';assert.ok(compatibilityDifferences(baseline,changed).some(d=>d.startsWith('endpoints: changed')));
 });
 test('A9 existing automation/work/task/approval schemas, permission catalogue and staff endpoint guards retain their captured contract',()=>withTestTransaction(async db=>{
  const current=await automationCompatibilitySurface(db,getConfig({localReviewAccess:false}));assert.deepEqual(compatibilityDifferences(baseline,current),[]);

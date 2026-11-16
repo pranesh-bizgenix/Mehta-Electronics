@@ -16,7 +16,7 @@ test('G3 default-disabled mutation/producer/dispatch hooks perform zero queries 
   assert.equal(f.count(),0);assert.equal(queued,0);assert.deepEqual(f.module.health({status:'ok'}),{status:'ok'});
 });
 test('an enabled post-commit producer failure is isolated from the completed CRM action',async()=>{
-  const f=fixture();f.module.service.master=true;f.module.service.config=async()=>{throw new Error('ZZTEST isolated producer failure');};
+  const f=fixture();f.module.service.master=true;f.module.service.config=async()=>{throw new Error('VERIFY- isolated producer failure');};
   await assert.doesNotReject(notifyTallyWrite(f.db,'SALES_ORDER',1,{id:1,role:'OWNER'}));
   assert.equal(f.module.service.lastProducerError,'ENQUEUE_BLOCKED');assert.equal(f.count(),0);
 });

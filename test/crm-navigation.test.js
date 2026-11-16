@@ -32,7 +32,7 @@ test('commercial history points to the selected modern or historical record rath
  assert.throws(()=>commercialRecordHref('unknown',1));
 });
 test('import-history shortcuts preserve entity, source company and special characters in stable record keys',()=>{
- const company=crypto.randomUUID(),key='ZZTEST_guid:a/b?#%& +';
+ const company=crypto.randomUUID(),key='VERIFY-guid:a/b?#%& +';
  for(const kind of ['customers','items','quotations','enquiries']){const url=local(tallyRecordHref(kind,company,key));assert.equal(url.origin,'http://127.0.0.1:3000');assert.equal(url.searchParams.get('companyId'),company);assert.equal(url.searchParams.get('recordKey'),key);assert.equal(url.searchParams.get('entity'),kind);}
  assert.throws(()=>tallyRecordHref('customers','',key));assert.throws(()=>tallyRecordHref('items',company,''));assert.throws(()=>tallyRecordHref('../bad',company,key));
 });
@@ -49,10 +49,10 @@ test('frontend link producers and destinations are wired to identity-aware helpe
 });
 test('linked destinations load exact customer/enquiry/quote/order records and retain permissions and approved-source gates',()=>withTestTransaction(async db=>{
  const f=await salesOrderFixture(db),app=createApp({db,config:getConfig({mfaEnabled:false,localReviewAccess:false})}),tokens=new Map();
- for(const actor of [f.executive,f.accounts]){const token=crypto.randomUUID();tokens.set(actor.id,token);await db.sql`INSERT INTO sessions(user_id,token_hash,csrf_token,expires_at) VALUES(${actor.id},${tokenDigest(token)},'ZZTEST_csrf',now()+interval '1 hour')`;}
+ for(const actor of [f.executive,f.accounts]){const token=crypto.randomUUID();tokens.set(actor.id,token);await db.sql`INSERT INTO sessions(user_id,token_hash,csrf_token,expires_at) VALUES(${actor.id},${tokenDigest(token)},'VERIFY-csrf',now()+interval '1 hour')`;}
  const request=async(path,actor=f.executive)=>{const req=Readable.from([]);Object.assign(req,{method:'GET',url:path,headers:{host:'localhost',...(actor?{cookie:`crm_session=${tokens.get(actor.id)}`} :{})},socket:{remoteAddress:'test'}});const res={headersSent:false,setHeader(){},writeHead(status){this.status=status;this.headersSent=true;},end(body){this.body=JSON.parse(String(body));}};await app(req,res);return res;};
  try{
-  const enquiry=await saveEnquiry(db,null,{customerId:f.customer.id,subject:'ZZTEST context enquiry',lines:[{itemId:f.item.id,quantity:'2'}]},f.executive),order=await saveOrder(db,null,f.body,f.executive);
+  const enquiry=await saveEnquiry(db,null,{customerId:f.customer.id,subject:'VERIFY- context enquiry',lines:[{itemId:f.item.id,quantity:'2'}]},f.executive),order=await saveOrder(db,null,f.body,f.executive);
   const customerId=contextId(local(customerEnquiryHref(f.customer.id)).searchParams,'customerId');
   const customer=await request(`/api/crm/customers/${customerId}`);assert.equal(customer.status,200);assert.equal(customer.body.data.id,f.customer.id);
   const quoteId=contextId(local(quotationOrderHref(f.quote.id)).searchParams,'quotationId'),source=await request(`/api/crm/order-quotes/${quoteId}`);assert.equal(source.status,200);assert.equal(source.body.data.id,f.quote.id);assert.equal(source.body.data.customerId,f.customer.id);assert.equal(source.body.data.lines[0].unitPrice,'100');assert.equal(source.body.data.pricing,undefined);
@@ -60,12 +60,12 @@ test('linked destinations load exact customer/enquiry/quote/order records and re
   for(const [kind,id,path]of [['enquiries',enquiry.id,`/api/crm/enquiries/${enquiry.id}`],['quotes',f.quote.id,`/api/crm/quotations/${f.quote.id}`],['orders',order.id,`/api/crm/orders/${order.id}`]]){
    const history=await request(`/api/crm/customers/${f.customer.id}/history/${kind}`);assert.equal(history.status,200);const row=history.body.data.find(row=>row.id===id);assert.equal(row.href,commercialRecordHref(kind,id));assert.equal(row.managed,true);assert.equal((await request(path)).body.data.id,id);
   }
-  const legacyQuote=(await db.sql`INSERT INTO quotations(quotation_number,customer_id,valid_until,created_by,updated_by) VALUES('ZZTEST_CONTEXT_OLD_Q',${f.customer.id},'2099-12-31',${f.owner.id},${f.owner.id}) RETURNING id`)[0].id;
-  const legacyOrder=(await db.sql`INSERT INTO sales_orders(order_number,quotation_id,customer_id,created_by,updated_by) VALUES('ZZTEST_CONTEXT_OLD_O',${legacyQuote},${f.customer.id},${f.owner.id},${f.owner.id}) RETURNING id`)[0].id;
+  const legacyQuote=(await db.sql`INSERT INTO quotations(quotation_number,customer_id,valid_until,created_by,updated_by) VALUES('VERIFY-CONTEXT_OLD_Q',${f.customer.id},'2099-12-31',${f.owner.id},${f.owner.id}) RETURNING id`)[0].id;
+  const legacyOrder=(await db.sql`INSERT INTO sales_orders(order_number,quotation_id,customer_id,created_by,updated_by) VALUES('VERIFY-CONTEXT_OLD_O',${legacyQuote},${f.customer.id},${f.owner.id},${f.owner.id}) RETURNING id`)[0].id;
   const oldQuotes=(await request(`/api/crm/customers/${f.customer.id}/history/quotes`)).body.data,oldOrders=(await request(`/api/crm/customers/${f.customer.id}/history/orders`)).body.data;
   assert.equal(oldQuotes.find(row=>row.id===legacyQuote).href,commercialRecordHref('quotes',legacyQuote,false));assert.equal(oldOrders.find(row=>row.id===legacyOrder).href,commercialRecordHref('orders',legacyOrder,false));
   assert.equal((await request(`/api/orders/${legacyOrder}`)).body.data.id,legacyOrder);
-  await saveQuoteCost(db,f.item.id,{unitCost:'69',reason:'ZZTEST invalidate approved pricing'},f.owner);
+  await saveQuoteCost(db,f.item.id,{unitCost:'69',reason:'VERIFY- invalidate approved pricing'},f.owner);
   assert.equal((await request(`/api/crm/order-quotes/${quoteId}`)).status,409);
  }finally{await app.close();await f.close();installPermissionProvider(null);}
 }));

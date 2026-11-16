@@ -5,10 +5,10 @@ import {orderStockApi} from '../features/orders/stock-api.ts';
 
 test('typed fulfillment API keeps company, receipt fingerprints and retry identity in relative CRM calls',async()=>{
  const calls=[],api={async data(method,path,body,options){calls.push({method,path,body,options});return [];}},client=orderStockApi(api);
- await client.sources('ZZTEST_company');await client.pending('ZZTEST_company');await client.preview('ZZTEST_movement');
- const body={requestKey:'ZZTEST_retry',reason:'ZZTEST_independent review',evidenceReference:'ZZTEST_Tally movement',attestedInTally:true,sourceFingerprint:'a'.repeat(64)};
- await client.review('ZZTEST_movement',body);
- assert.deepEqual(calls[0].options.query,{companyId:'ZZTEST_company'});assert.deepEqual(calls[1].options.query,{companyId:'ZZTEST_company'});assert.deepEqual(calls[3].body,body);assert.ok(calls.every(call=>call.path.startsWith('/api/crm/')));
+ await client.sources('VERIFY-company');await client.pending('VERIFY-company');await client.preview('VERIFY-movement');
+ const body={requestKey:'VERIFY-retry',reason:'VERIFY-independent review',evidenceReference:'VERIFY-Tally movement',attestedInTally:true,sourceFingerprint:'a'.repeat(64)};
+ await client.review('VERIFY-movement',body);
+ assert.deepEqual(calls[0].options.query,{companyId:'VERIFY-company'});assert.deepEqual(calls[1].options.query,{companyId:'VERIFY-company'});assert.deepEqual(calls[3].body,body);assert.ok(calls.every(call=>call.path.startsWith('/api/crm/')));
 });
 
 test('order form saves explicit company and stock basis while reconciliation requires independent evidence',()=>{

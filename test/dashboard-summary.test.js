@@ -1,3 +1,4 @@
+import {fixturePermissions} from '../test-support/permission-fixture.js';
 import assert from 'node:assert/strict';
 import { after, before, test } from 'node:test';
 import { createApp } from '../src/app.js';
@@ -18,16 +19,16 @@ async function login(target) {
 const get = async (path, auth) => { const r = await fetch(`${base}${path}`, { headers: { cookie: auth.cookie } }); return { status: r.status, body: await r.json() }; };
 
 before(async () => {
-  temporary = await openTestTransactionScope();db=temporary.db;
+  temporary = await openTestTransactionScope();db=temporary.db;await fixturePermissions(db);
   const config = getConfig({ localReviewAccess:false,mfaEnabled: false });
-  const ownerId=(await db.prepare("INSERT INTO users(name,email,role,password_hash,must_change_password) VALUES('ZZTEST_Dashboard Owner',?,'OWNER',?,0)").run(owner.email,hashPassword(PASSWORD))).insertedId;
-  await db.prepare("INSERT INTO users(name,email,role,password_hash,must_change_password) VALUES('ZZTEST_Dashboard Exec',?,'EXECUTIVE',?,0)").run(executive.email, hashPassword(PASSWORD));
+  const ownerId=(await db.prepare("INSERT INTO users(name,email,role,password_hash,must_change_password) VALUES('VERIFY-Dashboard Owner',?,'OWNER',?,0)").run(owner.email,hashPassword(PASSWORD))).insertedId;
+  await db.prepare("INSERT INTO users(name,email,role,password_hash,must_change_password) VALUES('VERIFY-Dashboard Exec',?,'EXECUTIVE',?,0)").run(executive.email, hashPassword(PASSWORD));
   app = createApp({ db, config });
   fetch=testFetch(app);base='http://127.0.0.1:3000';
   await login(owner); await login(executive);
   baseline=(await get(`/api/v1/dashboard/summary?from=2000-01-01&to=${new Date().toISOString().slice(0,10)}`,owner)).body.data;
-  const customer=(await db.sql`INSERT INTO customers(name,normalized_name,created_by,updated_by) VALUES('ZZTEST_Dashboard customer','zztest_dashboard customer',${ownerId},${ownerId}) RETURNING id`)[0].id;
-  for(let n=0;n<3;n++)await db.sql`INSERT INTO enquiries(enquiry_number,customer_id,subject,created_by,updated_by) VALUES(${`ZZTEST_DASH_${n}`},${customer},'ZZTEST dashboard enquiry',${ownerId},${ownerId})`;
+  const customer=(await db.sql`INSERT INTO customers(name,normalized_name,created_by,updated_by) VALUES('VERIFY-Dashboard customer','verify-dashboard customer',${ownerId},${ownerId}) RETURNING id`)[0].id;
+  for(let n=0;n<3;n++)await db.sql`INSERT INTO enquiries(enquiry_number,customer_id,subject,created_by,updated_by) VALUES(${`VERIFY-DASH_${n}`},${customer},'VERIFY- dashboard enquiry',${ownerId},${ownerId})`;
 });
 after(async () => {
   try{await app?.close();}finally{await temporary?.close();}

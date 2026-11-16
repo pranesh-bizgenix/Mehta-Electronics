@@ -32,28 +32,35 @@ test('G1/G6 existing schema definitions remain byte-identical after additive wri
   // still match the immutable pre-write snapshot, including missing objects.
   const before=JSON.parse(fs.readFileSync(new URL('schema-before.json',root),'utf8'));
   const originalTables=new Set(before.columns.map(row=>row.table));
-  const protectedSchema=Object.fromEntries(['columns','constraints','indexes','triggers'].map(key=>[key,s[key].filter(row=>originalTables.has(row.table))]));
+  // Later numbered migrations add columns/indexes to existing CRM tables.
+  // Preserve every original object byte-for-byte; the schema audit separately
+  // validates the additive objects. Never regenerate the historical snapshot.
+  const identity=row=>`${row.table}:${row.name??row.column}`;
+  const protectedSchema=Object.fromEntries(['columns','constraints','indexes','triggers'].map(key=>{
+    const originals=new Set(before[key].map(identity));
+    return [key,s[key].filter(row=>originalTables.has(row.table)&&originals.has(identity(row)))];
+  }));
   snapshot('schema-before.json',protectedSchema);
 }));
 test('G6 existing connector and selected-company read response contracts remain unchanged',()=>withTestTransaction(async db=>{
-  const f=await tallyFixture(db,'ZZTEST_Write Contract'),config=getConfig({mfaEnabled:false});
-  const [owner]=await db.sql`INSERT INTO users(name,email,role,password_hash,must_change_password) VALUES('ZZTEST_contract_owner','ZZTEST_write_contract@example.test','OWNER','not-a-login',0) RETURNING id`;
-  const token=crypto.randomUUID();await db.sql`INSERT INTO sessions(user_id,token_hash,csrf_token,expires_at) VALUES(${owner.id},${tokenDigest(token)},'ZZTEST_csrf',now()+interval '1 hour')`;
+  const f=await tallyFixture(db,'VERIFY-Write Contract'),config=getConfig({mfaEnabled:false});
+  const [owner]=await db.sql`INSERT INTO users(name,email,role,password_hash,must_change_password) VALUES('VERIFY-contract_owner','VERIFY-write_contract@example.test','OWNER','not-a-login',0) RETURNING id`;
+  const token=crypto.randomUUID();await db.sql`INSERT INTO sessions(user_id,token_hash,csrf_token,expires_at) VALUES(${owner.id},${tokenDigest(token)},'VERIFY-csrf',now()+interval '1 hour')`;
   const store=createConnectorStore(config,{database:db.sql}),app=createApp({db,config,connectorStore:store}),fetch=testFetch(app),contracts={};
-  const staff={cookie:`crm_session=${token}`,'x-csrf-token':'ZZTEST_csrf'};
+  const staff={cookie:`crm_session=${token}`,'x-csrf-token':'VERIFY-csrf'};
   async function request(key,path,body,headers={}){
     const r=await fetch(`http://localhost${path}`,{method:body?'POST':'GET',headers:{'content-type':'application/json',...headers},...(body?{body:JSON.stringify(body)}:{})});
     const json=await r.json();assert.equal(r.status,200,`${key}: ${JSON.stringify(json)}`);contracts[key]=shape(json);return json;
   }
   try{
-    const setup=await store.createPairingCode({profileName:'ZZTEST_Write Contract PC',companyName:'ZZTEST_Write Contract',apiBaseUrl:'http://localhost:3000'});
-    const pair=await request('pair','/api/connectors/pair',{pairingCode:setup.pairingCode,installationId:crypto.randomUUID(),machineName:'ZZTEST_pc',agentVersion:'1.3.0'});
+    const setup=await store.createPairingCode({profileName:'VERIFY-Write Contract PC',companyName:'VERIFY-Write Contract',apiBaseUrl:'http://localhost:3000'});
+    const pair=await request('pair','/api/connectors/pair',{pairingCode:setup.pairingCode,installationId:crypto.randomUUID(),machineName:'VERIFY-pc',agentVersion:'1.3.0'});
     const refresh=await request('refresh','/api/connectors/refresh',{refreshToken:pair.refreshToken});
     const bearer={authorization:`Bearer ${refresh.accessToken}`};
-    await request('heartbeat','/api/connectors/heartbeat',{machineName:'ZZTEST_pc',connectorVersion:'1.3.0',tallyAvailable:true,selectedCompany:'ZZTEST_Write Contract'},bearer);
+    await request('heartbeat','/api/connectors/heartbeat',{machineName:'VERIFY-pc',connectorVersion:'1.3.0',tallyAvailable:true,selectedCompany:'VERIFY-Write Contract'},bearer);
     await request('company-config','/api/connectors/company-config',null,bearer);
-    await request('sync-job-start','/api/connectors/sync-job',{action:'start',companyName:'ZZTEST_Write Contract',syncFrom:'2026-01-01',syncTo:'2026-12-31'},bearer);
-    const upload=await request('chunks-start','/api/ingest/tally/chunks',{action:'start',companyName:'ZZTEST_Write Contract',syncFrom:'2026-01-01',syncTo:'2026-12-31'},bearer);
+    await request('sync-job-start','/api/connectors/sync-job',{action:'start',companyName:'VERIFY-Write Contract',syncFrom:'2026-01-01',syncTo:'2026-12-31'},bearer);
+    const upload=await request('chunks-start','/api/ingest/tally/chunks',{action:'start',companyName:'VERIFY-Write Contract',syncFrom:'2026-01-01',syncTo:'2026-12-31'},bearer);
     await request('chunks-append','/api/ingest/tally/chunks',{action:'append',sessionId:upload.sessionId,field:'ledgersXml',sequence:0,content:'<ENVELOPE/>'},bearer);
     for(const kind of ['ledgers','items','groups','vouchers'])await request(`visibility-${kind}`,`/api/v1/tally/visibility/${kind}?companyId=${f.company}`,null,staff);
     await request('tally-orders',`/api/crm/tally-orders?companyId=${f.company}`,null,staff);

@@ -52,44 +52,44 @@ test('live schema: every base table has a PK, financial storage is exact, FKs/st
 }));
 
 test('reserved schema enforces audit context, empty price settings, reasoned soft deletion and append-only audit rows in rollback',()=>withTestTransaction(async db=>{
-  const [maker]=await db.sql`INSERT INTO users(name,email,role,password_hash) VALUES('ZZTEST_schema_maker',${`ZZTEST_${crypto.randomUUID()}@example.test`},'OWNER','not-a-login') RETURNING id`;
+  const [maker]=await db.sql`INSERT INTO users(name,email,role,password_hash) VALUES('VERIFY-schema_maker',${`VERIFY-${crypto.randomUUID()}@example.test`},'OWNER','not-a-login') RETURNING id`;
   await assert.rejects(db.sql`INSERT INTO crm_price_levels(level_number,created_by) VALUES(1,${maker.id})`,/Audit actor and reason/);
-  await transaction(db,maker,'ZZTEST schema guard test',async()=>{
+  await transaction(db,maker,'VERIFY- schema guard test',async()=>{
     const [row]=await db.sql`INSERT INTO crm_price_levels(level_number,created_by) VALUES(1,${maker.id}) RETURNING id,meaning,configuration,status`;
     assert.equal(row.meaning,null);assert.equal(row.configuration,null);assert.equal(row.status,'NOT_SET');
     await assert.rejects(db.sql`UPDATE crm_price_levels SET status='CONFIRMED' WHERE id=${row.id}`,{code:'23514'});
     await db.sql`SELECT set_config('mehta.audit_reason','',true)`;
     await assert.rejects(db.sql`UPDATE crm_price_levels SET is_deleted=true,deleted_at=now(),deleted_by=${maker.id} WHERE id=${row.id}`,/Audit actor and reason/);
-    await db.sql`SELECT set_config('mehta.audit_reason','ZZTEST schema guard test',true)`;
+    await db.sql`SELECT set_config('mehta.audit_reason','VERIFY- schema guard test',true)`;
     await assert.rejects(db.sql`DELETE FROM crm_price_levels WHERE id=${row.id}`,/hard deletion/);
     const [audit]=await db.sql`SELECT id FROM audit_logs WHERE entity='crm_price_levels' AND record_id=${row.id}::text`;
     assert.ok(audit);
-    await assert.rejects(db.sql`UPDATE audit_logs SET reason='ZZTEST edit' WHERE id=${audit.id}`,/append.only|immutable/i);
+    await assert.rejects(db.sql`UPDATE audit_logs SET reason='VERIFY- edit' WHERE id=${audit.id}`,/append.only|immutable/i);
     await assert.rejects(db.sql`DELETE FROM audit_logs WHERE id=${audit.id}`,/append.only|immutable/i);
   });
 }));
 
 test('Tally outbox stays dry-run only, company scoped, idempotent and bound to the actual independent reviewer',()=>withTestTransaction(async db=>{
   const actors=await db.sql`INSERT INTO users(name,email,role,password_hash) VALUES
-    ('ZZTEST_outbox_maker',${`ZZTEST_${crypto.randomUUID()}@example.test`},'OWNER','not-a-login'),
-    ('ZZTEST_outbox_checker',${`ZZTEST_${crypto.randomUUID()}@example.test`},'OWNER','not-a-login') RETURNING id`;
+    ('VERIFY-outbox_maker',${`VERIFY-${crypto.randomUUID()}@example.test`},'OWNER','not-a-login'),
+    ('VERIFY-outbox_checker',${`VERIFY-${crypto.randomUUID()}@example.test`},'OWNER','not-a-login') RETURNING id`;
   const company=crypto.randomUUID(),other=crypto.randomUUID();
-  await db.sql`INSERT INTO tally_companies(id,name) VALUES(${company},'ZZTEST_outbox_A'),(${other},'ZZTEST_outbox_B')`;
+  await db.sql`INSERT INTO tally_companies(id,name) VALUES(${company},'VERIFY-outbox_A'),(${other},'VERIFY-outbox_B')`;
   let record;
-  await transaction(db,actors[0],'ZZTEST dry-run guard',async()=>{
-    const [config]=await db.sql`INSERT INTO tally_write_category_config(category,company_id,created_by) VALUES('ZZTEST_SALES_ORDER',${company},${actors[0].id}) RETURNING enabled,direction,conflict_winner`;
+  await transaction(db,actors[0],'VERIFY- dry-run guard',async()=>{
+    const [config]=await db.sql`INSERT INTO tally_write_category_config(category,company_id,created_by) VALUES('VERIFY-SALES_ORDER',${company},${actors[0].id}) RETURNING enabled,direction,conflict_winner`;
     assert.deepEqual({...config},{enabled:false,direction:null,conflict_winner:null});
     await assert.rejects(db.sql`UPDATE tally_write_category_config SET enabled=true WHERE company_id=${company}`,{code:'23514'});
-    const [row]=await db.sql`INSERT INTO tally_outbox(category,company_id,idempotency_key,payload,payload_sha256,created_by) VALUES('ZZTEST_SALES_ORDER',${company},'ZZTEST_once','{}',${'a'.repeat(64)},${actors[0].id}) RETURNING id,dry_run`;
+    const [row]=await db.sql`INSERT INTO tally_outbox(category,company_id,idempotency_key,payload,payload_sha256,created_by) VALUES('VERIFY-SALES_ORDER',${company},'VERIFY-once','{}',${'a'.repeat(64)},${actors[0].id}) RETURNING id,dry_run`;
     record=row.id;assert.equal(row.dry_run,true);
     await assert.rejects(db.sql`UPDATE tally_outbox SET dry_run=false WHERE id=${record}`,{code:'23514'});
-    await assert.rejects(db.sql`INSERT INTO tally_outbox(category,company_id,idempotency_key,payload,payload_sha256,created_by) VALUES('ZZTEST_SALES_ORDER',${company},'ZZTEST_once','{}',${'b'.repeat(64)},${actors[0].id})`,{code:'23505'});
-    await assert.rejects(db.sql`INSERT INTO tally_outbox(category,company_id,idempotency_key,payload,payload_sha256,created_by) VALUES('ZZTEST_SALES_ORDER',${other},'ZZTEST_foreign','{}',${'a'.repeat(64)},${actors[0].id})`,{code:'23503'});
-    await assert.rejects(db.sql`UPDATE tally_outbox SET status='APPROVED',approved_by=${actors[1].id},approved_at=now(),approval_reason='ZZTEST forged checker' WHERE id=${record}`,/actual audit actor/);
-    await assert.rejects(db.sql`UPDATE tally_outbox SET status='APPROVED',approved_by=${actors[0].id},approved_at=now(),approval_reason='ZZTEST self approval' WHERE id=${record}`,{code:'23514'});
+    await assert.rejects(db.sql`INSERT INTO tally_outbox(category,company_id,idempotency_key,payload,payload_sha256,created_by) VALUES('VERIFY-SALES_ORDER',${company},'VERIFY-once','{}',${'b'.repeat(64)},${actors[0].id})`,{code:'23505'});
+    await assert.rejects(db.sql`INSERT INTO tally_outbox(category,company_id,idempotency_key,payload,payload_sha256,created_by) VALUES('VERIFY-SALES_ORDER',${other},'VERIFY-foreign','{}',${'a'.repeat(64)},${actors[0].id})`,{code:'23503'});
+    await assert.rejects(db.sql`UPDATE tally_outbox SET status='APPROVED',approved_by=${actors[1].id},approved_at=now(),approval_reason='VERIFY- forged checker' WHERE id=${record}`,/actual audit actor/);
+    await assert.rejects(db.sql`UPDATE tally_outbox SET status='APPROVED',approved_by=${actors[0].id},approved_at=now(),approval_reason='VERIFY- self approval' WHERE id=${record}`,{code:'23514'});
   });
-  await transaction(db,actors[1],'ZZTEST independent review',async()=>{
-    await db.sql`UPDATE tally_outbox SET status='APPROVED',approved_by=${actors[1].id},approved_at=now(),approval_reason='ZZTEST independent review' WHERE id=${record}`;
+  await transaction(db,actors[1],'VERIFY- independent review',async()=>{
+    await db.sql`UPDATE tally_outbox SET status='APPROVED',approved_by=${actors[1].id},approved_at=now(),approval_reason='VERIFY- independent review' WHERE id=${record}`;
     assert.equal((await db.sql`SELECT dry_run FROM tally_outbox WHERE id=${record}`)[0].dry_run,true);
   });
 }));

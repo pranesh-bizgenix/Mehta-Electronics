@@ -11,9 +11,9 @@ import {tokenDigest} from '../src/security.js';
 import {installPermissionProvider} from '../src/rbac.js';
 
 const now=new Date('2026-11-03T09:00:00Z');
-const ready=id=>({id,name:`ZZTEST_${id}`,role:'OWNER',status:'ACTIVE',must_change_password:0,mfa_enabled:true});
+const ready=id=>({id,name:`VERIFY-${id}`,role:'OWNER',status:'ACTIVE',must_change_password:0,mfa_enabled:true});
 function fixture() {
-  const state={people:[ready(1),ready(2)],mapping:{total:1,linked:1},cost:{total:1,configured:1},policy:{revision:1},connectors:[{status:'active',last_seen_at:now.toISOString(),last_sync_at:now.toISOString(),heartbeat_at:now.toISOString(),tally_available:true,selected_company:'ZZTEST_company',expected_company_name:'ZZTEST_company'}],roles:[{key:'OWNER',requires_mfa:true}],rules:[{key:'margin.floor_percent',label:'ZZTEST Rule',configured:true}],backup:{new_value:JSON.stringify({database:'mehta_electronics_local',createdAt:now.toISOString(),size:1,sha256:'a'.repeat(64)})}};
+  const state={people:[ready(1),ready(2)],mapping:{total:1,linked:1},cost:{total:1,configured:1},policy:{revision:1},connectors:[{status:'active',last_seen_at:now.toISOString(),last_sync_at:now.toISOString(),heartbeat_at:now.toISOString(),tally_available:true,selected_company:'VERIFY-company',expected_company_name:'VERIFY-company'}],roles:[{key:'OWNER',requires_mfa:true}],rules:[{key:'margin.floor_percent',label:'VERIFY- Rule',configured:true}],backup:{new_value:JSON.stringify({database:'mehta_electronics_local',createdAt:now.toISOString(),size:1,sha256:'a'.repeat(64)})}};
   const access={mfaEnabled:true,can:()=>true,require:()=>{},requiresMfa:()=>true};
   const repository={mappings:async()=>state.mapping,costs:async()=>state.cost,policy:async()=>state.policy,connectors:async()=>state.connectors,roles:async()=>state.roles,backup:async()=>state.backup};
   const service=new SetupService({repository,users:{list:async()=>state.people},access,rules:{list:async()=>state.rules},clock:{now:()=>now}});
@@ -51,7 +51,7 @@ test('setup distinguishes stale/future backups, wrong selected company and unenr
     assert.equal((await read()).rows.find(r=>r.key==='backup').status,'NEEDS_ATTENTION');
   }
   state.people[1].mfa_enabled=false;
-  state.connectors[0].selected_company='ZZTEST_wrong_company';
+  state.connectors[0].selected_company='VERIFY-wrong_company';
   const result=await read();
   for(const key of ['connector','mfa','reviewers','staff'])assert.equal(result.rows.find(r=>r.key===key).status,'NEEDS_ATTENTION');
 });
@@ -66,10 +66,10 @@ test('retained quotation policy cannot report ready without its current confirme
 });
 
 test('setup HTTP and repository use live database state; backup receipts are recorded and fixtures roll back',()=>withTestTransaction(async db=>{
-  const create=async(role,suffix)=>({role,id:(await db.sql`INSERT INTO users(name,email,role,password_hash,must_change_password) VALUES(${`ZZTEST_setup_${suffix}`},${`ZZTEST_setup_${suffix}@example.test`},${role},'not-a-login',0) RETURNING id`)[0].id});
+  const create=async(role,suffix)=>({role,id:(await db.sql`INSERT INTO users(name,email,role,password_hash,must_change_password) VALUES(${`VERIFY-setup_${suffix}`},${`VERIFY-setup_${suffix}@example.test`},${role},'not-a-login',0) RETURNING id`)[0].id});
   const owner=await create('OWNER','owner'),manager=await create('MANAGER','manager');
   const tokens=new Map();
-  for(const person of [owner,manager]) {const token=crypto.randomUUID();tokens.set(person.id,token);await db.sql`INSERT INTO sessions(user_id,token_hash,csrf_token,expires_at) VALUES(${person.id},${tokenDigest(token)},'ZZTEST_csrf',now()+interval '1 hour')`;}
+  for(const person of [owner,manager]) {const token=crypto.randomUUID();tokens.set(person.id,token);await db.sql`INSERT INTO sessions(user_id,token_hash,csrf_token,expires_at) VALUES(${person.id},${tokenDigest(token)},'VERIFY-csrf',now()+interval '1 hour')`;}
   const app=createApp({db,config:getConfig({mfaEnabled:false})});
   async function request(actor) {
     const req=Readable.from([]);Object.assign(req,{method:'GET',url:'/api/v1/setup',headers:{host:'localhost',...(actor?{cookie:`crm_session=${tokens.get(actor.id)}`}: {})},socket:{remoteAddress:'test'}});
@@ -80,16 +80,16 @@ test('setup HTTP and repository use live database state; backup receipts are rec
     assert.equal((await request(null)).status,401);assert.equal((await request(manager)).status,403);
     const response=await request(owner);assert.equal(response.status,200);assert.equal(response.body.data.rows.length,10);
     const repo=new SetupRepository(db),before=await repo.mappings('items');
-    const item=(await db.sql`INSERT INTO items(part_code,description,uom,created_by,updated_by) VALUES('ZZTEST_SETUP_ITEM','ZZTEST setup item','NOS',${owner.id},${owner.id}) RETURNING id`)[0].id;
+    const item=(await db.sql`INSERT INTO items(part_code,description,uom,created_by,updated_by) VALUES('VERIFY-SETUP_ITEM','VERIFY- setup item','NOS',${owner.id},${owner.id}) RETURNING id`)[0].id;
     const after=await repo.mappings('items');assert.equal(after.total,before.total+1);assert.equal(after.linked,before.linked);
     const cost=await repo.costs();assert.ok(cost.total>=1);assert.ok(cost.configured<cost.total);
-    const receipt={database:'mehta_electronics_local',file:'ZZTEST_setup_receipt.dump',createdAt:new Date().toISOString(),size:12,sha256:'b'.repeat(64)};
+    const receipt={database:'mehta_electronics_local',file:'VERIFY-setup_receipt.dump',createdAt:new Date().toISOString(),size:12,sha256:'b'.repeat(64)};
     await assert.rejects(recordBackupReceipt(db.sql,{...receipt,database:'another_database'}),/Invalid/);
     await recordBackupReceipt(db.sql,receipt);
     assert.equal(JSON.parse((await repo.backup()).new_value).file,receipt.file);
     const next=await request(owner);assert.equal(next.body.data.rows.find(r=>r.key==='backup').status,'READY');
     assert.equal((await db.sql`SELECT count(*) AS n FROM audit_logs WHERE entity='DATABASE_BACKUP' AND record_id=${receipt.file}`)[0].n,1);
-    assert.equal((await db.sql`SELECT part_code FROM items WHERE id=${item}`)[0].part_code,'ZZTEST_SETUP_ITEM');
+    assert.equal((await db.sql`SELECT part_code FROM items WHERE id=${item}`)[0].part_code,'VERIFY-SETUP_ITEM');
     const text=JSON.stringify(next.body);assert.ok(!text.includes('password_hash')&&!text.includes('token_hash')&&!text.includes('api_key'));
   }finally {await app.close();installPermissionProvider(null);}
 }));

@@ -17,7 +17,7 @@ test('old/wrong-company connectors get no jobs and a stale approved document is 
   const f=await transportFixture(db);await f.queue();
   f.service.capabilities.clear();assert.equal((await f.service.connectorConfig(f.connector)).active,false);
   await assert.rejects(f.claim(),{status:403});
-  f.service.observeHeartbeat(f.connector,{writeCapability:{protocol:1,version:'1.0.0',createOnly:true},selectedCompany:'ZZTEST_wrong',selectedCompanyGuid:f.company.guid});
+  f.service.observeHeartbeat(f.connector,{writeCapability:{protocol:1,version:'1.0.0',createOnly:true},selectedCompany:'VERIFY-wrong',selectedCompanyGuid:f.company.guid});
   await assert.rejects(f.claim(),{status:403});
   f.service.observeHeartbeat(f.connector,{writeCapability:{protocol:1,version:'1.0.0',createOnly:true},selectedCompany:f.company.name,selectedCompanyGuid:f.company.guid});
   f.state.document={...f.state.document,version:2};assert.equal((await f.claim()).blocked,'STALE_DOCUMENT_OR_MAPPING');
@@ -26,8 +26,8 @@ test('a lost response becomes UNKNOWN; read-back-only resolution never authorize
   const f=await transportFixture(db);await f.queue();const {job}=await f.claim();await f.service.authorize(f.connector,f.leaseBody(job));
   assert.equal((await f.service.result(f.connector,{...f.leaseBody(job),code:'TIMEOUT_AFTER_SEND'})).status,'UNKNOWN');
   assert.equal((await f.claim()).blocked,'ACTIVE_OR_UNCERTAIN_WRITE');
-  await assert.rejects(f.service.approve(f.checker,f.company.id,job.id,{reason:'ZZTEST unsafe blind retry'}),{status:409});
-  await f.service.requestReadback(f.checker,f.company.id,job.id,{reason:'ZZTEST inspect uncertain create'});
+  await assert.rejects(f.service.approve(f.checker,f.company.id,job.id,{reason:'VERIFY- unsafe blind retry'}),{status:409});
+  await f.service.requestReadback(f.checker,f.company.id,job.id,{reason:'VERIFY- inspect uncertain create'});
   const verification=(await f.claim()).job;assert.equal(verification.operation,'VERIFY_ONLY');
   await assert.rejects(f.service.authorize(f.connector,f.leaseBody(verification)),{status:409});
   const resolved=await f.service.result(f.connector,{...f.leaseBody(verification),readbackXml:f.found(job.idempotencyKey)});assert.equal(resolved.status,'CONFIRMED');
@@ -35,7 +35,7 @@ test('a lost response becomes UNKNOWN; read-back-only resolution never authorize
 test('master kill switch stops pre-send authorization; wrong lease token cannot execute a queued create',()=>withTestTransaction(async db=>{
   const f=await transportFixture(db);await f.queue();const {job}=await f.claim();
   await assert.rejects(f.service.authorize(f.connector,{...f.leaseBody(job),leaseToken:crypto.randomUUID()}),{status:409});
-  await f.service.setControl(f.maker,{masterEnabled:false,reason:'ZZTEST stop every pending create'});
+  await f.service.setControl(f.maker,{masterEnabled:false,reason:'VERIFY- stop every pending create'});
   assert.deepEqual(await f.claim(),{inactive:true});await assert.rejects(f.service.authorize(f.connector,f.leaseBody(job)),{status:409});
   assert.equal((await f.service.job(f.maker,f.company.id,job.id)).status,'HELD');
 }));

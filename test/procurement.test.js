@@ -11,7 +11,7 @@ import * as p from '../src/procurement.js';
 import {genericSupplierPoWorkbook} from '../src/procurement-xlsx.js';
 test('generic workbook is valid ZIP/XML with literal cells and explicit format notice',async t=>{
  await fs.mkdir(path.resolve('backups'),{recursive:true});
- const file=path.resolve('backups',`ZZTEST_po-${crypto.randomUUID()}.xlsx`),po={number:'PO-TEST',version:1,status:'DRAFT',payload:{buyer:{name:'Mehta'},vendor:{name:'=FORMULA & vendor'},lines:[],total:'0.00'}};
+ const file=path.resolve('backups',`VERIFY-po-${crypto.randomUUID()}.xlsx`),po={number:'PO-TEST',version:1,status:'DRAFT',payload:{buyer:{name:'Mehta'},vendor:{name:'=FORMULA & vendor'},lines:[],total:'0.00'}};
  t.after(()=>fs.rm(file,{force:true}));
  await fs.writeFile(file,genericSupplierPoWorkbook(po));
  const script="import sys,zipfile,xml.etree.ElementTree as E; z=zipfile.ZipFile(sys.argv[1]); assert z.testzip() is None; [E.fromstring(z.read(n)) for n in z.namelist() if n.endswith('.xml') or n.endswith('.rels')]; s=z.read('xl/worksheets/sheet1.xml').decode(); assert 'NOT CONNECTWELL TEMPLATE' in s; assert '<f>' not in s; assert '=FORMULA &amp; vendor' in s";

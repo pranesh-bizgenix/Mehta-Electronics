@@ -741,3 +741,10 @@ The focused comparison and schema run passed 6 tests with zero failures, cancell
 ## 16 November 2026 - Quotation currency symbol correction
 
 Changed the customer document currency prefix from a question mark to the rupee character, retaining shared exact-decimal Indian grouping. Added precision/zero/discounted-price regression coverage. node --test test/quotation-currency.test.js passed 1 test, zero failures. The actual browser-created quotation PDF was downloaded and parsed with the correct net rate, tax total and terms; visual rendering evidence is saved separately before final completion reporting. No pricing policy or actual customer data was changed.
+
+
+## 16 November 2026 - Legacy acceptance fixture repair
+
+Converted fixture identifiers to VERIFY- while retaining single-database rollback isolation. Removed inherited-local-matrix assumptions from CRM/foundation/dashboard fixtures; tests explicitly arrange seed-role grants inside their rollback transaction. Replaced colliding sample GST IDs, corrected case-insensitive identity fixtures and the registered quotation recipient, and made the reminder test rule explicit. Historical connector schema snapshots remain unchanged: tests preserve every original object exactly while permitting additive objects checked by the schema audit. No sending or approval control was weakened.
+
+Focused repair rerun passed 65 of 66 tests with no cancellations; the remaining new comparison fixture was then corrected and passed its separate run. Final full-suite totals are recorded in verification-output/2026-11-16/full-suite-final.log, rather than inferred from earlier reports.

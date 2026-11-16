@@ -14,12 +14,12 @@ import {testFetch} from '../test-support/http-client.js';
 import {tokenDigest} from '../src/security.js';
 import {installPermissionProvider} from '../src/rbac.js';
 
-const reason='ZZTEST independent staged quotation review';
+const reason='VERIFY- independent staged quotation review';
 async function fixture(db,{reuse='DISTINCT_REVIEWERS',secondPermission='orders.credit.review'}={}){
  const f=await quotationFixture(db),rules=fixtureRuleService(db);await confirmFixturePricing(db,f.owner);
- await rules.set(f.owner,'quotation.approval_levels',[{name:'ZZTEST second review',permission:secondPermission,appliesTo:'ALL',sequence:20},{name:'ZZTEST first review',permission:'quotations.approve',appliesTo:'ALL',sequence:10}],reason);
- await rules.set(f.owner,'quotation.approval_reviewer_policy',{reuse,instructions:'ZZTEST explicit reviewer reuse decision'},reason);
- await saveQuotePolicy(db,{floorPercent:'0',marginBasis:'TOTAL',sellerState:'27',letterhead:{name:'ZZTEST quotation seller'},reason},f.owner);
+ await rules.set(f.owner,'quotation.approval_levels',[{name:'VERIFY- second review',permission:secondPermission,appliesTo:'ALL',sequence:20},{name:'VERIFY- first review',permission:'quotations.approve',appliesTo:'ALL',sequence:10}],reason);
+ await rules.set(f.owner,'quotation.approval_reviewer_policy',{reuse,instructions:'VERIFY- explicit reviewer reuse decision'},reason);
+ await saveQuotePolicy(db,{floorPercent:'0',marginBasis:'TOTAL',sellerState:'27',letterhead:{name:'VERIFY- quotation seller'},reason},f.owner);
  await saveQuoteCost(db,f.item.id,{unitCost:'50',reason},f.owner);
  const body={customerId:f.customer.id,validUntil:'2099-12-31',placeOfSupply:'27',supplyType:'DOMESTIC_STANDARD',reason,lines:[{itemId:f.item.id,quantity:'1',unitPrice:'100',discountPercent:'0',taxPercent:'18'}]};
  let q=await saveQuote(db,null,body,f.executive);q=await quoteAction(db,q.id,{action:'SUBMIT',version:q.version,reason},f.executive);
@@ -29,13 +29,13 @@ const command=q=>({action:'APPROVE',version:q.version,reason,roundId:q.approval.
 
 test('quotation stages follow explicit sequence, keep pending until complete, bind retries and enforce current independent reviewers',()=>withTestTransaction(async db=>{
  const f=await fixture(db);let q=f.q;assert.equal(q.status,'PENDING_APPROVAL');assert.equal(q.approval.completed,0);assert.equal(q.approval.total,2);assert.equal(q.approval.canApprove,false);
- q=await quoteDetail(db,q.id,f.manager);assert.equal(q.approval.canApprove,true);assert.equal(q.pricing.approvalReview.stages[0].name,'ZZTEST first review');
+ q=await quoteDetail(db,q.id,f.manager);assert.equal(q.approval.canApprove,true);assert.equal(q.pricing.approvalReview.stages[0].name,'VERIFY- first review');
  await assert.rejects(()=>quoteAction(db,q.id,{action:'APPROVE',version:q.version,reason},f.manager),{status:422});
  const first=command(q);await assert.rejects(()=>quoteAction(db,q.id,{...first,stageId:q.pricing.approvalReview.stages[1].stageId},f.manager),{code:'QUOTATION_APPROVAL_STAGE_CHANGED'});
  await assert.rejects(()=>quoteAction(db,q.id,first,f.executive),{status:403});
  q=await quoteAction(db,q.id,first,f.manager);assert.equal(q.status,'PENDING_APPROVAL');assert.equal(q.approval.completed,1);assert.equal(q.approval.canApprove,false);
  assert.equal((await quoteAction(db,q.id,first,f.manager)).replayed,true);assert.equal((await quoteDetail(db,q.id,f.manager)).approval.completed,1);
- await assert.rejects(()=>quoteAction(db,q.id,{...first,reason:'ZZTEST changed replay reason'},f.manager),{code:'IDEMPOTENCY_KEY_REUSED'});
+ await assert.rejects(()=>quoteAction(db,q.id,{...first,reason:'VERIFY- changed replay reason'},f.manager),{code:'IDEMPOTENCY_KEY_REUSED'});
  await assert.rejects(()=>quoteAction(db,q.id,first,f.owner),{code:'IDEMPOTENCY_KEY_REUSED'});
  await assert.rejects(()=>orderQuoteSource(db,q.id,f.manager),{status:409});
  assert.equal((await quoteForDocument(db,q.id,f.accounts)).status,'PENDING_APPROVAL');
@@ -43,7 +43,7 @@ test('quotation stages follow explicit sequence, keep pending until complete, bi
  q=await quoteAction(db,q.id,final,f.owner);assert.equal(q.status,'APPROVED');assert.equal(q.approval.completed,2);
  assert.equal((await orderQuoteSource(db,q.id,f.manager)).id,q.id);
  const publicDetail=await quoteDetail(db,q.id,f.accounts);assert.equal(publicDetail.pricing,undefined);
- for(const hidden of ['unitCost','sourceFingerprint','planFingerprint','ZZTEST first review','orders.credit.review'])assert.equal(JSON.stringify(publicDetail.approval).includes(hidden),false,hidden);
+ for(const hidden of ['unitCost','sourceFingerprint','planFingerprint','VERIFY- first review','orders.credit.review'])assert.equal(JSON.stringify(publicDetail.approval).includes(hidden),false,hidden);
  await new TransactionRunner(db).run(f.owner,reason,()=>db.prepare("UPDATE users SET status='INACTIVE' WHERE id=?").run(f.manager.id));
  assert.equal((await quoteForDocument(db,q.id,f.accounts)).status,'DRAFT');
  await assert.rejects(()=>quoteAction(db,q.id,{action:'SEND',version:q.version,reason},f.owner),{code:'QUOTATION_REVIEWER_CHANGED'});
@@ -65,7 +65,7 @@ test('return/resubmit starts a new approval round; old retry never advances it a
 
 test('decision reconfirmation, earlier reviewer permission changes and audit failure cannot advance or revive a staged approval',()=>withTestTransaction(async db=>{
  const f=await fixture(db,{secondPermission:'quotations.approve'});let q=f.q;
- const injected=new Proxy(db,{get(target,key){if(key==='prepare')return sql=>{const statement=target.prepare(sql);if(sql.startsWith('INSERT INTO audit_logs'))return {...statement,run:async(...args)=>{if(args[3]==='APPROVE')throw new Error('ZZTEST approval audit refused');return statement.run(...args);}};return statement;};const value=target[key];return typeof value==='function'?value.bind(target):value;}});
+ const injected=new Proxy(db,{get(target,key){if(key==='prepare')return sql=>{const statement=target.prepare(sql);if(sql.startsWith('INSERT INTO audit_logs'))return {...statement,run:async(...args)=>{if(args[3]==='APPROVE')throw new Error('VERIFY- approval audit refused');return statement.run(...args);}};return statement;};const value=target[key];return typeof value==='function'?value.bind(target):value;}});
  const first=command(q);await assert.rejects(()=>quoteAction(injected,q.id,first,f.manager),/audit refused/);
  assert.equal((await quoteDetail(db,q.id,f.manager)).approval.completed,0);
  assert.equal((await db.prepare("SELECT count(*)::integer AS count FROM crm_quotation_events WHERE quotation_id=? AND action='APPROVE'").get(q.id)).count,0);
@@ -86,7 +86,7 @@ test('decision reconfirmation, earlier reviewer permission changes and audit fai
 
 test('staged approval HTTP exposes only eligible next steps and enforces sessions, CSRF and final completion',()=>withTestTransaction(async db=>{
  const f=await fixture(db),app=createApp({db,config:getConfig({mfaEnabled:false,localReviewAccess:false})}),fetch=testFetch(app);
- async function headers(actor){const token=randomUUID();await db.sql`INSERT INTO sessions(user_id,token_hash,csrf_token,expires_at) VALUES(${actor.id},${tokenDigest(token)},'ZZTEST_stage_csrf',now()+interval '1 hour')`;return {cookie:`crm_session=${token}`,'x-csrf-token':'ZZTEST_stage_csrf','content-type':'application/json'};}
+ async function headers(actor){const token=randomUUID();await db.sql`INSERT INTO sessions(user_id,token_hash,csrf_token,expires_at) VALUES(${actor.id},${tokenDigest(token)},'VERIFY-stage_csrf',now()+interval '1 hour')`;return {cookie:`crm_session=${token}`,'x-csrf-token':'VERIFY-stage_csrf','content-type':'application/json'};}
  try{
   const manager=await headers(f.manager),owner=await headers(f.owner),accounts=await headers(f.accounts),url=`/api/crm/quotations/${f.q.id}/actions`,body=command(f.q);
   assert.equal((await fetch(url,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)})).status,401);

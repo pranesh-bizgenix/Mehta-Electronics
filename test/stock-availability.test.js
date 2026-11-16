@@ -1,13 +1,13 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {evaluateStock,stockQuantity,stockPointer,stockPolicyProblem} from '../src/modules/stock/availability.js';
-const now=new Date('2026-11-06T06:00:00Z'),policy={version:1,value:{maximumSourceAgeMinutes:10,reservedQuantityPointer:'/RESERVEDQTY',reservationsPointer:'/ORDERALLOCATIONS.LIST',reservationShape:'ARRAY',reservationQuantityPointer:'/ACTUALQTY',reservationKeyPointer:'/ORDERGUID',reservationReferencePointer:'/ORDERNO',reservationPartyPointer:'/PARTYNAME',instructions:'ZZTEST confirmed source meanings'}};
-function source(){return {stable:true,item_id:1,company_id:'ZZTEST_company',record_key:'ZZTEST_stock_guid',session_id:'ZZTEST_session',sourceTimestamp:'2026-11-06T05:59:00Z',uom:'NOS',closing_quantity_text:'9007199254740993.123456 NOS',raw_record:{RESERVEDQTY:'3.123456 NOS','ORDERALLOCATIONS.LIST':[{ORDERGUID:'ZZTEST_order_1',ORDERNO:'ZZTEST_SO1',PARTYNAME:'ZZTEST_party',ACTUALQTY:'1.000000 NOS',AMOUNT:'ZZTEST_SECRET'},{ORDERGUID:'ZZTEST_order_2',ORDERNO:'ZZTEST_SO2',ACTUALQTY:'2.123456 NOS',RATE:'ZZTEST_SECRET'}]}};}
+const now=new Date('2026-11-06T06:00:00Z'),policy={version:1,value:{maximumSourceAgeMinutes:10,reservedQuantityPointer:'/RESERVEDQTY',reservationsPointer:'/ORDERALLOCATIONS.LIST',reservationShape:'ARRAY',reservationQuantityPointer:'/ACTUALQTY',reservationKeyPointer:'/ORDERGUID',reservationReferencePointer:'/ORDERNO',reservationPartyPointer:'/PARTYNAME',instructions:'VERIFY- confirmed source meanings'}};
+function source(){return {stable:true,item_id:1,company_id:'VERIFY-company',record_key:'VERIFY-stock_guid',session_id:'VERIFY-session',sourceTimestamp:'2026-11-06T05:59:00Z',uom:'NOS',closing_quantity_text:'9007199254740993.123456 NOS',raw_record:{RESERVEDQTY:'3.123456 NOS','ORDERALLOCATIONS.LIST':[{ORDERGUID:'VERIFY-order_1',ORDERNO:'VERIFY-SO1',PARTYNAME:'VERIFY-party',ACTUALQTY:'1.000000 NOS',AMOUNT:'VERIFY-SECRET'},{ORDERGUID:'VERIFY-order_2',ORDERNO:'VERIFY-SO2',ACTUALQTY:'2.123456 NOS',RATE:'VERIFY-SECRET'}]}};}
 const evaluate=(overrides={})=>evaluateStock({source:source(),policy,now,latestAttempt:{status:'imported',quarantined_count:0},requestedQuantity:'1',basis:'FREE_STOCK',...overrides});
 test('stock evidence uses exact units/quantities and exposes no financial fields; reserved IDs never match by name',()=>{
  const free=evaluate();assert.equal(free.status,'VERIFIED');assert.equal(free.freeQuantity,'9007199254740990.000000');assert.equal(free.available,true);assert.equal(JSON.stringify(free).includes('SECRET'),false);
- const reserved=evaluate({basis:'RESERVED_STOCK',reservationKey:'ZZTEST_order_2',requestedQuantity:'2.123456'});assert.equal(reserved.selectedReservedQuantity,'2.123456');assert.equal(reserved.available,true);
- assert.equal(evaluate({basis:'RESERVED_STOCK',reservationKey:'ZZTEST_SO2'}).available,null);
+ const reserved=evaluate({basis:'RESERVED_STOCK',reservationKey:'VERIFY-order_2',requestedQuantity:'2.123456'});assert.equal(reserved.selectedReservedQuantity,'2.123456');assert.equal(reserved.available,true);
+ assert.equal(evaluate({basis:'RESERVED_STOCK',reservationKey:'VERIFY-SO2'}).available,null);
  assert.equal(stockQuantity('100.25','NOS'),null);assert.equal(stockQuantity('1 BOX','NOS'),null);assert.equal(stockQuantity('-2 NOS','NOS'),'-2.000000');
  assert.equal(stockPointer({},'/__proto__/x'),undefined);assert.ok(stockPolicyProblem({...policy.value,reservationKeyPointer:'/PARTYNAME'}));assert.ok(stockPolicyProblem({...policy.value,reservationPartyPointer:'/AMOUNT'}));
 });

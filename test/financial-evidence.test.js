@@ -3,7 +3,7 @@ import {test} from 'node:test';
 import {financialEvidence,withinDocumentTolerance} from '../src/modules/documents/financial-evidence.js';
 
 test('financial evidence retains explicit split tax and detects changed printed line totals without changing arithmetic',()=>{
- const plain='Item Material\n00010 ZZTEST_PART 0000 01.01.2026 2 PC 5.00 / 10.00\nDescription 1 PC\nCGST 9.00% 0.90\nSGST 9.00% 0.90\nTotal Amount with Tax 11.80';
+ const plain='Item Material\n00010 VERIFY-PART 0000 01.01.2026 2 PC 5.00 / 10.00\nDescription 1 PC\nCGST 9.00% 0.90\nSGST 9.00% 0.90\nTotal Amount with Tax 11.80';
  const result=financialEvidence('KONE_PO_V1',{plain});assert.equal(result.lines.length,1);assert.equal(result.lines[0].netMatches,true);assert.equal(result.lines[0].totalDifference,'0.00');assert.ok(result.lines[0].taxes.every(t=>t.matches));
  const changed=financialEvidence('KONE_PO_V1',{plain:plain.replace('Tax 11.80','Tax 12.00')});assert.equal(changed.lines[0].totalDifference,'0.20');
  assert.equal(withinDocumentTolerance('-0.20','1.00'),true);assert.equal(withinDocumentTolerance('1.01','1.00'),false);

@@ -11,13 +11,13 @@ import {testFetch} from '../test-support/http-client.js';
 import {tokenDigest} from '../src/security.js';
 import {installPermissionProvider} from '../src/rbac.js';
 
-const reason='ZZTEST_ reviewed CRM decision';
+const reason='VERIFY- reviewed CRM decision';
 const input=(version,extra={})=>({expectedVersion:version,requestKey:randomUUID(),reason,...extra});
 const current=async(service,owner,key)=>(await service.list(owner)).data.find(r=>r.key===key);
 test('Owner decision lifecycle is exact, versioned, replay-safe and append-only',()=>withTestTransaction(async db=>{
  const f=await quotationFixture(db),s=new DecisionService({db}),key='invoice.authority',before=await current(s,f.owner,key);
  for(const actor of [f.manager,f.accounts,f.executive]){await assert.rejects(()=>s.list(actor),{status:403});await assert.rejects(()=>s.enter(actor,key,input(before.version,{value:'TALLY_CREATES',confirm:true})),{status:403});}
- const body=input(before.version,{value:'TALLY_CREATES',confirm:false,evidenceSource:'ZZTEST_ source section 1'}),entered=await s.enter(f.owner,key,body);
+ const body=input(before.version,{value:'TALLY_CREATES',confirm:false,evidenceSource:'VERIFY- source section 1'}),entered=await s.enter(f.owner,key,body);
  assert.equal(entered.status,'ENTERED');assert.equal(await s.getSetting(key),null);
  assert.equal((await s.enter(f.owner,key,body)).version,entered.version);
  await assert.rejects(()=>s.enter(f.owner,key,{...body,value:'CRM_CREATES'}),{code:'IDEMPOTENCY_KEY_REUSED'});
@@ -34,7 +34,7 @@ test('Owner decision lifecycle is exact, versioned, replay-safe and append-only'
 test('CSV preview/import never confirms and preserves canonical policy until explicit confirmation or clear',()=>withTestTransaction(async db=>{
  const f=await quotationFixture(db),s=new DecisionService({db}),key='credit.default_limit_new_customer',start=await current(s,f.owner,key);
  const live=await s.enter(f.owner,key,input(start.version,{value:'1000.000001',confirm:true})),old=await s.repository.legacy(key);
- const csv=`key,answer,version,status,evidence_source\r\n${key},"""2000.000001""",${live.version},CONFIRMED,ZZTEST_ reference\r\n`,plan=await s.previewImport(f.owner,{csv});assert.equal(plan.canImport,true);
+ const csv=`key,answer,version,status,evidence_source\r\n${key},"""2000.000001""",${live.version},CONFIRMED,VERIFY- reference\r\n`,plan=await s.previewImport(f.owner,{csv});assert.equal(plan.canImport,true);
  const body={csv,fingerprint:plan.fingerprint,requestKey:randomUUID(),reason},saved=await s.import(f.owner,body);assert.equal(saved.rows[0].status,'ENTERED');assert.equal(saved.rows[0].value,'2000.000001');assert.equal(await s.getSetting(key),null);
  assert.deepEqual(await s.repository.legacy(key),old,'Staging a decision never overwrites the retained canonical business value.');
  assert.equal((await s.import(f.owner,body)).replayed,true);
@@ -54,7 +54,7 @@ test('unbound or changed canonical rules cannot pass confirmed-only gate and fai
  await tx.run(f.owner,reason,async()=>{const old=await s.repository.legacy(key);await db.prepare('INSERT INTO business_rule_values(rule_key,version,value,is_cleared,reason,created_by) VALUES(?,?,?::text::jsonb,false,?,?)').run(key,old.version+1,JSON.stringify('222'),reason,f.owner.id);});
  assert.equal(await s.getSetting(key),null,'A changed canonical value needs a fresh Owner confirmation.');
  const drifted=await current(s,f.owner,key);assert.equal(drifted.sourceChanged,true);await assert.rejects(()=>s.decide(f.owner,key,input(drifted.version,{decision:'CONFIRM'})),{code:'DECISION_SOURCE_CHANGED'});
- const before=await current(s,f.owner,key),audit=new AuditRepository(db),broken=new DecisionService({db,audit:{record:async event=>{if(event.entity==='DECISION')throw new Error('ZZTEST_ audit refused');return audit.record(event);}}});
+ const before=await current(s,f.owner,key),audit=new AuditRepository(db),broken=new DecisionService({db,audit:{record:async event=>{if(event.entity==='DECISION')throw new Error('VERIFY- audit refused');return audit.record(event);}}});
  await assert.rejects(()=>broken.enter(f.owner,key,input(before.version,{value:'333',confirm:true})),/audit refused/);
  assert.equal((await current(s,f.owner,key)).version,before.version);assert.equal((await s.repository.legacy(key)).value,'222');
  const invoice=await current(s,f.owner,'invoice.authority');
@@ -63,7 +63,7 @@ test('unbound or changed canonical rules cannot pass confirmed-only gate and fai
 }));
 test('decision endpoints enforce real sessions, CSRF, Owner role and safe CSV export',()=>withTestTransaction(async db=>{
  const f=await quotationFixture(db),app=createApp({db,config:getConfig({mfaEnabled:false,localReviewAccess:false})}),fetch=testFetch(app);
- async function headers(actor){const token=randomUUID();await db.sql`INSERT INTO sessions(user_id,token_hash,csrf_token,expires_at) VALUES(${actor.id},${tokenDigest(token)},'ZZTEST_decision_csrf',now()+interval '1 hour')`;return {cookie:`crm_session=${token}`,'x-csrf-token':'ZZTEST_decision_csrf','content-type':'application/json'};}
+ async function headers(actor){const token=randomUUID();await db.sql`INSERT INTO sessions(user_id,token_hash,csrf_token,expires_at) VALUES(${actor.id},${tokenDigest(token)},'VERIFY-decision_csrf',now()+interval '1 hour')`;return {cookie:`crm_session=${token}`,'x-csrf-token':'VERIFY-decision_csrf','content-type':'application/json'};}
  try{
   const owner=await headers(f.owner),manager=await headers(f.manager);
   assert.equal((await fetch('http://localhost/api/v1/decisions')).status,401);

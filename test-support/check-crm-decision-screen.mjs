@@ -29,7 +29,7 @@ try{
   if(url.pathname.startsWith('/api/')){
    assert.equal(request.method(),'GET','This browser review must not write.');
    const reply=body=>route.fulfill({json:body});
-   if(url.pathname==='/api/auth/me')return reply({user:{id:987000,name:'ZZTEST browser Owner',email:'ZZTEST_review@example.test',role,status:'ACTIVE',mustChangePassword:false},permissions:['*'],csrfToken:'ZZTEST browser csrf',mfa:{required:false,enrolled:false,verified:false}});
+   if(url.pathname==='/api/auth/me')return reply({user:{id:987000,name:'VERIFY- browser Owner',email:'VERIFY-review@example.test',role,status:'ACTIVE',mustChangePassword:false},permissions:['*'],csrfToken:'VERIFY- browser csrf',mfa:{required:false,enrolled:false,verified:false}});
    if(url.pathname==='/api/v1/decisions'){decisionReads++;return reply({data:rows,summary});}
    if(url.pathname.endsWith('/history'))return reply({data:[]});
    if(url.pathname==='/api/v1/me/preferences')return reply({data:{theme:'light',sidebarCollapsed:false}});
@@ -68,7 +68,7 @@ try{
  });
  await check('sensitive view shows staff/time watermark and conceals page and drawer when focus is lost',async()=>{
   await page.waitForSelector('.ds-sensitive-watermark');
-  assert.match(await page.locator('.ds-sensitive-stamps').innerText(),/ZZTEST browser Owner.*ID 987000/);
+  assert.match(await page.locator('.ds-sensitive-stamps').innerText(),/VERIFY- browser Owner.*ID 987000/);
   await page.evaluate(()=>{Object.defineProperty(document,'hasFocus',{configurable:true,value:()=>false});window.dispatchEvent(new Event('blur'));});
   assert.equal(await page.locator('html').getAttribute('data-sensitive-screen'),'concealed');
   assert.notEqual(await page.locator('.ds-content').evaluate(element=>getComputedStyle(element).filter),'none');

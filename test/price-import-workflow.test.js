@@ -17,10 +17,10 @@ import {testFetch} from '../test-support/http-client.js';
 import {tokenDigest} from '../src/security.js';
 import {installPermissionProvider} from '../src/rbac.js';
 import {pricePdfFixture} from '../test-support/price-pdf-fixture.js';
-const reason='ZZTEST reviewed literal source';
+const reason='VERIFY- reviewed literal source';
 function service(db){return new PriceImportService({db,repository:new PriceImportRepository(db),transactions:new TransactionRunner(db),audit:new AuditRepository(db),access:{require(actor,key){if(!actor?.id||!hasPermission(actor,key))throw forbidden();}}});}
-function input(){return {format:'CSV',filename:'ZZTEST_prices.csv',contentBase64:Buffer.from('Part,Unit,Price,MOQ,Discount\nZZTEST_QUOTE-PART,NOS,12345678901234.123456,1,0').toString('base64'),mapping:{dataStartRow:2,columns:{partCode:0,uom:1,unitPrice:2,minQuantity:3,discountPercent:4}},metadata:{name:'ZZTEST reviewed list',currency:'INR',effectiveFrom:'2026-11-01',effectiveTo:'2026-12-31',discountPercent:'0'},reason};}
-const confirm=(db,owner)=>fixtureRuleService(db).set(owner,'price_lists.approval_policy',{reviewerPermission:'items.update',instructions:'ZZTEST independent review of all literal prices'},reason);
+function input(){return {format:'CSV',filename:'VERIFY-prices.csv',contentBase64:Buffer.from('Part,Unit,Price,MOQ,Discount\nVERIFY-QUOTE-PART,NOS,12345678901234.123456,1,0').toString('base64'),mapping:{dataStartRow:2,columns:{partCode:0,uom:1,unitPrice:2,minQuantity:3,discountPercent:4}},metadata:{name:'VERIFY- reviewed list',currency:'INR',effectiveFrom:'2026-11-01',effectiveTo:'2026-12-31',discountPercent:'0'},reason};}
+const confirm=(db,owner)=>fixtureRuleService(db).set(owner,'price_lists.approval_policy',{reviewerPermission:'items.update',instructions:'VERIFY- independent review of all literal prices'},reason);
 test('price upload and metadata reject missing decisions, malformed encoding and unsupported formats',()=>{
  assert.throws(()=>importMetadata({}),{status:422});assert.throws(()=>importMetadata({...input().metadata,discountPercent:0}),{status:422});
  assert.throws(()=>importMetadata({...input().metadata,effectiveTo:'2026-10-01'}),{status:422});
@@ -36,7 +36,7 @@ test('price drafts preserve originals, replay idempotently, remain inactive and 
  await fixtureRuleService(db).clear(f.owner,'price_lists.approval_policy',reason);
  await assert.rejects(()=>s.decide(f.owner,saved.id,{action:'SUBMIT',reason}),/Not set: price_lists.approval_policy/);
  for(const role of ['ACCOUNTS','EXECUTIVE','LOGISTICS_LEAD','STORE_STAFF'])await assert.rejects(()=>s.preview({...f.owner,role},b),{status:403});
- await assert.rejects(()=>s.save(f.owner,{...b,metadata:{...b.metadata,name:'ZZTEST changed'}}),/fresh preview/);
+ await assert.rejects(()=>s.save(f.owner,{...b,metadata:{...b.metadata,name:'VERIFY- changed'}}),/fresh preview/);
 }));
 test('price activation needs a current independent approval; exact prices and evidence cannot be edited later',()=>withTestTransaction(async db=>{
  const f=await quotationFixture(db),s=service(db),b=input();b.previewFingerprint=(await s.preview(f.owner,b)).previewFingerprint;const saved=await s.save(f.owner,b);
@@ -59,13 +59,13 @@ test('stale products and changed approval rules hold price imports without activ
  await confirm(db,f.owner);await s.decide(f.owner,saved.id,{action:'SUBMIT',reason});await confirm(db,f.owner);
  await assert.rejects(()=>s.decide(f.manager,saved.id,{action:'APPROVE',reason}),/policy changed/);
  await new TransactionRunner(db).run(f.owner,reason,()=>db.sql`UPDATE items SET uom='BOX' WHERE id=${f.item.id}`);
- const other={...b,metadata:{...b.metadata,name:'ZZTEST second list'}};other.previewFingerprint=(await s.preview(f.owner,other)).previewFingerprint;
+ const other={...b,metadata:{...b.metadata,name:'VERIFY- second list'}};other.previewFingerprint=(await s.preview(f.owner,other)).previewFingerprint;
  await assert.rejects(()=>s.save(f.owner,other),/row error/);
  assert.equal((await db.sql`SELECT id FROM crm_price_lists WHERE name=${b.metadata.name}`).length,0);
 }));
 test('price import HTTP routes enforce session, CSRF, financial access and an explicit review before saving',()=>withTestTransaction(async db=>{
  const f=await quotationFixture(db),app=createApp({db,config:getConfig({mfaEnabled:false,localReviewAccess:false})}),fetch=testFetch(app);
- async function headers(user){const token=randomUUID();await db.sql`INSERT INTO sessions(user_id,token_hash,csrf_token,expires_at) VALUES(${user.id},${tokenDigest(token)},'ZZTEST_price_csrf',now()+interval '1 hour')`;return {cookie:`crm_session=${token}`,'x-csrf-token':'ZZTEST_price_csrf','content-type':'application/json'};}
+ async function headers(user){const token=randomUUID();await db.sql`INSERT INTO sessions(user_id,token_hash,csrf_token,expires_at) VALUES(${user.id},${tokenDigest(token)},'VERIFY-price_csrf',now()+interval '1 hour')`;return {cookie:`crm_session=${token}`,'x-csrf-token':'VERIFY-price_csrf','content-type':'application/json'};}
  try{
   const owner=await headers(f.owner),accounts=await headers(f.accounts),b=input();
   assert.equal((await fetch('http://localhost/api/crm/price-imports')).status,401);
@@ -78,9 +78,9 @@ test('price import HTTP routes enforce session, CSRF, financial access and an ex
 }));
 test('text PDF source goes through the same exact, independently approved retained import lifecycle',()=>withTestTransaction(async db=>{
  const f=await quotationFixture(db),s=service(db),b=input();
- b.format='PDF_TABLE';b.filename='ZZTEST_table.pdf';b.metadata.name='ZZTEST reviewed PDF list';
- b.contentBase64=(await pricePdfFixture(['Part                Unit      Price','ZZTEST_QUOTE-PART   NOS       88.123456'])).toString('base64');
- const inspected=await s.inspect(f.owner,b),line=inspected.rows.find(r=>r.sourceText.includes('ZZTEST_QUOTE-PART'));
+ b.format='PDF_TABLE';b.filename='VERIFY-table.pdf';b.metadata.name='VERIFY- reviewed PDF list';
+ b.contentBase64=(await pricePdfFixture(['Part                Unit      Price','VERIFY-QUOTE-PART   NOS       88.123456'])).toString('base64');
+ const inspected=await s.inspect(f.owner,b),line=inspected.rows.find(r=>r.sourceText.includes('VERIFY-QUOTE-PART'));
  assert.ok(line);const unitStart=line.sourceText.indexOf('NOS'),priceStart=line.sourceText.indexOf('88.123456');
  b.mapping={dataStartRow:line.number,pdfColumns:[{start:0,end:unitStart},{start:unitStart,end:priceStart},{start:priceStart,end:priceStart+9}],columns:{partCode:0,uom:1,unitPrice:2},constants:{minQuantity:'1',discountPercent:'0'}};
  const unmapped={...b,mapping:{...b.mapping,pdfColumns:undefined}};await assert.rejects(()=>s.preview(f.owner,unmapped),/Not set: price_import.mapping.pdfColumns/);

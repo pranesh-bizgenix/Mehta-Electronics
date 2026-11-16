@@ -17,7 +17,7 @@ function ownerProtocol(users=[],roles=[{key:'OWNER',status:'ACTIVE'}]) {
 }
 
 test('startup refuses missing or inactive Owners using only a read query',async()=>{
-  const secret='ZZTEST_secret_that_must_never_be_reported';
+  const secret='VERIFY-secret_that_must_never_be_reported';
   const cases=[
     [],
     [{id:1,role:'EXECUTIVE',status:'ACTIVE',password_hash:secret}],

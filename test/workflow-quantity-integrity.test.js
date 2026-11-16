@@ -28,7 +28,7 @@ test('workflow quantities have validated nonnegative checks and required parent 
 }));
 
 test('database rejects negative typed prices/quantities and impossible receipt splits without creating retained business rows',()=>withTestTransaction(async db=>{
-  const [maker]=await db.sql`INSERT INTO users(name,email,role,password_hash) VALUES('ZZTEST_quantity_maker',${`ZZTEST_${crypto.randomUUID()}@example.test`},'OWNER','not-a-login') RETURNING id`;
+  const [maker]=await db.sql`INSERT INTO users(name,email,role,password_hash) VALUES('VERIFY-quantity_maker',${`VERIFY-${crypto.randomUUID()}@example.test`},'OWNER','not-a-login') RETURNING id`;
   const absent=crypto.randomUUID();
   const parents={
     price_list_items:{price_list_id:absent},supplier_po_lines:{supplier_po_id:-1,line_number:1},
@@ -36,7 +36,7 @@ test('database rejects negative typed prices/quantities and impossible receipt s
     rfq_vendor_reply_lines:{reply_id:-1},acceptance_lines:{acceptance_id:absent},goods_receipt_lines:{goods_receipt_id:absent},
     supply_allocations:{sales_order_line_id:-1,supplier_po_line_id:absent},dispatch_lines:{dispatch_id:absent}
   };
-  await transaction(db,maker,'ZZTEST quantity constraint verification',async()=>{
+  await transaction(db,maker,'VERIFY- quantity constraint verification',async()=>{
     for(const check of policy.newChecks){
       const values={...parents[check.table],[check.column]:'-0.000001'};
       const columns=Object.keys(values),params=columns.map((_,i)=>`$${i+1}`).join(',');

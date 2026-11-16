@@ -16,10 +16,10 @@ export async function assertNoTestRows(sql) {
     const tables = await tx`SELECT tablename FROM pg_tables WHERE schemaname='public' ORDER BY tablename`;
     const dirty = [];
     for (const { tablename } of tables) {
-      const rows = await tx.unsafe(`SELECT 1 FROM public.${quote(tablename)} t WHERE strpos(to_jsonb(t)::text, 'ZZTEST_') > 0 LIMIT 1`);
+      const rows = await tx.unsafe(`SELECT 1 FROM public.${quote(tablename)} t WHERE strpos(to_jsonb(t)::text, 'VERIFY-') > 0 OR strpos(to_jsonb(t)::text, 'ZZTEST_') > 0 LIMIT 1`);
       if (rows.length) dirty.push(tablename);
     }
-    if (dirty.length) throw new Error(`Test residue: ZZTEST_ rows remain in ${dirty.join(', ')}. No rows were deleted.`);
+    if (dirty.length) throw new Error(`Test residue: VERIFY- rows remain in ${dirty.join(', ')}. No rows were deleted.`);
   };
   if (sql) return check(sql);
   const connection = connectPostgres(getConfig().databaseUrl);
@@ -49,7 +49,7 @@ export async function withTestTransaction(run) {
     const workflow = task => context.getStore() ? task() : serialize(() => context.run({ stack: [] }, task));
     const query = operation => workflow(() => serialize(async () => {
       if (closed) throw new Error('Test transaction is closed.');
-      const name = `zztest_statement_${++counter}`;
+      const name = `verify_statement_${++counter}`;
       await connection.unsafe(`SAVEPOINT ${name}`);
       try { const result = await operation(); await connection.unsafe(`RELEASE SAVEPOINT ${name}`); return result; }
       catch (error) {
@@ -66,7 +66,7 @@ export async function withTestTransaction(run) {
         await connection.unsafe("SET LOCAL statement_timeout = '30s'"); return;
       }
       if (/^BEGIN(?: ISOLATION LEVEL REPEATABLE READ READ ONLY)?$/i.test(statement.trim())) {
-        const name = `zztest_workflow_${++counter}`;
+        const name = `verify_workflow_${++counter}`;
         const settings = [];
         for (const key of sessionKeys) settings.push((await connection.unsafe('SELECT current_setting($1,true) AS value', [key]))[0].value || '');
         await connection.unsafe(`SAVEPOINT ${name}`); stack.push({ name, settings }); return;
@@ -92,7 +92,7 @@ export async function withTestTransaction(run) {
       if(savepoint&&args.length===1)return workflow(()=>serialize(()=>{
         const frame=context.getStore().stack.at(-1);
         if(!frame)throw new Error('Importer savepoints require a managed workflow transaction.');
-        return connection.unsafe(`${savepoint[1]} zztest_import_${frame.name}_${savepoint[2]}`);
+        return connection.unsafe(`${savepoint[1]} verify_import_${frame.name}_${savepoint[2]}`);
       },'statement'));
       managed(statement);return query(() => connection(...args));
     };

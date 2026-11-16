@@ -11,7 +11,7 @@ import { getConfig } from '../src/config.js';
 import { tokenDigest,verifyPassword } from '../src/security.js';
 
 const access={can:hasPermission,requiresMfa:()=>false};
-const ready=(id,role='OWNER',extra={})=>({id,name:`ZZTEST_${id}`,role,status:'ACTIVE',on_leave:false,must_change_password:0,mfa_enabled:true,...extra});
+const ready=(id,role='OWNER',extra={})=>({id,name:`VERIFY-${id}`,role,status:'ACTIVE',on_leave:false,must_change_password:0,mfa_enabled:true,...extra});
 test('maker-checker eligibility excludes creator/editor, disabled/locked/leave/setup accounts and wrong permissions',()=>{
   const users=[ready(1),ready(2),ready(3,'OWNER',{status:'INACTIVE'}),ready(4,'OWNER',{status:'LOCKED'}),ready(5,'OWNER',{on_leave:true}),ready(6,'OWNER',{must_change_password:1}),ready(7,'OWNER',{locked_until:new Date(Date.now()+60_000).toISOString()}),ready(8,'STORE_STAFF'),ready(9,'ACCOUNTS'),ready(10,'OWNER',{mfa_enabled:false}),ready(11)];
   const mfa={...access,requiresMfa:()=>true};
@@ -39,26 +39,26 @@ test('last Owner protection runs under the shared provisioning lock and refuses 
   const events=[];
   const repository={lock:async()=>events.push('lock'),get:async()=>ready(1),owners:async()=>{events.push('count');return 1;},update:async()=>events.push('update')};
   const service=new UserAdminService({repository,access:{require:()=>{},roleExists:()=>true},transactions:{run:async(_a,_r,fn)=>fn()},audit:{record:async()=>events.push('audit')}});
-  await assert.rejects(service.update({id:1,role:'OWNER'},1,{role:'EXECUTIVE',reason:'ZZTEST owner demotion'}),{status:422});
+  await assert.rejects(service.update({id:1,role:'OWNER'},1,{role:'EXECUTIVE',reason:'VERIFY- owner demotion'}),{status:422});
   assert.deepEqual(events,['lock','count']);
 });
 
 test('staff provisioning, ownership, deactivation and first-login password change are enforced by the real handler in a rollback transaction',()=>withTestTransaction(async db=>{
-  const make=async(role,suffix)=>({id:(await db.sql`INSERT INTO users(name,email,role,password_hash,must_change_password) VALUES(${`ZZTEST_${suffix}`},${`ZZTEST_${suffix}@example.test`},${role},'not-a-login',0) RETURNING id`)[0].id,role});
+  const make=async(role,suffix)=>({id:(await db.sql`INSERT INTO users(name,email,role,password_hash,must_change_password) VALUES(${`VERIFY-${suffix}`},${`VERIFY-${suffix}@example.test`},${role},'not-a-login',0) RETURNING id`)[0].id,role});
   const owner=await make('OWNER','provision_owner'),backup=await make('MANAGER','provision_backup'),executive=await make('EXECUTIVE','provision_exec');
   const app=createApp({db,config:getConfig({mfaEnabled:false})}),tokens=new Map();
   async function session(user) {
     const token=crypto.randomUUID();tokens.set(user.id,token);
-    await db.sql`INSERT INTO sessions(user_id,token_hash,csrf_token,expires_at) VALUES(${user.id},${tokenDigest(token)},'ZZTEST_csrf',now()+interval '1 hour')`;
+    await db.sql`INSERT INTO sessions(user_id,token_hash,csrf_token,expires_at) VALUES(${user.id},${tokenDigest(token)},'VERIFY-csrf',now()+interval '1 hour')`;
   }
   await session(owner);await session(executive);
   async function request(method,url,actor,body={},csrf=true,extraHeaders={}) {
-    const req=Readable.from([Buffer.from(JSON.stringify(body))]);Object.assign(req,{method,url,headers:{host:'localhost','content-type':'application/json',...(actor?{cookie:`crm_session=${tokens.get(actor.id)}`}:{}),...(csrf?{'x-csrf-token':'ZZTEST_csrf'}:{}),...extraHeaders},socket:{remoteAddress:'test'}});
+    const req=Readable.from([Buffer.from(JSON.stringify(body))]);Object.assign(req,{method,url,headers:{host:'localhost','content-type':'application/json',...(actor?{cookie:`crm_session=${tokens.get(actor.id)}`}:{}),...(csrf?{'x-csrf-token':'VERIFY-csrf'}:{}),...extraHeaders},socket:{remoteAddress:'test'}});
     const response={status:0,headersSent:false,setHeader(){},writeHead(status){this.status=status;this.headersSent=true;},end(value){this.body=value?JSON.parse(String(value)):null;}};
     await app(req,response);return response;
   }
   const temporary=`Aa1!${crypto.randomBytes(20).toString('hex')}`,personal=`Bb2!${crypto.randomBytes(20).toString('hex')}`;
-  const body={name:'ZZTEST_Provisioned staff',email:'ZZTEST_provisioned@example.test',role:'EXECUTIVE',ownerUserId:owner.id,backupUserId:backup.id,password:temporary,reason:'ZZTEST provisioning test'};
+  const body={name:'VERIFY-Provisioned staff',email:'VERIFY-provisioned@example.test',role:'EXECUTIVE',ownerUserId:owner.id,backupUserId:backup.id,password:temporary,reason:'VERIFY- provisioning test'};
   try {
     assert.equal((await request('POST','/api/v1/users',null,body)).status,401);
     assert.equal((await request('POST','/api/v1/users',executive,body)).status,403);
@@ -72,23 +72,23 @@ test('staff provisioning, ownership, deactivation and first-login password chang
     assert.equal(stored.must_change_password,1);assert.ok(verifyPassword(temporary,stored.password_hash));
     const audit=await db.sql`SELECT old_value,new_value FROM audit_logs WHERE entity='USER' AND record_id=${String(staff.id)}`;
     const text=JSON.stringify(audit);assert.ok(!text.includes(temporary)&&!text.includes(stored.password_hash)&&!text.includes('passwordHash'));
-    assert.equal((await request('POST','/api/users',owner,{...body,email:'ZZTEST_without_owner@example.test',ownerUserId:null})).status,422);
+    assert.equal((await request('POST','/api/users',owner,{...body,email:'VERIFY-without_owner@example.test',ownerUserId:null})).status,422);
     assert.equal((await request('POST','/api/v1/users',owner,body)).status,409);
-    const pendingBackup=await request('POST','/api/v1/users',owner,{...body,name:'ZZTEST_No backup yet',email:'ZZTEST_pending_backup@example.test',backupUserId:null});
+    const pendingBackup=await request('POST','/api/v1/users',owner,{...body,name:'VERIFY-No backup yet',email:'VERIFY-pending_backup@example.test',backupUserId:null});
     assert.equal(pendingBackup.status,201);assert.equal(pendingBackup.body.data.backupUserId,null);
-    const idempotent={...body,name:'ZZTEST_Retry staff',email:'ZZTEST_retry_staff@example.test'},retryHeaders={'idempotency-key':crypto.randomUUID()};
+    const idempotent={...body,name:'VERIFY-Retry staff',email:'VERIFY-retry_staff@example.test'},retryHeaders={'idempotency-key':crypto.randomUUID()};
     const first=await request('POST','/api/v1/users',owner,idempotent,true,retryHeaders),replay=await request('POST','/api/v1/users',owner,idempotent,true,retryHeaders);
     assert.equal(first.status,201);assert.equal(replay.status,201);assert.equal(first.body.data.id,replay.body.data.id);
-    assert.equal((await db.sql`SELECT count(*) AS n FROM users WHERE email='zztest_retry_staff@example.test'`)[0].n,1);
+    assert.equal((await db.sql`SELECT count(*) AS n FROM users WHERE email='verify-retry_staff@example.test'`)[0].n,1);
     const service=app.modules.services.userAdmin,originalAudit=service.audit;
-    service.audit={record:async()=>{throw new Error('ZZTEST audit unavailable');}};
-    try { await assert.rejects(service.create(owner,{...body,email:'ZZTEST_failed_audit@example.test'}),/ZZTEST audit unavailable/); }
+    service.audit={record:async()=>{throw new Error('VERIFY- audit unavailable');}};
+    try { await assert.rejects(service.create(owner,{...body,email:'VERIFY-failed_audit@example.test'}),/VERIFY- audit unavailable/); }
     finally {service.audit=originalAudit;}
-    assert.equal((await db.sql`SELECT count(*) AS n FROM users WHERE email='zztest_failed_audit@example.test'`)[0].n,0);
+    assert.equal((await db.sql`SELECT count(*) AS n FROM users WHERE email='verify-failed_audit@example.test'`)[0].n,0);
     const preview=await request('POST','/api/v1/users/provisioning-preview',owner,{userId:staff.id,status:'INACTIVE'});
     assert.equal(preview.status,200);assert.equal((await db.sql`SELECT status FROM users WHERE id=${staff.id}`)[0].status,'ACTIVE');
     await session(staff);
-    await db.sql`INSERT INTO sessions(user_id,token_hash,csrf_token,expires_at) VALUES(${staff.id},${tokenDigest(crypto.randomUUID())},'ZZTEST_other_session',now()+interval '1 hour')`;
+    await db.sql`INSERT INTO sessions(user_id,token_hash,csrf_token,expires_at) VALUES(${staff.id},${tokenDigest(crypto.randomUUID())},'VERIFY-other_session',now()+interval '1 hour')`;
     const blocked=await request('GET','/api/crm/orders',staff);assert.equal(blocked.status,403);assert.equal(blocked.body.code,'PASSWORD_CHANGE_REQUIRED');
     assert.equal((await request('GET','/api/auth/me',staff)).body.user.mustChangePassword,true);
     assert.equal((await request('POST','/api/auth/change-password',staff,{currentPassword:temporary,newPassword:personal},false)).status,403);
@@ -99,11 +99,11 @@ test('staff provisioning, ownership, deactivation and first-login password chang
     assert.equal((await request('GET','/api/crm/orders',staff)).status,200);
     assert.equal((await request('PATCH',`/api/v1/users/${staff.id}`,owner,{status:'INACTIVE'})).status,422);
     assert.equal((await request('PATCH',`/api/users/${staff.id}`,owner,{status:'INACTIVE'})).status,422);
-    assert.equal((await request('PATCH',`/api/v1/users/${staff.id}`,owner,{ownerUserId:staff.id,reason:'ZZTEST invalid self owner'})).status,422);
-    assert.equal((await request('PATCH',`/api/users/${staff.id}`,owner,{status:'INACTIVE',reason:'ZZTEST staff leaves'})).status,200);
+    assert.equal((await request('PATCH',`/api/v1/users/${staff.id}`,owner,{ownerUserId:staff.id,reason:'VERIFY- invalid self owner'})).status,422);
+    assert.equal((await request('PATCH',`/api/users/${staff.id}`,owner,{status:'INACTIVE',reason:'VERIFY- staff leaves'})).status,200);
     assert.equal((await db.sql`SELECT status FROM users WHERE id=${staff.id}`)[0].status,'INACTIVE');
     assert.equal((await db.sql`SELECT count(*) AS n FROM sessions WHERE user_id=${staff.id}`)[0].n,0);
     assert.equal((await request('GET','/api/auth/me',staff)).status,401);
-    assert.ok((await db.sql`SELECT 1 FROM audit_logs WHERE record_id=${String(staff.id)} AND reason='ZZTEST staff leaves'`).length);
+    assert.ok((await db.sql`SELECT 1 FROM audit_logs WHERE record_id=${String(staff.id)} AND reason='VERIFY- staff leaves'`).length);
   } finally { await app.close();installPermissionProvider(null); }
 }));

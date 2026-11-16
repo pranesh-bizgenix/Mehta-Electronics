@@ -16,7 +16,7 @@ import {testFetch} from '../test-support/http-client.js';
 import {tokenDigest} from '../src/security.js';
 import {installPermissionProvider} from '../src/rbac.js';
 
-const reason='ZZTEST reviewed withdrawal of commercial policy';
+const reason='VERIFY- reviewed withdrawal of commercial policy';
 async function stageMargin(service,owner,value){
  const state=await service.state(service.catalog.require('margin.floor_percent'));
  return service.enter(owner,'margin.floor_percent',{value,confirm:false,expectedVersion:state.version,requestKey:randomUUID(),reason});
@@ -32,22 +32,22 @@ test('withdrawing a retained margin decision blocks existing quotation progressi
  await assert.rejects(()=>saveOrder(db,null,f.body,f.executive),{code:'RULE_NOT_CONFIGURED'});
  await assert.rejects(()=>saveQuote(db,null,{customerId:f.customer.id,validUntil:'2099-12-31',placeOfSupply:'27',supplyType:'DOMESTIC_STANDARD',reason,lines:f.quote.lines},f.executive),{code:'RULE_NOT_CONFIGURED'});
  const rules=fixtureRuleService(db);
- await assert.rejects(()=>rules.set(f.owner,'payments.authorisation',{maximumAmount:1.1,checks:['ZZTEST required check']},reason),{status:422});
+ await assert.rejects(()=>rules.set(f.owner,'payments.authorisation',{maximumAmount:1.1,checks:['VERIFY- required check']},reason),{status:422});
 }));
 
 test('margin-only Rules changes cannot overwrite a concurrently changed quotation letterhead',()=>withTestTransaction(async db=>{
  const f=await salesOrderFixture(db),original=await quotePolicy(db);let intercepted=false;
  const racingDb={...db,prepare(statement){const prepared=db.prepare(statement);if(!statement.startsWith('SELECT *,floor_percent::text AS floor_percent FROM crm_quotation_policy'))return prepared;
-  return {...prepared,async get(...args){const before=await prepared.get(...args);if(!intercepted){intercepted=true;await saveQuotePolicy(db,{floorPercent:before.floor_percent,marginBasis:before.margin_basis,sellerState:before.seller_state,letterhead:{...before.letterhead,name:'ZZTEST independently revised letterhead'},reason},f.owner);}return before;}};
+  return {...prepared,async get(...args){const before=await prepared.get(...args);if(!intercepted){intercepted=true;await saveQuotePolicy(db,{floorPercent:before.floor_percent,marginBasis:before.margin_basis,sellerState:before.seller_state,letterhead:{...before.letterhead,name:'VERIFY- independently revised letterhead'},reason},f.owner);}return before;}};
  }};
  const adapter=new QuotationPolicyFloorSource({db:racingDb});
  await assert.rejects(()=>adapter.write(f.owner,'25',reason),{code:'POLICY_VERSION_CHANGED'});
- const retained=await quotePolicy(db);assert.equal(retained.letterhead.name,'ZZTEST independently revised letterhead');assert.equal(retained.floor_percent,original.floor_percent);
+ const retained=await quotePolicy(db);assert.equal(retained.letterhead.name,'VERIFY- independently revised letterhead');assert.equal(retained.floor_percent,original.floor_percent);
 }));
 
 test('withdrawing the margin decision invalidates order verification and blocks supplier PO progression',()=>withTestTransaction(async db=>{
  const f=await procurementFixture(db),service=new DecisionService({db});
- const vendor=await saveVendor(db,null,{name:'ZZTEST policy supplier',stateCode:'27',reason},f.manager);
+ const vendor=await saveVendor(db,null,{name:'VERIFY- policy supplier',stateCode:'27',reason},f.manager);
  const po=await saveSupplierPo(db,null,{salesOrderId:f.order.id,vendorId:vendor.id,deliveryBy:'2099-12-31',reason,lines:[{itemId:f.item.id,quantity:'10',unitPrice:'70',taxPercent:'18'}]},f.manager);
  await stageMargin(service,f.owner,'25');
  const order=await orderDetail(db,f.order.id,f.owner);
@@ -59,8 +59,8 @@ test('withdrawing the margin decision invalidates order verification and blocks 
 
 test('quotation policy API exposes confirmation state without exposing internal pricing to Sales',()=>withTestTransaction(async db=>{
  const f=await salesOrderFixture(db),service=new DecisionService({db}),config=getConfig({localReviewAccess:false,mfaEnabled:false});
- const token=randomUUID();await db.sql`INSERT INTO sessions(user_id,token_hash,csrf_token,expires_at) VALUES(${f.executive.id},${tokenDigest(token)},'ZZTEST csrf',now()+interval '1 hour')`;
- const ownerToken=randomUUID();await db.sql`INSERT INTO sessions(user_id,token_hash,csrf_token,expires_at) VALUES(${f.owner.id},${tokenDigest(ownerToken)},'ZZTEST csrf',now()+interval '1 hour')`;
+ const token=randomUUID();await db.sql`INSERT INTO sessions(user_id,token_hash,csrf_token,expires_at) VALUES(${f.executive.id},${tokenDigest(token)},'VERIFY- csrf',now()+interval '1 hour')`;
+ const ownerToken=randomUUID();await db.sql`INSERT INTO sessions(user_id,token_hash,csrf_token,expires_at) VALUES(${f.owner.id},${tokenDigest(ownerToken)},'VERIFY- csrf',now()+interval '1 hour')`;
  const app=createApp({db,config}),fetch=testFetch(app);
  try{
   const before=await fetch('/api/crm/quotation-policy',{headers:{cookie:`crm_session=${token}`}}),beforeBody=await before.json();

@@ -1,3 +1,4 @@
+import {fixturePermissions} from '../test-support/permission-fixture.js';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import { after, before, describe, test } from 'node:test';
@@ -83,16 +84,16 @@ async function login(target, password = target.password||PASSWORD) {
   return r.data;
 }
 async function createUser(target, role, name) {
-  const r = await request('/api/users', { method: 'POST', auth: owner, body: { name, email: target.email, phone: '9876500000', role, ownerUserId:owner.id,reason:'ZZTEST provisioning regression', password: PASSWORD } });
+  const r = await request('/api/users', { method: 'POST', auth: owner, body: { name, email: target.email, phone: '9876500000', role, ownerUserId:owner.id,reason:'VERIFY- provisioning regression', password: PASSWORD } });
   assert.equal(r.status, 201, JSON.stringify(r.data));
   await login(target);
 }
 const step = () => mfa.clock.advance(31_000);
 
 before(async () => {
-  temporary = await openTestTransactionScope();db=temporary.db;
+  temporary = await openTestTransactionScope();db=temporary.db;await fixturePermissions(db);
   const config = getConfig({ localReviewAccess:false,seedOwnerEmail: owner.email, seedOwnerPassword: PASSWORD, appEncryptionKey: TEST_ENCRYPTION_KEY, mfaEnabled: true });
-  await db.sql`INSERT INTO users(name,email,role,password_hash,must_change_password) VALUES('ZZTEST_Foundation Owner',${owner.email},'OWNER',${hashPassword(PASSWORD)},0)`;
+  await db.sql`INSERT INTO users(name,email,role,password_hash,must_change_password) VALUES('VERIFY-Foundation Owner',${owner.email},'OWNER',${hashPassword(PASSWORD)},0)`;
   app = createApp({ db, config, clock: mfa.clock, outboundMailer: fakeMailer });
   fetch=testFetch(app);base='http://127.0.0.1:3000';
 });
@@ -196,7 +197,7 @@ describe('F1 permission matrix', () => {
     assert.equal((await request('/api/v1/roles/OWNER/permissions/rules.read', { method: 'PUT', auth: owner, body: { granted: false, reason: 'Lock check' } })).data.code, 'ROLE_LOCKED');
     await assert.rejects(db.prepare("INSERT INTO role_permissions(role_key,permission_key) VALUES('EXECUTIVE','rules.manage')").all(), /reserved for the owner/);
     await assert.rejects(db.prepare("UPDATE access_matrix_events SET reason='x'").run(), /append-only/);
-    const created = await request('/api/v1/roles', { method: 'POST', auth: owner, body: { key: 'ZZTEST_REVIEW', name: 'ZZTEST review role', requiresMfa: false, reason: 'Test-only empty role' } });
+    const created = await request('/api/v1/roles', { method: 'POST', auth: owner, body: { key: 'VERIFY_REVIEW', name: 'VERIFY- review role', requiresMfa: false, reason: 'Test-only empty role' } });
     assert.equal(created.status, 201);
     assert.ok((await request('/api/v1/users', { auth: owner })).status === 200);
     const audit = await db.prepare("SELECT action FROM audit_logs WHERE entity IN ('ACCESS_MATRIX','ROLE') ORDER BY id").all();
@@ -323,6 +324,7 @@ describe('F1 task board', () => {
     let job = await app.modules.services.tasks.sendReminders();
     assert.equal(job.skipped, true, 'switch is OFF');
     await request('/api/v1/automation/task_reminders', { method: 'PATCH', auth: owner, body: { enabled: true, reason: 'Prem approved reminders' } });
+    await request('/api/v1/rules/tasks.reminder_interval_minutes', { method: 'PUT', auth: owner, body: { value: 120, reason: 'VERIFY- test reminder interval' } });
     mfa.clock.advance(121 * 60_000);
     job = await app.modules.services.tasks.sendReminders();
     assert.equal(job.skipped, undefined);

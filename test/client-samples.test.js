@@ -7,7 +7,7 @@ import {samplePath} from '../test-support/client-samples.js';
 
 test('private sample helper resolves a temp file, skips missing input and refuses path traversal without database access',()=>{
   const temporaryParent=fs.realpathSync(os.tmpdir());
-  const root=fs.mkdtempSync(path.join(temporaryParent,'ZZTEST_client_samples_'));
+  const root=fs.mkdtempSync(path.join(temporaryParent,'VERIFY-client_samples_'));
   try{
     const folder='01-customer-pos',file='synthetic-reference.txt';
     fs.mkdirSync(path.join(root,folder));
@@ -28,7 +28,7 @@ test('private sample helper resolves a temp file, skips missing input and refuse
     // Verify the exact recursive target is the directory this test created.
     const resolved=fs.realpathSync(root);
     assert.equal(path.dirname(resolved),temporaryParent);
-    assert.ok(path.basename(resolved).startsWith('ZZTEST_client_samples_'));
+    assert.ok(path.basename(resolved).startsWith('VERIFY-client_samples_'));
     fs.rmSync(resolved,{recursive:true,force:true});
     assert.equal(fs.existsSync(root),false);
   }
