@@ -193,7 +193,7 @@ export function createApp({ db, config, fetchImpl = fetch, sendMailImpl = sendQu
     ...stockCheckRoutes({db,route,json,readJson}),
     ...automationCredentialRoutes({service:automationCredentials,route,json,readJson}),
     ...quotationWorkflowRoutes({db,config,route,json,readJson}),
-    ...salesOrderRoutes({db,route,json,readJson}),
+    ...salesOrderRoutes({db,config,route,json,readJson}),
     ...procurementRoutes({db,route,json,readJson}),
     ...logisticsRoutes({db,route,json,readJson}),
     ...storedTallyRoutes({db,config,route,json,readJson}),

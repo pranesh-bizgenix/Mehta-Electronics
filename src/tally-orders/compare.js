@@ -1,7 +1,7 @@
 import {decimal as D,add,sub,mul,div,compare,format} from './decimal.js';
 const zero=()=>D('0');
 const key=line=>line.itemId?`id:${line.itemId}`:line.itemCode?`code:${line.itemCode}`:null;
-const grouped=lines=>{const result=new Map();for(const line of lines){const k=key(line);if(k)result.set(k,[...(result.get(k)||[]),line]);}return result;};
+const grouped=(lines,side)=>{const result=new Map();for(const [index,line] of lines.entries()){const k=key(line)||`unidentified:${side}:${index}`;result.set(k,[...(result.get(k)||[]),line]);}return result;};
 const parsed=v=>{try{return v==null?null:D(v);}catch{return null;}};
 function netUnit(line){
   const qty=parsed(line.quantity),net=parsed(line.netAmount);
@@ -19,6 +19,7 @@ function documentIssues(sales,other,options){
   if(!sales.currency||!other.currency)issues.push('CURRENCY_NOT_SUPPLIED');
   else if(sales.currency!==other.currency)issues.push('CURRENCY_MISMATCH');
   if([sales,other].some(d=>['CANCELLED','DELETED'].includes(d.status)))issues.push('CANCELLED_OR_DELETED_DOCUMENT');
+  if([sales,other].some(d=>d.status==='OPTIONAL'))issues.push('OPTIONAL_DOCUMENT_REQUIRES_REVIEW');
   if(!options.netExTaxConfirmed)issues.push('NET_EX_TAX_BASIS_REQUIRES_REVIEW');
   if(!sales.lines?.length||!other.lines?.length)issues.push('NO_COMPARABLE_LINES');
   return issues;
@@ -29,11 +30,12 @@ export function compareOrders(sales,other,{mode,netExTaxConfirmed=false}={}){
   if(sales.kind!=='sales_orders')throw new Error('Select a Sales Order.');
   if(mode==='SUPPLIER_PO'&&other.kind!=='purchase_orders')throw new Error('Select a supplier Purchase Order.');
   if(mode==='CUSTOMER_PO'&&other.kind!=='customer_po')throw new Error('Select a customer Purchase Order.');
-  const issues=documentIssues(sales,other,{netExTaxConfirmed}),left=grouped(sales.lines||[]),right=grouped(other.lines||[]),rows=[];
+  const issues=documentIssues(sales,other,{netExTaxConfirmed}),left=grouped(sales.lines||[],'sales'),right=grouped(other.lines||[],'po'),rows=[];
   let revenue=zero(),cost=zero(),covered=0;
   for(const k of new Set([...left.keys(),...right.keys()])){
     const l=left.get(k)||[],r=right.get(k)||[];
-    const row={key:k,item:l[0]?.itemCode||r[0]?.itemCode||k,sales:l[0]||null,po:r[0]||null,issues:[],differences:[],matchedQuantity:null,revenue:null,cost:null,estimatedGrossProfit:null};
+    const row={key:k,item:l[0]?.itemCode||r[0]?.itemCode||l[0]?.description||r[0]?.description||k,sales:l[0]||null,po:r[0]||null,issues:[],differences:[],matchedQuantity:null,revenue:null,cost:null,estimatedGrossProfit:null};
+    if(k.startsWith('unidentified:'))row.issues.push('ITEM_IDENTITY_MISSING');
     if(l.length!==1||r.length!==1){row.issues.push(l.length>1||r.length>1?'AMBIGUOUS_REPEATED_ITEM':'ITEM_MISSING_ON_ONE_DOCUMENT');rows.push(row);continue;}
     const a=l[0],b=r[0];
     if(!a.unit||!b.unit)row.issues.push('UNIT_NOT_SUPPLIED');else if(a.unit!==b.unit)row.issues.push('UNIT_MISMATCH');

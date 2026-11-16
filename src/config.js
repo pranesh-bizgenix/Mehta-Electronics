@@ -27,6 +27,7 @@ export function getConfig(overrides = {}) {
     host: process.env.HOST || '127.0.0.1',
     port: integer(process.env.PORT, 3000),
     localReviewAccess: process.env.LOCAL_REVIEW_ACCESS === 'true',
+    tallyOrderComparisonEnabled: process.env.TALLY_ORDER_COMPARISON_ENABLED === 'true',
     databaseUrl,
     tallyConnectorOrgId: process.env.TALLY_CONNECTOR_ORG_ID || 'mehta-electronics',
     tallyStalledRunMinutes: Math.max(1, integer(process.env.TALLY_STALLED_RUN_MINUTES, 30)),

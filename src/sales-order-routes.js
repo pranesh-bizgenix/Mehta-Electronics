@@ -1,9 +1,10 @@
 import {OrderReconciliationService} from './tally-order-reconciliation.js';
 import {listTallyOrders} from './tally-order-list.js';
 import {tallyOrderDetail} from './tally-order-detail.js';
+import {compareStoredOrders} from './tally-orders/stored-comparison.js';
 import {orderList,orderDetail,saveOrder,orderAction,orderHistory,uploadOriginal,downloadOriginal,dispatchOrder,markDelivered,logisticsSearch,orderQuoteSource} from './sales-orders.js';
 const fail=(status,message)=>{throw Object.assign(new Error(message),{status});};
-export function salesOrderRoutes({db,route,json,readJson}){
+export function salesOrderRoutes({db,config={},route,json,readJson}){
  const body=async req=>{const b=await readJson(req);if(!b||typeof b!=='object'||Array.isArray(b))fail(422,'Provide a JSON object.');return b;};
  const save=(fn,code=200)=>async({req,res,params,user})=>json(res,code,{data:await fn(params,await body(req),user)});
  const original=shipment=>async({req,res,params,user})=>{
@@ -14,6 +15,15 @@ export function salesOrderRoutes({db,route,json,readJson}){
  };
  const reconciliation=new OrderReconciliationService(db);
  return [
+ route('GET','/api/crm/order-comparison/status','tally.read',async({res,user})=>{
+  if(!['OWNER','ACCOUNTS'].includes(user.role))fail(403,'Order comparison requires Owner or Accounts access.');
+  json(res,200,{enabled:config.tallyOrderComparisonEnabled===true,readOnly:true});
+ }),
+ route('POST','/api/crm/order-comparison','tally.read',async({req,res,url,user})=>{
+  if(!['OWNER','ACCOUNTS'].includes(user.role))fail(403,'Order comparison requires Owner or Accounts access.');
+  if(!config.tallyOrderComparisonEnabled)fail(409,'Order comparison is disabled. Set TALLY_ORDER_COMPARISON_ENABLED=true to enable read-only comparisons.');
+  json(res,200,await compareStoredOrders(db,url,await body(req),user));
+ }),
  route('GET','/api/crm/tally-order-reconciliation','tally.read',async({res,url})=>json(res,200,await reconciliation.read(url))),
  route('POST','/api/crm/tally-order-reconciliation/compare','tally.read',async({req,res,url})=>json(res,200,await reconciliation.read(url,await body(req)))),
  route('GET','/api/crm/order-quotes/:id','orders.create',async({res,params,user})=>json(res,200,{data:await orderQuoteSource(db,params.id,user)})),

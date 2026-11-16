@@ -729,3 +729,10 @@ Simplified the Owner Users & roles permission matrix: every editable permission 
 - Ignored local Next.js verification builds and compiled connector output packages.
 - Validation: npm.cmd run lint passed. Full tests, production builds, and database migrations were not run for this commit-only task.
 
+
+
+## 16 November 2026 - Stored order comparison completion
+
+Owner/Accounts can explicitly select retained order documents on the Tally orders screen. TALLY_ORDER_COMPARISON_ENABLED gates the read-only endpoint and UI. The local setting is enabled for acceptance. Sources are company-scoped and read in one snapshot; incomplete, optional, cancelled or unidentified documents cannot report a complete margin. Customer PO entries require stable explicit CRM/Tally item links. No live fetcher, Tally write or automation switch was enabled.
+
+The focused comparison and schema run passed 6 tests with zero failures, cancellations or skips. Browser/API/DB acceptance is recorded separately in verification-output/2026-11-16/browser-results.json. The old supplied-document preview remains unregistered.
