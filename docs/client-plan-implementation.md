@@ -753,3 +753,10 @@ Focused repair rerun passed 65 of 66 tests with no cancellations; the remaining 
 ## 16 November 2026 - Owner setup checklist acceptance
 
 The real Owner UI and API returned all ten checks with explanations and repair links; no prerequisite was forced ready. The pre-change real-data snapshot had zero of ten ready. Staff readiness, independent reviewers, exact customer/item links, quotation policy and costs, unset business rules, connector/company status, MFA and backup age remain independently reported. Business values remain BLOCKED: NEEDS CLIENT DECISION wherever not confirmed. See verification-output/2026-11-16/live-setup.json for actual gaps and setup-ui-check.json for controlled UI acceptance. The verified migration backup created today may legitimately change the backup check; it does not configure any business policy.
+
+
+## 16 November 2026 - Stock workflow browser acceptance and balances
+
+Orders now displays retained Tally on-hand, reserved and free balances separately, alongside the selected stock basis and explicit dispatch availability. The text distinguishes retained source balances from an invented live balance and explains unresolved movement holds. No inferred subtraction, automatic reconciliation or stock policy default was introduced.
+
+Real browser/API/DB acceptance with rollback fixtures verified a saved immutable company binding, rejection of dispatch with zero free stock, one valid four-unit dispatch, persisted immutable stock consumption and Owner pending-movement visibility. Existing tests separately cover audit rollback and independent reconciliation. Evidence: verification-output/2026-11-16/company-binding-check.json, dispatch-check.json, movement-check.json and browser-results.json. Real live Tally freshness remains unverified.
