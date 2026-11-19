@@ -9,6 +9,7 @@ if (!['http:', 'https:'].includes(parsedBackendUrl.protocol) || parsedBackendUrl
 
 const nextConfig: NextConfig = {
   agentRules: false,
+  env: { NEXT_PUBLIC_EMAIL_AUTOMATION_ENABLED: process.env.EMAIL_AUTOMATION_ENABLED === 'true' ? 'true' : 'false' },
   // Verification builds use a separate directory so they never disturb a running dev server.
   distDir: process.env.NEXT_DIST_DIR || '.next',
   poweredByHeader: false,
