@@ -85,7 +85,7 @@ export function Switch({ label, ...rest }: InputHTMLAttributes<HTMLInputElement>
  * works with server-side lookups over thousands of records.
  */
 export function Combobox({ label, value, onChange, search, error, hint, required, placeholder = 'Type to search' }: FieldChrome & {
-  value: Option | null; onChange: (option: Option | null) => void; search: (term: string) => Promise<Option[]>; required?: boolean; placeholder?: string;
+  value: Option | null; onChange: (option: Option | null) => void; search: (term: string, signal?: AbortSignal) => Promise<Option[]>; required?: boolean; placeholder?: string;
 }) {
   const id = useId();
   const listId = `${id}-list`;
@@ -94,6 +94,8 @@ export function Combobox({ label, value, onChange, search, error, hint, required
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [searchError, setSearchError] = useState<string>();
+  const [retry, setRetry] = useState(0);
   const searchRef = useRef(search);
   searchRef.current = search;
 
@@ -101,12 +103,16 @@ export function Combobox({ label, value, onChange, search, error, hint, required
   useEffect(() => {
     if (!open) return;
     let live = true;
+    const controller = new AbortController();
     setLoading(true);
+    setOptions([]);setSearchError(undefined);
+    let deadline: ReturnType<typeof setTimeout>;
     const timer = setTimeout(() => {
-      searchRef.current(term).then((o) => { if (live) { setOptions(o); setActive(0); } }).catch(() => { if (live) setOptions([]); }).finally(() => { if (live) setLoading(false); });
+      deadline=setTimeout(()=>{if(live){live=false;controller.abort();setLoading(false);setSearchError('Search is taking too long. Try again.');}},15000);
+      Promise.resolve().then(()=>searchRef.current(term,controller.signal)).then((o) => { if (live) { setOptions(o); setActive(0); } }).catch((e) => { if (live) {setOptions([]);setSearchError(e instanceof Error?e.message:'Search could not be completed.');} }).finally(() => {clearTimeout(deadline);if (live) setLoading(false); });
     }, 200);
-    return () => { live = false; clearTimeout(timer); };
-  }, [term, open]);
+    return () => { live = false; clearTimeout(timer);clearTimeout(deadline);controller.abort(); };
+  }, [term, open, retry]);
 
   const choose = (o: Option) => { onChange(o); setTerm(o.label); setOpen(false); };
   return (
@@ -129,7 +135,8 @@ export function Combobox({ label, value, onChange, search, error, hint, required
           {open && (
             <ul id={listId} role="listbox" className="ds-listbox" aria-label={label}>
               {loading && <li className="ds-option" aria-disabled="true"><span className="muted">Searching…</span></li>}
-              {!loading && options.length === 0 && <li className="ds-option" aria-disabled="true"><span className="muted">{term ? 'No matches' : placeholder}</span></li>}
+              {!loading && searchError && <li className="ds-option"><span role="alert">{searchError}</span><button type="button" className="ds-button" data-variant="ghost" onMouseDown={e=>e.preventDefault()} onClick={()=>setRetry(v=>v+1)}>Retry search</button></li>}
+              {!loading && !searchError && options.length === 0 && <li className="ds-option" aria-disabled="true"><span className="muted">{term ? 'No matches' : placeholder}</span></li>}
               {!loading && options.map((o, i) => (
                 <li key={o.value} id={`${id}-opt-${i}`} role="option" aria-selected={i === active} className="ds-option" onMouseDown={(e) => { e.preventDefault(); choose(o); }}>
                   <span className="truncate">{o.label}</span>{o.hint && <small className="truncate">{o.hint}</small>}

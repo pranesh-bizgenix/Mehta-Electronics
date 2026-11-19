@@ -16,7 +16,7 @@ export interface Pricing {
   lines: { itemId: number; unitCost: string | null; cost?: string; marginPercent: string | null; belowFloor?: boolean }[];
 }
 export interface Quotation {
-  approval?:{roundId:string;completed:number;total:number;pendingStageId:string|null;canApprove:boolean;canReturn:boolean;blocked?:boolean;note?:string;steps:{id:string;number:number;status:'COMPLETED'|'PENDING'|'WAITING'}[]}|null;
+  approval?:{roundId:string;completed:number;total:number;pendingStageId:string|null;canApprove:boolean;canReturn:boolean;ownerSelfApproval?:boolean;blocked?:boolean;note?:string;steps:{id:string;number:number;status:'COMPLETED'|'PENDING'|'WAITING'}[]}|null;
   request?:QuotationRequest;
   id: number; status: QuoteStatus; version: number; created_by: number; updated_at: string; duplicateOf?: number | null;
   quotation_number: string; customerId: number; customer_name: string; customerGstin: string; customerAddress: string; enquiryId: number | null;
@@ -48,12 +48,12 @@ export const quotationsApi = (client: ApiClient) => ({
   enquiry: (id: number | string) => client.data<EnquirySource>('GET', `/api/crm/quotation-enquiries/${id}`),
   create: (body: QuoteInput, idempotencyKey: string) => client.data<Quotation>('POST', '/api/crm/quotations', body, { idempotencyKey }),
   revise: (id: number, body: QuoteInput) => client.data<Quotation>('PUT', `/api/crm/quotations/${id}`, body),
-  action: (id: number, body: { action: QuoteAction; version: number; reason: string; overrideFloor?: boolean;roundId?:string;stageId?:string;requestKey?:string }) => client.data<Quotation>('POST', `/api/crm/quotations/${id}/actions`, body),
+  action: (id: number, body: { action: QuoteAction; version: number; reason: string; overrideFloor?: boolean;ownerSelfApproval?:boolean;roundId?:string;stageId?:string;requestKey?:string }) => client.data<Quotation>('POST', `/api/crm/quotations/${id}/actions`, body),
   duplicate: (id: number, reason: string) => client.data<Quotation>('POST', `/api/crm/quotations/${id}/duplicate`, { reason }),
   email: (id: number, body: { to: string; subject: string; message: string; version: number; reason: string }) => client.post<unknown>(`/api/quotations/${id}/send-email`, body),
   customer: (id: number) => client.data<{ id: number; name: string; gstin: string | null; profile: { state_code?: string | null }; contacts: { email?: string | null; is_primary?: number | boolean }[] }>('GET', `/api/crm/customers/${id}`),
   customers: (search: string) => client.get<Paginated<{ id: number; name: string; gstin: string | null }>>('/api/crm/customers', { query: { search, status: 'ACTIVE', pageSize: 20 } }),
-  items: (search: string) => client.get<Paginated<{ id: number; part_code: string; description: string; uom: string; hsn: string | null }>>('/api/crm/items', { query: { search, status: 'ACTIVE', pageSize: 20 } })
+  items: (search: string, signal?: AbortSignal) => client.get<Paginated<{ id: number; part_code: string; description: string; uom: string; hsn: string | null }>>('/api/crm/items', { query: { search, status: 'ACTIVE', pageSize: 20 }, signal })
 });
 export type QuotationsApi = ReturnType<typeof quotationsApi>;
 

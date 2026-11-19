@@ -35,6 +35,7 @@ export function QuoteEditorView({ id, enquiryId, customerId }: { id?: string; en
   const toast = useToast();
   const [reasonFor, setReasonFor] = useState<null | { kind: 'save' } | { kind: 'action'; action: QuoteAction } | { kind: 'duplicate' }>(null);
   const [override, setOverride] = useState(false);
+  const [ownerAcknowledged,setOwnerAcknowledged]=useState(false);
   const [preview, setPreview] = useState(false);
   const [emailing, setEmailing] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -57,12 +58,12 @@ export function QuoteEditorView({ id, enquiryId, customerId }: { id?: string; en
   const create = async () => {
     if(busy||ed.problems.length)return;
     setBusy(true);setSaveError(undefined);
-    try { const saved = await ed.api.create(ed.toInput('Quotation created'), createKey.current); toast('success', `${saved.quotation_number} saved as a draft.`); router.replace(`/quotations/${saved.id}`); }
+    try { const saved = await ed.api.create(ed.toInput('Quotation created'), createKey.current); toast('success', `${saved.quotation_number} saved as a draft.`); window.location.replace(`/quotations/${saved.id}`); }
     catch (e) { setSaveError(e); } finally { setBusy(false); }
   };
   const runAction = async (action: QuoteAction, reason: string) => {
     if (!q) return;
-    const body={ action, version: q.version, reason, ...(action === 'APPROVE' && q.pricing?.belowFloor ? { overrideFloor: override } : {}),...(action==='APPROVE'&&q.approval?{roundId:q.approval.roundId,stageId:q.approval.pendingStageId??undefined}:{}) };
+    const body={ action, version: q.version, reason,...(action==='APPROVE'&&q.approval?.ownerSelfApproval?{ownerSelfApproval:ownerAcknowledged}:{}), ...(action === 'APPROVE' && q.pricing?.belowFloor ? { overrideFloor: override } : {}),...(action==='APPROVE'&&q.approval?{roundId:q.approval.roundId,stageId:q.approval.pendingStageId??undefined}:{}) };
     if(action==='APPROVE'){const signature=JSON.stringify(body);if(approvalKey.current.signature!==signature)approvalKey.current={signature,key:newIdempotencyKey()};}
     const updated = await ed.api.action(q.id, {...body,...(action==='APPROVE'?{requestKey:approvalKey.current.key}:{})});
     ed.setQuote(updated); toast('success', `Quotation ${titleCase(updated.status).toLowerCase()}.`);
@@ -123,6 +124,10 @@ export function QuoteEditorView({ id, enquiryId, customerId }: { id?: string; en
               <TextField label="Customer RFQ / reference" value={ed.request.reference} maxLength={200} disabled={!ed.editable} onChange={event=>ed.updateRequest({reference:event.target.value})} hint="The customer's enquiry number or reference, if supplied."/>
               <TextAreaField label="Customer quantity instructions" value={ed.request.quantityInstructions} maxLength={1000} rows={2} disabled={!ed.editable} onChange={event=>ed.updateRequest({quantityInstructions:event.target.value})} hint="Record set or colour instructions as received. Enter final quoted quantities in the item lines; no multiplier is applied automatically."/>
               {ed.request.quantityInstructions&&<Checkbox label="I checked the set / colour breakdown and confirmed the final line quantities" checked={ed.request.quantityConfirmed} disabled={!ed.editable} onChange={event=>ed.updateRequest({quantityConfirmed:event.target.checked})}/>}
+              <TextAreaField label="Customer requested terms (internal review)" value={ed.request.customerTerms??''} maxLength={4000} disabled={!ed.editable} onChange={event=>ed.updateRequest({customerTerms:event.target.value,termsConfirmed:false})} hint="Keep requested payment, freight, warranty, LD and certificate conditions here. Only the accepted Terms below are printed."/>
+              {ed.request.customerTerms&&<Checkbox label="I reviewed the requested terms and recorded our accepted quotation terms" checked={Boolean(ed.request.termsConfirmed)} disabled={!ed.editable} onChange={event=>ed.updateRequest({termsConfirmed:event.target.checked})}/>}
+              <Checkbox label="Development reference only (historical prices; cannot be issued)" checked={Boolean(ed.request.referenceOnly)} disabled={!ed.editable} onChange={event=>ed.updateRequest({referenceOnly:event.target.checked,referenceDate:''})}/>
+              {ed.request.referenceOnly&&<><Notice tone="warning">Historical prices are for development reference. This draft cannot be submitted, approved or issued. Production rejects creation of reference quotations.</Notice><TextField label="Historical pricing date" type="date" value={ed.request.referenceDate??''} disabled={!ed.editable} onChange={event=>ed.updateRequest({referenceDate:event.target.value})}/></>}
             </div>
           </Card>
 
@@ -178,13 +183,14 @@ export function QuoteEditorView({ id, enquiryId, customerId }: { id?: string; en
 
           <div className="ds-card ds-card-pad stack">
             {Boolean(saveError)&&<ErrorState error={saveError}/>}
-            {ed.requestBlock&&<Notice tone="warning" title="Quantity review needed">{ed.requestBlock} You can save a draft while this is unresolved.</Notice>}
+            {ed.requestBlock&&<Notice tone="warning" title="Quotation review needed">{ed.requestBlock} You can save a draft while this is unresolved.</Notice>}
             {ed.problems.length > 0 && ed.editable && <Notice tone="warning" title="Before saving">{ed.problems.map((p) => <span key={p} style={{ display: 'block' }}>{p}</span>)}</Notice>}
             {!q && can('quotations.create') && <Button size="lg" block icon="check" busy={busy} disabled={ed.problems.length > 0} onClick={() => void create()}>Save draft</Button>}
-            {!q&&<p className="ds-cell-secondary">Saving creates a draft for review. A different eligible reviewer must approve it before it can be sent.</p>}
-            {q && ed.editable && can('quotations.update') && ed.dirty && <Button size="lg" block icon="check" disabled={ed.problems.length > 0} onClick={() => setReasonFor({ kind: 'save' })}>Save new version</Button>}
+            {!q&&<p className="ds-cell-secondary">Saving creates a draft for review. Approval is required before sending. Owner may explicitly approve their own quotation; other roles need a different eligible reviewer.</p>}
+            {q&&ed.editable&&ed.costSnapshotChanged&&<Notice tone="warning" title="Save updated costs before submitting">The margin above uses current item costs. This saved quotation still contains older costs. Save a new version to capture the current costs.</Notice>}
+            {q && ed.editable && can('quotations.update') && (ed.dirty||ed.costSnapshotChanged) && <Button size="lg" block icon="check" disabled={ed.problems.length > 0} onClick={() => setReasonFor({ kind: 'save' })}>{ed.costSnapshotChanged?'Save updated costs':'Save new version'}</Button>}
             {q && ed.editable && ed.dirty && q.status !== 'DRAFT' && <p className="ds-cell-secondary">Saving returns the quotation to draft; it must be approved again.</p>}
-            {actions.map((a) => <Button key={a.action} block disabled={a.action==='SUBMIT'&&Boolean(ed.requestBlock)} variant={a.variant ?? 'secondary'} onClick={() => setReasonFor({ kind: 'action', action: a.action })}>{a.label}</Button>)}
+            {actions.map((a) => <Button key={a.action} block disabled={a.action==='SUBMIT'&&(Boolean(ed.requestBlock)||ed.costSnapshotChanged)} variant={a.variant ?? 'secondary'} onClick={() => setReasonFor({ kind: 'action', action: a.action })}>{a.label}</Button>)}
             {q?.approval&&<section className="stack-sm" aria-label="Approval progress"><h3>Approval progress</h3><p>{q.approval.completed} of {q.approval.total} required steps completed.</p><ol>{q.approval.steps.map(step=><li key={step.id}>Step {step.number}: {titleCase(step.status)}</li>)}</ol>{q.approval.blocked&&<Notice tone="warning">{q.approval.note}</Notice>}</section>}
             {waitingOnOthers && <Notice tone="info">Waiting for an eligible independent reviewer for the pending step.</Notice>}
             {q && ['APPROVED', 'SENT'].includes(q.status) && can('quotations.send') && <Button block variant="secondary" icon="mail" onClick={() => setEmailing(true)}>Email PDF to customer</Button>}
@@ -194,7 +200,7 @@ export function QuoteEditorView({ id, enquiryId, customerId }: { id?: string; en
         </aside>
       </div>
 
-      <ReasonDialog open={reasonFor !== null} onClose={() => { setReasonFor(null); setOverride(false); }}
+      <ReasonDialog open={reasonFor !== null} onClose={() => { setReasonFor(null); setOverride(false);setOwnerAcknowledged(false); }}
         title={reasonFor?.kind === 'save' ? 'Save new version' : reasonFor?.kind === 'duplicate' ? 'Duplicate quotation' : reasonFor?.kind === 'action' ? (actions.find((a) => a.action === reasonFor.action)?.label ?? 'Update') : ''}
         danger={reasonFor?.kind === 'action' && ['CANCEL', 'LOST'].includes(reasonFor.action)}
         confirmLabel={reasonFor?.kind === 'action' ? actions.find((a) => a.action === reasonFor.action)?.label : 'Confirm'}
@@ -203,16 +209,18 @@ export function QuoteEditorView({ id, enquiryId, customerId }: { id?: string; en
           if (reasonFor.kind === 'save' && q) { ed.setQuote(await ed.api.revise(q.id, ed.toInput(reason))); toast('success', 'New version saved.'); }
           else if (reasonFor.kind === 'duplicate' && q) { const copy = await ed.api.duplicate(q.id, reason); toast('success', `${copy.quotation_number} created as a new draft.`); router.push(`/quotations/${copy.id}`); }
           else if (reasonFor.kind === 'action') {
+            if(reasonFor.action==='APPROVE'&&q?.approval?.ownerSelfApproval&&!ownerAcknowledged)throw new Error('Acknowledge Owner self-approval before continuing.');
             if (reasonFor.action === 'APPROVE' && q?.pricing?.belowFloor && !override) throw new Error('Tick the below-floor exception to approve.');
             await runAction(reasonFor.action, reason);
           }
         }}>
+        {reasonFor?.kind==='action'&&reasonFor.action==='APPROVE'&&q?.approval?.ownerSelfApproval&&<><Notice tone="warning" title="Owner self-approval">You created or last edited this quotation. Your approval will be recorded as an Owner self-approval exception.</Notice><Checkbox label="I acknowledge that I am approving my own quotation as Owner" checked={ownerAcknowledged} onChange={e=>setOwnerAcknowledged(e.target.checked)}/></>}
         {reasonFor?.kind === 'action' && reasonFor.action === 'APPROVE' && q?.pricing?.belowFloor && <><Notice tone="warning" title="Margin below the floor">Approving records an exception with your name and reason.</Notice><Checkbox label="I approve this below-floor exception" checked={override} onChange={(e) => setOverride(e.target.checked)} /></>}
       </ReasonDialog>
       {q && <PreviewDrawer open={preview} id={q.id} number={q.quotation_number} onClose={() => setPreview(false)} />}
       {q && <EmailModal open={emailing} ed={ed} onClose={() => setEmailing(false)} />}
       <PolicyDrawer open={setup==='policy'} onClose={()=>{setSetup(null);void ed.refreshPolicy();}}/>
-      <CostDrawer open={setup==='costs'} onClose={()=>{setSetup(null);ed.refreshCosts();}}/>
+      <CostDrawer open={setup==='costs'} initialItem={ed.lines.length===1?ed.lines[0].item:undefined} onClose={()=>{setSetup(null);ed.refreshCosts();}}/>
     </>
   );
 }
@@ -242,7 +250,7 @@ function LineGrid({ ed, floor }: { ed: QuoteEditor; floor?: string }) {
             </div>
             <div role="cell"><IconButton icon="x" label={`Remove line ${i + 1}`} disabled={ed.lines.length === 1} onClick={() => ed.removeLine(l.key)} /></div>
           </div>
-          <div className="quote-line-detail" role="row"><div role="cell" aria-colspan={8}><LevelPrice customerId={ed.customer?.value} itemId={l.item?.value} quantity={l.quantity} selection={l.pricingSelection} onApply={(price,pricingSelection)=>ed.updateLine(l.key,{pricingSelection,...(price!==null?{unitPrice:price,discountPercent:'0'}:{})})}/><details>
+          <div className="quote-line-detail" role="row"><div role="cell" aria-colspan={8}><LevelPrice referenceDate={ed.request.referenceOnly?ed.request.referenceDate:undefined} customerId={ed.customer?.value} itemId={l.item?.value} quantity={l.quantity} selection={l.pricingSelection} onApply={(price,pricingSelection)=>ed.updateLine(l.key,{pricingSelection,...(price!==null?{unitPrice:price,discountPercent:'0'}:{})})}/><details>
             <summary>Line {i+1}: customer references, specifications & delivery{l.requestDetails.tag?` · ${l.requestDetails.tag}`:''}</summary>
             <div className="stack">
               <div className="ds-form-grid">

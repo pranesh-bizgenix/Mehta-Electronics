@@ -8,7 +8,7 @@ import { useApi } from '@/lib/api/provider';
 import { useSession } from '@/lib/session';
 import type { Option } from '@/components/ds';
 import { EDITABLE, quotationsApi, type Policy, type Quotation, type QuoteInput } from './api';
-import {quotationRequest,quotationLineRequest,quotationRequestBlock,type QuotationLineRequest,type QuotationRequest} from '../../../../public/quotation-request.js';
+import {quotationRequest,quotationLineRequest,quotationRequestBlock,quotationPricingDate,type QuotationLineRequest,type QuotationRequest} from '../../../../public/quotation-request.js';
 
 export interface LineDraft {
   pricingSelection?: {level:number;fingerprint:string};
@@ -58,7 +58,7 @@ export function useQuoteEditor({ id, enquiryId, customerId }: { id?: string; enq
     setPlaceOfSupply(q.placeOfSupply); setValidUntil(q.validUntil); setTerms(q.terms); setNotes(q.notes); setLinkedEnquiry(q.enquiryId);
     setRequest(quotationRequest(q.request));
     setLines(q.lines.map((l, i) => ({ key: `l${i}-${l.itemId}`, item: { value: String(l.itemId), label: l.partCode, hint: l.description }, partCode: l.partCode, uom: l.uom, hsn: l.hsn, description: l.description, quantity: trim(l.quantity), unitPrice: trim(l.unitPrice), discountPercent: trim(l.discountPercent), taxPercent: trim(l.taxPercent),pricingSelection:l.pricingSelection,requestDetails:{...quotationLineRequest(undefined,''),...l.requestDetails} })));
-    if (q.pricing) setCosts(Object.fromEntries(q.pricing.lines.map((l) => [String(l.itemId), l.unitCost])));
+    setCosts({}); // Load current costs separately from the retained approval snapshot.
     setDirty(false);
   }, []);
 
@@ -103,7 +103,7 @@ export function useQuoteEditor({ id, enquiryId, customerId }: { id?: string; enq
     setCustomer(option); setDirty(true); setPlaceOfSupply(''); setCustomerError(undefined); setCustomerLoading(false);
     if (!option) return;
     setCustomerLoading(true);
-    try { const c = await api.customer(Number(option.value)); if(request===customerRequest.current)setPlaceOfSupply(c.profile.state_code ?? c.gstin?.slice(0, 2) ?? ''); }
+    try { const c = await api.customer(Number(option.value)); if(request===customerRequest.current)setPlaceOfSupply(current=>current||c.profile.state_code||c.gstin?.slice(0,2)||''); }
     catch { if(request===customerRequest.current)setCustomerError('Customer details could not be loaded. Select the customer again to retry.'); }
     finally { if(request===customerRequest.current)setCustomerLoading(false); }
   };
@@ -127,6 +127,12 @@ export function useQuoteEditor({ id, enquiryId, customerId }: { id?: string; enq
     return index >= 0 ? calc.result?.lines[index] : undefined;
   };
   const editable = quote ? EDITABLE.includes(quote.status) && can('quotations.update') : can('quotations.create');
+  const costSnapshotChanged=Boolean(costAccess&&quote?.pricing&&quote.pricing.lines.some(saved=>{
+    const current=costs[String(saved.itemId)];
+    if(current===undefined)return false;
+    if(current===null||saved.unitCost===null)return current!==saved.unitCost;
+    return exactCompare(exactDecimal(current),exactDecimal(saved.unitCost))!==0;
+  }));
   const toInput = (reason: string): QuoteInput => ({
     request,
     customerId: Number(customer?.value), enquiryId: linkedEnquiry, validUntil, placeOfSupply, supplyType: 'DOMESTIC_STANDARD', terms, notes, reason,
@@ -145,14 +151,15 @@ export function useQuoteEditor({ id, enquiryId, customerId }: { id?: string; enq
     ...(!lines.length || lineErrors.some(Boolean) ? ['Complete every line (item, quantity, rate, discount, GST).'] : []),
     ...(calc.error ? [calc.error] : [])
   ];
+  try{quotationPricingDate(request,indiaToday());}catch(error){problems.push(error instanceof Error?error.message:String(error));}
   lines.forEach((line,index)=>{try{quotationLineRequest(line.requestDetails,indiaToday());}catch(error){problems.push(`Line ${index+1}: ${error instanceof Error?error.message:'Check request details.'}`);}});
 
   return {
-    api, quote, setQuote: hydrate, policy, refreshPolicy, refreshCosts:()=>setCosts({}), loadError, reload: load, costAccess, editable, dirty, sourceWarning, setSourceWarning, customerError, customerLoading,
+    api, quote, setQuote: hydrate, policy, refreshPolicy, refreshCosts:()=>setCosts({}), loadError, reload: load, costAccess, costSnapshotChanged, editable, dirty, sourceWarning, setSourceWarning, customerError, customerLoading,
     customer, pickCustomer, placeOfSupply, setPlaceOfSupply: (v: string) => { setPlaceOfSupply(v); setDirty(true); },
-    validUntil, setValidUntil: (v: string) => { setValidUntil(v); setDirty(true); }, terms, setTerms: (v: string) => { setTerms(v); setDirty(true); },
+    validUntil, setValidUntil: (v: string) => { setValidUntil(v); setDirty(true); }, terms, setTerms: (v: string) => { setTerms(v); setRequest(r=>({...r,termsConfirmed:false})); setDirty(true); },
     notes, setNotes: (v: string) => { setNotes(v); setDirty(true); }, linkedEnquiry,
-    request,requestBlock:quotationRequestBlock(request),updateRequest:(patch:Partial<QuotationRequest>)=>{setRequest(value=>({...value,...patch,...(Object.hasOwn(patch,'quantityInstructions')?{quantityConfirmed:false}:{})}));setDirty(true);},
+    request,requestBlock:quotationRequestBlock(request,terms),updateRequest:(patch:Partial<QuotationRequest>)=>{setRequest(value=>({...value,...patch,...(Object.hasOwn(patch,'quantityInstructions')?{quantityConfirmed:false}:{})}));setDirty(true);},
     lines, updateLine, addLine, removeLine, lineErrors, lineView, calc, costs, toInput, problems
   };
 }

@@ -65,7 +65,7 @@ export function PolicyDrawer({ open, onClose }: { open: boolean; onClose: () => 
 }
 
 /** Owner: CRM cost per item (never taken from Tally). */
-export function CostDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function CostDrawer({ open, onClose,initialItem }: { open: boolean; onClose: () => void;initialItem?:Option|null }) {
   const client = useApi();
   const api = useMemo(() => quotationsApi(client), [client]);
   const toast = useToast();
@@ -79,6 +79,7 @@ export function CostDrawer({ open, onClose }: { open: boolean; onClose: () => vo
   const [revision,setRevision]=useState(0);
   const [loading,setLoading]=useState(false);
   useEffect(() => { if (!open) { setItem(null); setCurrent(undefined); setUnitCost(''); setReason(''); setError(undefined); } }, [open]);
+  useEffect(()=>{if(open&&initialItem)setItem(initialItem);},[open,initialItem?.value,initialItem?.label]);
   useEffect(() => {let live=true;setCurrent(undefined);setUnitCost('');setError(undefined);setErrors({});if(item){setLoading(true);api.cost(Number(item.value)).then(c=>{if(live)setCurrent(c.unit_cost);}).catch(e=>{if(live)setError(e instanceof Error?e.message:'Could not load cost.');}).finally(()=>{if(live)setLoading(false);});}return()=>{live=false;};}, [item, api,revision]);
   const save = async () => {
     const issues={...costErrors({unitCost,reason}),...(!item?{item:'Choose an active CRM item.'}:{})};
@@ -90,14 +91,15 @@ export function CostDrawer({ open, onClose }: { open: boolean; onClose: () => vo
   return (
     <Drawer open={open} title="Item costs" description="CRM cost before GST, used for margin checks. Visible only to cost-authorised roles." onClose={() => !busy && onClose()}
       footer={<><Button variant="ghost" onClick={onClose}>Close</Button><Button disabled={!item||loading||current===undefined} busy={busy} onClick={() => void save()}>Save cost</Button></>}>
-      <Combobox label="Item" error={errors.item} value={item} onChange={value=>{if(!busy)setItem(value);}} search={async (t) => (await api.items(t)).data.map((i) => ({ value: String(i.id), label: i.part_code, hint: i.description }))} />
+      <p className="muted">Enter one item cost manually below. File import is optional.</p>
+      <Combobox label="Item" error={errors.item} value={item} onChange={value=>{if(!busy)setItem(value);}} search={async (t,signal) => (await api.items(t,signal)).data.map((i) => ({ value: String(i.id), label: i.part_code, hint: i.description }))} />
       {item && current !== undefined && <Notice tone={current!==null ? 'info' : 'warning'}>{current!==null ? `Current cost ${formatMoney(current,{places:6})} per unit.` : 'No cost recorded: quotations with this item cannot be submitted.'}</Notice>}
       <TextField required error={errors.unitCost} label="New unit cost (₹, before GST)" inputMode="decimal" value={unitCost} onChange={(e) => setUnitCost(e.target.value)} />
       <TextAreaField required error={errors.reason} label="Reason" rows={2} value={reason} onChange={(e) => setReason(e.target.value)} hint="e.g. Connectwell price list Oct 2026" />
       {loading&&<p>Loading current cost...</p>}
       {error && <Notice tone="danger">{error}</Notice>}
       {item&&<SetupHistory itemId={item.value} revision={revision} />}
-      <CostImport onSaved={()=>setRevision(r=>r+1)} />
+      <details><summary>Optional: import costs from a file</summary><CostImport onSaved={()=>setRevision(r=>r+1)} /></details>
     </Drawer>
   );
 }
