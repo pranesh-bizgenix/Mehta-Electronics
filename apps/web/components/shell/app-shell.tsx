@@ -25,13 +25,13 @@ export function AppShell({ children }: { children: ReactNode }) {
   const router = useRouter();
   const { preferences, update } = usePreferences();
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [adminOpen, setAdminOpen] = useState(false);
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [badges, reloadBadges] = useAsync(() => state.kind === 'ready' && !state.user.mustChangePassword ? api.data<Badges>('GET', '/api/v1/me/badges') : Promise.resolve({} as Badges), [state.kind, state.kind === 'ready' && state.user.mustChangePassword, pathname]);
 
   useHotkey('k', () => setPaletteOpen(true));
   useEffect(() => { setDrawerOpen(false); }, [pathname]);
-  useEffect(() => {if(NAV.find(group=>group.label==='Admin')?.items.some(item=>pathname===item.href))setAdminOpen(true);},[pathname]);
+  useEffect(() => {for(const group of NAV)if((group.label==='Admin'||group.collapsible)&&group.items.some(item=>pathname===item.href||(group.collapsible&&pathname.startsWith(`${item.href}/`))))setOpenGroups(value=>({...value,[group.label]:true}));},[pathname]);
   useEffect(() => {
     if (state.kind === 'anonymous') router.replace(`/login?next=${encodeURIComponent(pathname)}`);
     if (state.kind === 'ready' && state.mfa.required && !state.mfa.verified) router.replace('/login');
@@ -65,8 +65,8 @@ export function AppShell({ children }: { children: ReactNode }) {
             if (!items.length) return null;
             return (
               <div key={group.label} className="ds-nav">
-                {group.label==='Admin'?<button type="button" className="ds-nav-group ds-nav-group-toggle" aria-expanded={adminOpen||collapsed} onClick={()=>setAdminOpen(value=>!value)}>Administration<Icon name={adminOpen?'chevronDown':'chevronRight'}/></button>:<p className="ds-nav-group">{group.label}</p>}
-                {(group.label!=='Admin'||adminOpen||collapsed)&&items.map((item) => {
+                {group.label==='Admin'||group.collapsible?<button type="button" className="ds-nav-group ds-nav-group-toggle" aria-expanded={Boolean(openGroups[group.label])||collapsed} onClick={()=>setOpenGroups(value=>({...value,[group.label]:!value[group.label]}))}>{group.label==='Admin'?'Administration':group.label}<Icon name={openGroups[group.label]?'chevronDown':'chevronRight'}/></button>:<p className="ds-nav-group">{group.label}</p>}
+                {(!(group.label==='Admin'||group.collapsible)||openGroups[group.label]||collapsed)&&items.map((item) => {
                   const count = item.badge ? counts[item.badge] : undefined;
                   const current = pathname === item.href || (item.href !== '/tally' && item.href !== '/purchasing' && pathname.startsWith(`${item.href}/`));
                   const content = <><Icon name={item.icon} /><span className="ds-nav-label">{item.label}</span>{!!count && <span className="ds-nav-badge" data-tone={item.badgeTone} aria-label={`${count} pending`}>{count > 99 ? '99+' : count}</span>}</>;

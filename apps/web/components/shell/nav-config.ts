@@ -1,4 +1,5 @@
 import type { IconName } from '@/components/ds/icons';
+import {emailAutomationEnabled} from '../../features/email-automation/config';
 
 export type BadgeKey = 'myOpenWork' | 'slaBreaches' | 'openTasks' | 'openExceptions' | 'draftsAwaitingApproval';
 
@@ -13,9 +14,17 @@ export interface NavItem {
   badgeTone?: 'danger' | 'warning';
   keywords?: string;
 }
-export interface NavGroup { label: string; items: NavItem[] }
+export interface NavGroup { label: string; items: NavItem[]; collapsible?: boolean }
 
 export const NAV: NavGroup[] = [
+  ...(emailAutomationEnabled() ? [{ label: 'EMAIL AUTOMATION', collapsible: true, items: [
+    { href: '/email-automation/inbox', label: 'Unified email inbox', icon: 'mail' as IconName, permission: 'email_automation.read' },
+    { href: '/email-automation/attachments', label: 'Attachment manager', icon: 'items' as IconName, permission: 'email_automation.read' },
+    { href: '/email-automation/processing', label: 'Processing monitor', icon: 'clock' as IconName, permission: 'email_automation.read' },
+    { href: '/email-automation/dashboard', label: 'Automation dashboard', icon: 'dashboard' as IconName, permission: 'email_automation.read' },
+    { href: '/email-automation/integrations', label: 'Integration monitor', icon: 'plug' as IconName, permission: 'email_automation.integrations.read' },
+    { href: '/email-automation/errors', label: 'Error center', icon: 'alert' as IconName, permission: 'email_automation.read' }
+  ] }] : []),
   { label: 'Overview', items: [
     { href: '/dashboard', label: 'Dashboard', icon: 'dashboard', permission: 'dashboard.read', keywords: 'home owner kpi' },
     { href: '/work', label: 'My work', icon: 'clock', permission: 'work.read', badge: 'slaBreaches', badgeTone: 'danger', keywords: 'sla due' }
