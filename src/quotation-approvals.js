@@ -5,12 +5,13 @@ import {conflict,forbidden,validationFailed} from './core/errors.js';
 import {restrictLogisticsPermissions} from './logistics-policy.js';
 import {eligibleReviewers} from './modules/admin/reviewer-eligibility.js';
 import {getConfig} from './config.js';
+const currentOwner=async(db,id)=>(await db.prepare('SELECT role FROM users WHERE id=? FOR SHARE').get(id))?.role==='OWNER';
 
 /** Current database grants, independent of a request's cached permission matrix. */
 export async function quotationReviewer(db,actorId,permission='quotations.approve',{mfaEnabled=getConfig().mfaEnabled,now=Date.now()}={}){
  const user=await db.prepare('SELECT u.id,u.role,u.status,u.on_leave,u.must_change_password,u.locked_until,r.status AS role_status,r.all_permissions,r.requires_mfa AS role_requires_mfa,(m.enabled_at IS NOT NULL) AS mfa_enabled FROM users u JOIN roles r ON r.key=u.role LEFT JOIN user_mfa m ON m.user_id=u.id WHERE u.id=? FOR SHARE OF u,r').get(actorId);
  if(!user||user.status!=='ACTIVE'||user.role_status!=='ACTIVE')return false;
- const grants=user.all_permissions?['*']:(await db.prepare('SELECT permission_key FROM role_permissions WHERE role_key=? FOR SHARE').all(user.role)).map(row=>row.permission_key);
+ const grants=user.role==='OWNER'&&user.all_permissions?['*']:(await db.prepare('SELECT permission_key FROM role_permissions WHERE role_key=? FOR SHARE').all(user.role)).map(row=>row.permission_key);
  const allowed=restrictLogisticsPermissions(user.role,grants);
  const can=(_user,key)=>allowed.includes('*')||allowed.includes(key);
  return eligibleReviewers([user],{can,requiresMfa:()=>mfaEnabled&&Boolean(user.role_requires_mfa)},'quotations',{now}).length===1&&can(user,permission);
@@ -40,26 +41,29 @@ export async function validateQuotationReview(db,row,plan,review,sourceFingerpri
  const pending=validateQuotationReviewShape(row,plan,review,sourceFingerprint,options);
  const latest=await db.prepare('SELECT created_by FROM crm_quotation_versions WHERE quotation_id=? AND version=?').get(row.quotation_id,row.version);
  for(const [index,decision]of review.completed.entries()){
-  if(decision.reviewerId===row.created_by||decision.reviewerId===latest?.created_by||!await quotationReviewer(db,decision.reviewerId,review.stages[index].permission))throw conflict('An earlier reviewer is no longer eligible. Return to draft and obtain a new independent review.','QUOTATION_REVIEWER_CHANGED');
+  const self=decision.reviewerId===row.created_by||decision.reviewerId===latest?.created_by;
+  if((self&&!(decision.ownerSelfApproval===true&&await currentOwner(db,decision.reviewerId)))||!await quotationReviewer(db,decision.reviewerId,review.stages[index].permission))throw conflict('An earlier reviewer is no longer eligible. Return to draft and obtain a new eligible review.','QUOTATION_REVIEWER_CHANGED');
  }
  return pending;
 }
 export async function requireQuotationReviewer(db,row,review,actor){
  const stage=review.stages[review.completed.length];if(!stage)throw conflict('All approval stages are already complete.');
  const latest=await db.prepare('SELECT created_by FROM crm_quotation_versions WHERE quotation_id=? AND version=?').get(row.quotation_id,row.version);
- if(actor.id===row.created_by||actor.id===latest?.created_by)throw forbidden('A different eligible person must approve this quotation.');
+ const self=actor.id===row.created_by||actor.id===latest?.created_by;
+ if(self&&!await currentOwner(db,actor.id))throw forbidden('A different eligible person must approve this quotation. Only Owner may use the self-approval exception.');
  if(!await quotationReviewer(db,actor.id,stage.permission))throw forbidden('You do not hold the current permissions required for this approval stage.');
  if(review.reuse==='DISTINCT_REVIEWERS'&&review.completed.some(decision=>decision.reviewerId===actor.id))throw forbidden('The confirmed policy requires a different reviewer for this stage.');
- return stage;
+ return self?{...stage,ownerSelfApproval:true}:stage;
 }
 export function quotationApprovalCommand(input,actor,quoteId){
- const fields=['action','version','reason','overrideFloor','roundId','stageId','requestKey'];
+ const fields=['action','version','reason','overrideFloor','roundId','stageId','requestKey','ownerSelfApproval'];
  if(Object.keys(input).some(key=>!fields.includes(key)))throw validationFailed('Provide only supported quotation approval fields.');
  if(input.requestKey!==undefined)validate(s.uuid(),input.requestKey,'requestKey');
  if(input.roundId!==undefined)validate(s.uuid(),input.roundId,'roundId');
  if(input.stageId!==undefined)validate(s.uuid(),input.stageId,'stageId');
  if(input.overrideFloor!==undefined&&typeof input.overrideFloor!=='boolean')throw validationFailed('The margin exception acknowledgement must be true or false.');
- return fingerprint({actorId:actor.id,quoteId,version:input.version,reason:input.reason,roundId:input.roundId??null,stageId:input.stageId??null,overrideFloor:input.overrideFloor===true});
+ if(input.ownerSelfApproval!==undefined&&typeof input.ownerSelfApproval!=='boolean')throw validationFailed('The Owner self-approval acknowledgement must be true or false.');
+ return fingerprint({actorId:actor.id,quoteId,version:input.version,reason:input.reason,roundId:input.roundId??null,stageId:input.stageId??null,overrideFloor:input.overrideFloor===true,...(input.ownerSelfApproval===true?{ownerSelfApproval:true}:{})});
 }
 export function requireQuotationStageCommand(input,review){
  const pending=review.stages[review.completed.length];
@@ -69,10 +73,10 @@ export function requireQuotationStageCommand(input,review){
 export async function quotationApprovalProjection(db,row,user){
  const review=row.private_snapshot.approvalReview;if(!review)return null;
  const total=review.stages?.length??0,completed=review.completed?.length??0,pending=review.stages?.[completed];
- let canApprove=false,canReturn=false;
+ let canApprove=false,canReturn=false,ownerSelfApproval=false;
  if(row.status==='PENDING_APPROVAL'){
   canReturn=await quotationReviewer(db,user?.id);
-  if(pending)try{await requireQuotationReviewer(db,row,review,user);canApprove=true;}catch{/* Public eligibility never exposes pricing or required permission names. */}
+  if(pending)try{const stage=await requireQuotationReviewer(db,row,review,user);canApprove=true;ownerSelfApproval=stage.ownerSelfApproval===true;}catch{/* Public eligibility never exposes pricing or required permission names. */}
  }
- return {roundId:review.roundId,completed,total,pendingStageId:pending?.stageId??null,canApprove,canReturn,steps:(review.stages??[]).map((stage,index)=>({id:stage.stageId,number:index+1,status:index<completed?'COMPLETED':index===completed?'PENDING':'WAITING'}))};
+ return {roundId:review.roundId,completed,total,pendingStageId:pending?.stageId??null,canApprove,canReturn,ownerSelfApproval,steps:(review.stages??[]).map((stage,index)=>({id:stage.stageId,number:index+1,status:index<completed?'COMPLETED':index===completed?'PENDING':'WAITING'}))};
 }

@@ -176,12 +176,13 @@ export async function quoteAction(db,quoteId,b,user){const why=reason(b),action=
  else if(action==='APPROVE'&&row.status==='PENDING_APPROVAL'){
   const {plan,sourceFingerprint}=await ensureCurrent(db,row),approvalReview=row.private_snapshot.approvalReview??createQuotationReview(row,plan,sourceFingerprint);
   requireQuotationStageCommand(b,approvalReview);const stage=await requireQuotationReviewer(db,row,approvalReview,user);
+  if(stage.ownerSelfApproval&&b.ownerSelfApproval!==true)fail(422,'Acknowledge that you are approving your own quotation as Owner.');
   if(row.private_snapshot.belowFloor&&b.overrideFloor!==true)fail(422,'Explicitly confirm the below-floor exception and provide its reason.');
-  approvalReview.completed.push({stageId:stage.stageId,reviewerId:user.id,at:new Date().toISOString(),requestKey:b.requestKey??null});
+  approvalReview.completed.push({stageId:stage.stageId,reviewerId:user.id,at:new Date().toISOString(),requestKey:b.requestKey??null,...(stage.ownerSelfApproval?{ownerSelfApproval:true}: {})});
   next=approvalReview.completed.length===approvalReview.stages.length?'APPROVED':'PENDING_APPROVAL';
   await db.prepare('UPDATE crm_quotation_workflows SET private_snapshot=?::text::jsonb WHERE quotation_id=?').run(JSON.stringify({...row.private_snapshot,approvalReview}),row.quotation_id);
   reviewEvidence=approvalReview;
-  reviewDetail={roundId:approvalReview.roundId,stageId:stage.stageId,completed:approvalReview.completed.length,total:approvalReview.stages.length,...(b.requestKey?{requestKey:b.requestKey}:{})};
+  reviewDetail={roundId:approvalReview.roundId,stageId:stage.stageId,completed:approvalReview.completed.length,total:approvalReview.stages.length,...(stage.ownerSelfApproval?{ownerSelfApproval:true,approvalException:'OWNER_SELF_APPROVAL_USER_AUTHORISED_2026_11_18'}:{}),...(b.requestKey?{requestKey:b.requestKey}:{})};
  }else if(action==='RETURN'&&row.status==='PENDING_APPROVAL'){const {approvalReview,...retained}=row.private_snapshot;await db.prepare('UPDATE crm_quotation_workflows SET private_snapshot=?::text::jsonb WHERE quotation_id=?').run(JSON.stringify(retained),row.quotation_id);next='DRAFT';reviewEvidence=approvalReview;reviewDetail={roundId:approvalReview?.roundId??null,completed:approvalReview?.completed.length??0};}
  else if(action==='SEND'&&row.status==='APPROVED'){await requireCustomerHandler(db,row.public_snapshot.customerId,user);await ensureCurrent(db,row);await bindFirstQuotationOwner(db,row.public_snapshot.customerId,row.created_by,user);next='SENT';}
  else if(['WON','LOST'].includes(action)&&row.status==='SENT')next=action;
