@@ -31,7 +31,9 @@ export const NAV: NavGroup[] = [
   { label: 'Supply', items: [
     { href: '/logistics', label: 'Logistics & store', icon: 'truck', permission: 'logistics.read', keywords: 'grn dispatch photos assigned orders store' },
     { href: '/items', label: 'Items & price lists', icon: 'items', permission: 'items.read', keywords: 'sku products stock' },
-    { href: '/purchasing', label: 'Purchasing', icon: 'cart', permission: 'purchasing.read', keywords: 'rfq supplier po grn vendor' }
+    { href: '/purchasing', label: 'Purchasing', icon: 'cart', permission: 'purchasing.read', keywords: 'rfq supplier po grn vendor' },
+    { href: '/purchasing/rfqs', label: 'Vendor RFQ documents', icon: 'quote', permission: 'purchasing.read' },
+    { href: '/purchasing/purchase-orders', label: 'Supplier PO documents', icon: 'quote', permission: 'purchasing.read' }
   ] },
   { label: 'Work', items: [
     { href: '/operations', label: 'Support & collections', icon: 'inbox', permission: 'operations.read', keywords: 'incoming email complaints warranty returns receipts payments invoices' },

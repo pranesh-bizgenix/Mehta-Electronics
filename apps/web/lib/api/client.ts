@@ -16,6 +16,7 @@ export interface ApiClient {
   /** Unwraps the { data } envelope used by most endpoints. */
   data<T>(method: 'GET' | 'POST' | 'PUT' | 'PATCH', path: string, body?: unknown, options?: RequestOptions): Promise<T>;
   setCsrfToken(token: string): void;
+  file(path: string, body: unknown): Promise<Blob>;
 }
 
 /** Friendly messages for transport-level failures; server messages are already plain English. */
@@ -54,6 +55,11 @@ export class FetchApiClient implements ApiClient {
   constructor(private readonly fetchImpl: typeof fetch = (...args) => fetch(...args)) {}
 
   setCsrfToken(token: string): void { this.csrf = token; }
+  async file(path: string, body: unknown): Promise<Blob> {
+    const response = await this.fetchImpl(path, {method:'POST',credentials:'same-origin',cache:'no-store',headers:{'content-type':'application/json','x-csrf-token':this.csrf},body:JSON.stringify(body)});
+    if (!response.ok) { const p = await response.json().catch(()=>({})); throw new ApiError(response.status,p.code||'ERROR',p.error||FALLBACK[response.status]||FALLBACK[500]); }
+    return response.blob();
+  }
 
   get<T>(path: string, options?: RequestOptions) { return this.request<T>('GET', path, undefined, options); }
   post<T>(path: string, body?: unknown, options?: RequestOptions) { return this.request<T>('POST', path, body ?? {}, options); }
