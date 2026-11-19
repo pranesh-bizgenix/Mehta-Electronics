@@ -37,7 +37,7 @@ test('coverage warns about one Owner and a missing independent reviewer; a named
 });
 test('last Owner protection runs under the shared provisioning lock and refuses self-demotion',async()=>{
   const events=[];
-  const repository={lock:async()=>events.push('lock'),get:async()=>ready(1),owners:async()=>{events.push('count');return 1;},update:async()=>events.push('update')};
+  const repository={lock:async()=>events.push('lock'),get:async()=>ready(1),activeRole:async key=>({key}),owners:async()=>{events.push('count');return 1;},update:async()=>events.push('update')};
   const service=new UserAdminService({repository,access:{require:()=>{},roleExists:()=>true},transactions:{run:async(_a,_r,fn)=>fn()},audit:{record:async()=>events.push('audit')}});
   await assert.rejects(service.update({id:1,role:'OWNER'},1,{role:'EXECUTIVE',reason:'VERIFY- owner demotion'}),{status:422});
   assert.deepEqual(events,['lock','count']);

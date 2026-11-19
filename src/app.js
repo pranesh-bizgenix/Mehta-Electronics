@@ -98,7 +98,7 @@ async function sessionUser(db, req, config) {
   if (!token) return null;
   const row = (await db.prepare(`SELECT s.id AS session_id,s.csrf_token,s.expires_at,s.mfa_verified_at,u.id,u.name,u.email,u.phone,u.role,u.status,u.must_change_password,
       (m.enabled_at IS NOT NULL) AS mfa_enabled,(SELECT COALESCE(max(id),0) FROM access_matrix_events) AS access_version
-    FROM sessions s JOIN users u ON u.id=s.user_id LEFT JOIN user_mfa m ON m.user_id=u.id WHERE s.token_hash=? AND s.expires_at>CURRENT_TIMESTAMP`).get(tokenDigest(token)));
+    FROM sessions s JOIN users u ON u.id=s.user_id JOIN roles r ON r.key=u.role AND r.status='ACTIVE' LEFT JOIN user_mfa m ON m.user_id=u.id WHERE s.token_hash=? AND s.expires_at>CURRENT_TIMESTAMP`).get(tokenDigest(token)));
   if (!row || row.status !== 'ACTIVE') return null;
   (await db.prepare(`UPDATE sessions SET last_seen_at=CURRENT_TIMESTAMP,expires_at=(CURRENT_TIMESTAMP + (?::integer * INTERVAL '1 minute')) WHERE id=?`).run(String(config.sessionTtlMinutes), row.session_id));
   return row;
@@ -237,7 +237,7 @@ export function createApp({ db, config, fetchImpl = fetch, sendMailImpl = sendQu
       const key = `${ip}:${Date.now() >> 16}`; const count = loginAttempts.get(key) || 0;
       if (count >= 10) throw new HttpError(429, 'Too many login attempts. Try again later.');
       const body = await readJson(req); const loginEmail = email(body.email); const password = String(body.password || '');
-      const user = loginEmail ? (await db.prepare('SELECT * FROM users WHERE email=?').get(loginEmail)) : null;
+      const user = loginEmail ? (await db.prepare("SELECT u.* FROM users u JOIN roles r ON r.key=u.role AND r.status='ACTIVE' WHERE u.email=?").get(loginEmail)) : null;
       const locked = user?.locked_until && new Date(user.locked_until) > new Date();
       if (!user || user.status !== 'ACTIVE' || locked || !verifyPassword(password, user.password_hash)) {
         loginAttempts.set(key, count + 1);

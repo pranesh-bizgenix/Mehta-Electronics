@@ -46,6 +46,8 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   const counts: Badges = badges.status === 'ready' ? badges.data : badges.data ?? {};
   const collapsed = preferences.sidebarCollapsed;
+  const protectedScreen = NAV.flatMap(group => group.items).filter(item => pathname === item.href || pathname.startsWith(`${item.href}/`)).sort((a, b) => b.href.length - a.href.length)[0];
+  const screenAllowed = !protectedScreen || ((!protectedScreen.ownerOnly || state.user.role === 'OWNER') && (protectedScreen.permission === 'authenticated' || can(protectedScreen.permission)));
   const activeScreen = NAV.flatMap(group=>group.items).filter(item=>pathname===item.href||pathname.startsWith(`${item.href}/`)).sort((a,b)=>b.href.length-a.href.length)[0]?.label ?? 'Workspace';
 
   return (
@@ -99,7 +101,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             </Menu>
           </div>
         </header>
-        <main className="ds-content" id="main" tabIndex={-1}><TallyCompanyHeading/>{children}</main>
+        <main className="ds-content" id="main" tabIndex={-1}><TallyCompanyHeading/>{screenAllowed ? children : <div className="ds-page"><h1>Access restricted</h1><p>Your role does not have access to this screen. Contact an Owner if your responsibilities have changed.</p><Link href="/settings">Open account settings</Link></div>}</main>
       </div>
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
     </div>

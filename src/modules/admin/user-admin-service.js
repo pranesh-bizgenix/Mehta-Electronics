@@ -28,6 +28,7 @@ export class UserAdminRepository {
     await this.db.prepare('UPDATE users SET name=?,email=?,phone=?,role=?,status=?,department=?,on_leave=?,backup_user_id=?,manager_user_id=?,updated_at=now() WHERE id=?')
       .run(f.name,f.email,f.phone,f.role, f.status, f.department, f.on_leave, f.backup_user_id, f.manager_user_id, id);
   }
+  async activeRole(key) { return this.db.prepare("SELECT key FROM roles WHERE key=? AND status='ACTIVE' FOR SHARE").get(key); }
   async owners() { return Number((await this.db.prepare("SELECT count(*) AS n FROM users WHERE role='OWNER' AND status='ACTIVE'").get()).n); }
 }
 
@@ -78,6 +79,7 @@ export class UserAdminService {
       const currentActor=await this.repository.get(actor.id);
       if(!currentActor||currentActor.status!=='ACTIVE')throw forbidden();
       this.access.require(currentActor,'users.create');
+      if (!await this.repository.activeRole(body.role)) throw validationFailed('Select an active role.');
       await this.validateOwners(body.ownerUserId,body.backupUserId);
       const id=await this.repository.create({...body,passwordHash:hashPassword(body.password)});
       const created=await this.repository.get(id);
@@ -104,7 +106,7 @@ export class UserAdminService {
         on_leave: body.onLeave ?? old.on_leave, backup_user_id: body.backupUserId === undefined ? old.backup_user_id : body.backupUserId,
         manager_user_id: body.ownerUserId!==undefined?body.ownerUserId:body.managerUserId===undefined?old.manager_user_id:body.managerUserId
       };
-      if (!this.access.roleExists(next.role)) throw validationFailed('Select an active role.');
+      if (!this.access.roleExists(next.role) || !await this.repository.activeRole(next.role)) throw validationFailed('Select an active role.');
       if(body.ownerUserId!==undefined||body.managerUserId!==undefined||body.backupUserId!==undefined)await this.validateOwners(next.manager_user_id,next.backup_user_id,id);
       if(id===actor.id&&next.status!=='ACTIVE')throw validationFailed('You cannot deactivate your own account.');
       if (old.role === 'OWNER' && (next.role !== 'OWNER' || next.status !== 'ACTIVE') && await this.repository.owners() <= 1) throw validationFailed('The last active owner cannot be demoted or deactivated.');

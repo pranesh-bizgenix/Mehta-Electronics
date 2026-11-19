@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useApi } from '@/lib/api/provider';
 import { newIdempotencyKey } from '@/lib/api/client';
@@ -13,9 +13,9 @@ import {
 } from '@/components/ds';
 
 interface UserRow { id: number; name: string; email: string; phone: string | null; role: string; status: string; department: string | null; onLeave: boolean; backupUserId: number | null; backup: string | null; managerUserId: number | null; manager: string | null; ownerUserId: number | null; owner: string | null; mustChangePassword: boolean; mfaEnabled: boolean; mfaRequired: boolean }
-interface Role { key: string; name: string; requiresMfa: boolean; allPermissions: boolean; isSystem: boolean; status: string; allowedPermissions?: string[] }
+interface Role { key: string; name: string; description?: string | null; requiresMfa: boolean; allPermissions: boolean; isSystem: boolean; status: string; allowedPermissions?: string[] }
 interface Permission { key: string; resource: string; action: 'R' | 'W' | 'A' | 'F'; description: string; ownerOnly: boolean; grantedTo: string[] }
-interface Matrix { roles: Role[]; permissions: Permission[] }
+interface Matrix { roles: Role[]; permissions: Permission[]; history: {id: number; role: string; permission: string | null; change: string; reason: string; changedAt: string; changedBy: string | null}[] }
 
 const ACTION = { R: 'Read', W: 'Write', A: 'Approve', F: 'Field privacy' } as const;
 const DEPARTMENTS = ['SALES', 'OPERATIONS', 'ACCOUNTS', 'CUSTOMER_SUPPORT'];
@@ -28,7 +28,7 @@ function UsersAndRoles() {
   return (
     <>
       <PageHeader title="Users & roles" crumbs={[{ label: 'Admin' }, { label: 'Users & roles' }]}
-        description="Six defined roles, including Logistics lead and Store staff. Logistics has no cost, margin or Tally financial access. Admin remains undefined. Departments only route work." />
+        description="Six defined roles, including Logistics lead and Store staff. Logistics has no cost, margin or Tally financial access. Custom roles start without permissions. Departments only route work." />
       {can('rules.manage')&&<a href="/users/automation-credentials">Owner: manage scoped automation credentials</a>}
       <Tabs label="Users and roles" value={tab} onChange={(id) => router.replace(`/users${id === 'roles' ? '?tab=roles' : ''}`)}
         items={[{ id: 'users', label: 'People', icon: 'customers' }, ...(can('access.read') ? [{ id: 'roles', label: 'Role permissions', icon: 'shield' as const }] : [])]} />
@@ -56,12 +56,13 @@ function PeopleTab() {
   const close = () => { setEditing(null); setCreating(false); setForm({}); setPreview(undefined); setPreviewError(undefined); };
   const edit = (u: UserRow) => { setCreating(false); setEditing(u); setForm({ name: u.name, email: u.email, phone: u.phone ?? '', role: u.role, status: u.status, department: u.department ?? '', ownerUserId: u.ownerUserId ? String(u.ownerUserId) : '', backupUserId: u.backupUserId ? String(u.backupUserId) : '', onLeave: u.onLeave }); };
   const create = () => { setEditing(null); setCreating(true); setRequestKey(newIdempotencyKey()); setForm({ name: '', email: '', phone: '', password: '', role: 'EXECUTIVE', ownerUserId: '', backupUserId: '', department: '', status: 'ACTIVE', onLeave: false }); };
+  const previewStatus = confirm === 'deactivate' ? 'INACTIVE' : form.status;
   useEffect(() => {
     if (!creating && !editing) return;
     const controller = new AbortController(); setPreview(undefined); setPreviewError(undefined);
-    const timer = setTimeout(() => { api.data<Capacity>('POST', '/api/v1/users/provisioning-preview', { ...(editing ? { userId: editing.id } : {}), ...(form.name ? { name: form.name } : {}), role: form.role, status: confirm === 'deactivate' ? 'INACTIVE' : form.status, onLeave: Boolean(form.onLeave) }, { signal: controller.signal }).then(value => { if (!controller.signal.aborted) setPreview(value); }).catch(e => { if (!controller.signal.aborted) setPreviewError(e); }); }, 250);
+    const timer = setTimeout(() => { api.data<Capacity>('POST', '/api/v1/users/provisioning-preview', { ...(editing ? { userId: editing.id } : {}), ...(form.name ? { name: form.name } : {}), role: form.role, status: previewStatus, onLeave: Boolean(form.onLeave) }, { signal: controller.signal }).then(value => { if (!controller.signal.aborted) setPreview(value); }).catch(e => { if (!controller.signal.aborted) setPreviewError(e); }); }, 250);
     return () => { clearTimeout(timer); controller.abort(); };
-  }, [api, creating, editing?.id, form.role, form.status, form.onLeave, form.name, confirm]);
+  }, [api, creating, editing?.id, form.role, previewStatus, form.onLeave, form.name]);
   const ownerCount = capacity.data?.activeOwnerCount;
   return <>
     <div className="cluster-between"><p className="muted">{ownerCount === undefined ? 'Checking Owner and reviewer coverage?' : `${ownerCount} active Owner${ownerCount === 1 ? '' : 's'}. Reviewers must be different, ready people with the required permissions.`}</p><div className="cluster"><Button variant="secondary" onClick={() => { reload(); reloadCapacity(); }}>Refresh coverage</Button>{can('users.create') && <Button icon="plus" onClick={create}>Create staff</Button>}</div></div>
@@ -98,6 +99,7 @@ function PeopleTab() {
       </div>}
     </Drawer>
     <ReasonDialog open={confirm !== null} onClose={() => setConfirm(null)} danger={confirm === 'mfa' || confirm === 'deactivate'} title={confirm === 'create' ? 'Create staff account' : confirm === 'deactivate' ? 'Deactivate this staff account' : confirm === 'reassign' ? 'Move all open work to backup' : confirm === 'mfa' ? 'Reset two-factor' : 'Save changes'}
+      confirmDisabled={['create','save','deactivate'].includes(confirm ?? '') && (!preview || previewError != null)}
       description={confirm === 'deactivate' ? 'Their sessions will be revoked. The account and audit history are retained. Review the remaining Owner and reviewer coverage below.' : 'Review coverage and enter the reason for this change.'}
       onConfirm={async reason => {
         if (['create','save','deactivate'].includes(confirm ?? '') && !preview) throw new Error('Wait for reviewer coverage to load before confirming.');
@@ -115,6 +117,7 @@ function PeopleTab() {
         setConfirm(null);close();reload();reloadCapacity();
       }}>
       {previewError != null ? <ErrorState error={previewError} /> : <CapacityWarnings value={preview} />}
+      {['create','save','deactivate'].includes(confirm ?? '') && !preview && previewError == null && <p role="status">Checking reviewer coverage before confirmation...</p>}
       {!form.backupUserId && <Notice tone="warning">Backup ownership is unassigned. This change does not establish backup coverage.</Notice>}
       <p className="muted">Reviewer coverage checks account readiness and permissions. Record-specific approval and maker-checker checks still apply.</p>
     </ReasonDialog>
@@ -126,34 +129,55 @@ function RolesTab() {
   const { can } = useSession();
   const toast = useToast();
   const [matrix, reload] = useAsync(() => api.data<Matrix>('GET', '/api/v1/roles'), []);
+  const [savedMatrix, setSavedMatrix] = useState<Matrix>();
+  const permissionRequest = useRef(false);
   const [savingPermission, setSavingPermission] = useState<string | null>(null);
   const [permissionError, setPermissionError] = useState('');
   const [creating, setCreating] = useState(false);
+  const [editingRole, setEditingRole] = useState<Role | null>(null);
   const [newRole, setNewRole] = useState({ name: '', requiresMfa: false });
   const editable = can('access.manage');
   if (matrix.status === 'loading' && !matrix.data) return <CardSkeleton lines={6} />;
   if (matrix.status === 'error') return <ErrorState error={matrix.error} onRetry={reload} />;
-  const m = matrix.data!;
+  const m = savedMatrix ?? matrix.data!;
   const roles = m.roles.filter((r) => r.status === 'ACTIVE');
   const resources = [...new Set(m.permissions.map((p) => p.resource))];
   const savePermission = async (role: Role, permission: Permission, granted: boolean) => {
+    if (permissionRequest.current || matrix.status !== 'ready') return;
+    permissionRequest.current = true;
     const key = `${role.key}:${permission.key}`;
     setSavingPermission(key); setPermissionError('');
     try {
-      await api.data('PUT', `/api/v1/roles/${role.key}/permissions/${permission.key}`, {
+      const updated = await api.data<Matrix>('PUT', `/api/v1/roles/${role.key}/permissions/${permission.key}`, {
         granted,
         reason: permissionAuditReason(permission.key, granted)
       });
+      setSavedMatrix(updated);
       toast('success', `${permission.description}: ${granted ? 'enabled' : 'disabled'} for ${role.name}.`);
-      reload();
     } catch (error) {
       setPermissionError(error instanceof Error ? error.message : 'The permission could not be updated.');
-    } finally { setSavingPermission(null); }
+    } finally { permissionRequest.current = false; setSavingPermission(null); }
   };
   return (
     <div className="stack-lg">
       {editable && <div className="cluster-between"><div><p className="muted">Click an available checkbox to save it immediately. The audit trail records the exact permission change automatically.</p><p className="ds-cell-secondary">Grey boxes are protected: Owner always has full access, owner-only permissions cannot be delegated, and Logistics/Store roles keep their approved operational limits.</p></div><Button variant="secondary" icon="plus" onClick={() => setCreating(true)}>Add role</Button></div>}
       {permissionError && <Notice tone="danger">{permissionError}</Notice>}
+      <Card title="Role settings">
+        <p className="muted">Inactive roles cannot sign in. Move active staff before deactivating a role. Owner must remain active with two-factor required.</p>
+        {m.roles.map(role => <div className="cluster-between" key={role.key}><span><strong>{role.name}</strong> ? {role.status} ? {role.requiresMfa ? 'Two-factor required' : 'Two-factor optional'}</span>{editable && <Button variant="secondary" onClick={() => setEditingRole({...role})}>Edit {role.name}</Button>}</div>)}
+      </Card>
+      <ReasonDialog open={Boolean(editingRole)} title="Update role" description="Permission grants remain unchanged. Every role change records your reason." onClose={() => setEditingRole(null)} onConfirm={async reason => {
+        if (!editingRole) return;
+        await api.data('PATCH', `/api/v1/roles/${editingRole.key}`, {name: editingRole.name, description: editingRole.description ?? null, requiresMfa: editingRole.requiresMfa, status: editingRole.status, reason});
+        setEditingRole(null); setSavedMatrix(undefined); toast('success','Role updated.'); reload();
+      }}>
+        {editingRole && <div className="stack">
+          <TextField label="Role name" value={editingRole.name} onChange={event => setEditingRole({...editingRole,name:event.target.value})} required />
+          <TextField label="Description" value={editingRole.description ?? ''} onChange={event => setEditingRole({...editingRole,description:event.target.value})} />
+          <Switch label="Require two-factor sign-in" checked={editingRole.requiresMfa} disabled={editingRole.allPermissions} onChange={event => setEditingRole({...editingRole,requiresMfa:event.target.checked})} />
+          <SelectField label="Role status" value={editingRole.status} disabled={editingRole.allPermissions} options={[{value:'ACTIVE',label:'Active'},{value:'INACTIVE',label:'Inactive'}]} onChange={event => setEditingRole({...editingRole,status:event.target.value})} />
+        </div>}
+      </ReasonDialog>
       {resources.map((res) => (
         <Card key={res} title={titleCase(res)} padded={false}>
           <div className="ds-table-scroll">
@@ -177,10 +201,20 @@ function RolesTab() {
           </div>
         </Card>
       ))}
-      <ReasonDialog open={creating} title="Add role" confirmLabel="Create role" description="Only add roles the client has confirmed. A new role starts with no permissions." onClose={() => setCreating(false)}
+      <Card title="Permission and role history">
+        <DataTable id="access-history" caption="Recent role and permission changes" rows={m.history} rowKey={row => row.id} columns={[
+          {key:'role',header:'Role',render:row=>titleCase(row.role)},
+          {key:'permission',header:'Permission',render:row=>row.permission ?? 'Role settings'},
+          {key:'change',header:'Change',render:row=>titleCase(row.change)},
+          {key:'changedBy',header:'Changed by',render:row=>row.changedBy ?? 'System'},
+          {key:'reason',header:'Reason',render:row=>row.reason},
+          {key:'changedAt',header:'When',render:row=>new Date(row.changedAt).toLocaleString()}
+        ]} />
+      </Card>
+      <ReasonDialog open={creating} title="Add role" confirmLabel="Create role" description="A new role starts with no permissions. Its name grants no special access. Record why this role is needed." onClose={() => setCreating(false)}
         onConfirm={async (reason) => {
           await api.data('POST', '/api/v1/roles', { key: newRole.name.toUpperCase().replace(/[^A-Z0-9]+/g, '_').replace(/^_|_$/g, ''), name: newRole.name, requiresMfa: newRole.requiresMfa, reason }, { idempotencyKey: newIdempotencyKey() });
-          setNewRole({ name: '', requiresMfa: false }); toast('success', 'Role created.'); reload();
+          setNewRole({ name: '', requiresMfa: false }); setSavedMatrix(undefined); toast('success', 'Role created.'); reload();
         }}>
         <TextField label="Role name" required value={newRole.name} onChange={(e) => setNewRole({ ...newRole, name: e.target.value })} hint={newRole.name ? `Key: ${newRole.name.toUpperCase().replace(/[^A-Z0-9]+/g, '_').replace(/^_|_$/g, '')}` : undefined} />
         <Switch label="Require two-factor sign-in" checked={newRole.requiresMfa} onChange={(e) => setNewRole({ ...newRole, requiresMfa: e.target.checked })} />

@@ -55,14 +55,15 @@ export function Drawer({ open, title, onClose, children, footer, description }: 
 }
 
 /** Every state change asks for a reason (recorded in the audit trail) and runs once. */
-export function ReasonDialog({ open, title, confirmLabel = 'Confirm', danger, onClose, onConfirm, children, description }: {
-  open: boolean; title: string; confirmLabel?: string; danger?: boolean; onClose: () => void; onConfirm: (reason: string) => Promise<void>; children?: ReactNode; description?: string;
+export function ReasonDialog({ open, title, confirmLabel = 'Confirm', confirmDisabled = false, danger, onClose, onConfirm, children, description }: {
+  open: boolean; title: string; confirmLabel?: string; confirmDisabled?: boolean; danger?: boolean; onClose: () => void; onConfirm: (reason: string) => Promise<void>; children?: ReactNode; description?: string;
 }) {
   const [reason, setReason] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
   useEffect(() => { if (open) { setReason(''); setError(undefined); } }, [open]);
   const submit = async () => {
+    if (busy || confirmDisabled) return;
     if (reason.trim().length < 3) { setError('Add a short reason (at least 3 characters).'); return; }
     setBusy(true); setError(undefined);
     try { await onConfirm(reason.trim()); onClose(); }
@@ -72,7 +73,7 @@ export function ReasonDialog({ open, title, confirmLabel = 'Confirm', danger, on
   return (
     <Modal open={open} title={title} description={description} onClose={() => !busy && onClose()} footer={<>
       <Button variant="ghost" onClick={onClose} disabled={busy}>Cancel</Button>
-      <Button variant={danger ? 'danger' : 'primary'} busy={busy} onClick={() => void submit()}>{confirmLabel}</Button>
+      <Button variant={danger ? 'danger' : 'primary'} busy={busy} disabled={confirmDisabled} onClick={() => void submit()}>{confirmLabel}</Button>
     </>}>
       {children}
       <TextAreaField label="Reason" required rows={3} maxLength={1000} value={reason} onChange={(e) => setReason(e.target.value)} error={error} hint="Saved in the audit trail with your name." />

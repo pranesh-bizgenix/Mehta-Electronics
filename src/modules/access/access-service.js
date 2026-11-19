@@ -15,10 +15,27 @@ export class AccessService {
     this.audit = audit;
     this.matrix = new Map();
     this.loadedVersion = -1;
+    this.permissionCatalogue = new Map();
+  }
+
+  async readSnapshot() {
+    for (let attempt=0; attempt<3; attempt++) {
+      const version = Number(await this.repository.version());
+      const [roles,grants,permissions] = await Promise.all([this.repository.roles(),this.repository.grants(),this.repository.permissions()]);
+      if (version === Number(await this.repository.version())) return {roles,grants,permissions,version};
+    }
+    throw Object.assign(new Error('Permissions changed during loading. Please retry.'),{status:503,code:'ACCESS_REFRESH_RETRY'});
   }
 
   async load() {
-    const [roles, grants, version] = await Promise.all([this.repository.roles(), this.repository.grants(), this.repository.version()]);
+    if (this.loading) return this.loading;
+    this.loading = this.loadSnapshot();
+    try { return await this.loading; } finally { this.loading = null; }
+  }
+
+  async loadSnapshot() {
+    const {roles,grants,permissions,version} = await this.readSnapshot();
+    this.permissionCatalogue = new Map(permissions.map(p => [p.key, p]));
     const matrix = new Map(roles.map((r) => [r.key, { allPermissions: r.all_permissions, requiresMfa: r.requires_mfa, active: r.status === 'ACTIVE', permissions: new Set() }]));
     for (const g of grants) matrix.get(g.role_key)?.permissions.add(g.permission_key);
     this.matrix = matrix;
@@ -33,11 +50,7 @@ export class AccessService {
 
   install() {
     installPermissionProvider({
-      permissionsFor: (role) => {
-        const entry = this.matrix.get(role);
-        if (!entry || !entry.active) return [];
-        return entry.allPermissions ? ['*'] : [...entry.permissions];
-      },
+      permissionsFor: role => this.permissionsForRole(role),
       requiresMfa: (role) => this.mfaEnabled && Boolean(this.matrix.get(role)?.requiresMfa)
     });
     return this;
@@ -47,9 +60,19 @@ export class AccessService {
 
   requiresMfa(role) { return this.mfaEnabled && Boolean(this.matrix.get(role)?.requiresMfa); }
 
+  permissionsForRole(role) {
+    const entry = this.matrix.get(role);
+    if (!entry?.active) return [];
+    if (role === 'OWNER' && entry.allPermissions) return ['*'];
+    return restrictLogisticsPermissions(role, [...entry.permissions].filter(key => {
+      const permission = this.permissionCatalogue.get(key);
+      return permission && !permission.owner_only;
+    }));
+  }
+
   can(user, permission) {
-    const entry = this.matrix.get(user?.role);
-    return Boolean(entry?.active && restrictLogisticsPermissions(user.role, entry.allPermissions ? ['*'] : [...entry.permissions]).some(p => p === '*' || p === permission));
+    const permissions = this.permissionsForRole(user?.role);
+    return permissions.includes('*') || permissions.includes(permission);
   }
 
   require(user, permission) {
@@ -70,20 +93,21 @@ export class AccessService {
 
   async matrixView(user) {
     this.require(user, 'access.read');
-    const [roles, permissions, grants, history] = await Promise.all([this.repository.roles(), this.repository.permissions(), this.repository.grants(), this.repository.history(100)]);
+    const [{roles,permissions,grants,version},history] = await Promise.all([this.readSnapshot(),this.repository.history(100)]);
     const granted = new Set(grants.map((g) => `${g.role_key}|${g.permission_key}`));
     return {
       roles: roles.map((r) => ({ key: r.key, name: r.name, description: r.description, requiresMfa: r.requires_mfa, allPermissions: r.all_permissions, isSystem: r.is_system, status: r.status, ...(Object.hasOwn(logisticsPermissions,r.key)?{allowedPermissions:logisticsPermissions[r.key]}:{}) })),
-      permissions: permissions.map((p) => ({ key: p.key, resource: p.resource, action: p.action, description: p.description, ownerOnly: p.owner_only, grantedTo: roles.filter((r) => r.all_permissions || granted.has(`${r.key}|${p.key}`)).map((r) => r.key) })),
+      permissions: permissions.map((p) => ({ key: p.key, resource: p.resource, action: p.action, description: p.description, ownerOnly: p.owner_only, grantedTo: roles.filter((r) => r.status === 'ACTIVE' && (r.key === 'OWNER' && r.all_permissions || !p.owner_only && granted.has(`${r.key}|${p.key}`) && (!logisticsPermissions[r.key] || logisticsPermissions[r.key].includes(p.key)))).map((r) => r.key) })),
       history: history.map((h) => ({ id: Number(h.id), role: h.role_key, permission: h.permission_key, change: h.change, oldValue: h.old_value, newValue: h.new_value, reason: h.reason, changedAt: h.changed_at, changedBy: h.changed_by_name })),
-      version: this.loadedVersion
+      version
     };
   }
 
   async setGrant(actor, { role, permission, granted, reason }) {
     this.require(actor, 'access.manage');
     if (granted && Object.hasOwn(logisticsPermissions, role) && !logisticsPermissions[role].includes(permission)) throw forbidden('This logistics role is limited to its approved operational permissions.');
-    return this.transactions.run(actor, reason, async () => {
+    await this.transactions.run(actor, reason, async () => {
+      await this.repository.lockMatrix();
       const roleRow = await this.repository.role(role);
       if (!roleRow) throw notFound('Role not found.');
       if (roleRow.all_permissions) throw conflict('The owner role always holds every permission and cannot be edited.', 'ROLE_LOCKED');
@@ -91,33 +115,39 @@ export class AccessService {
       if (!perm) throw notFound('Permission not found.');
       if (perm.owner_only && granted) throw conflict(`${perm.description} is reserved for the owner.`, 'OWNER_ONLY_PERMISSION');
       const before = await this.repository.hasGrant(role, permission);
-      if (before === granted) return this.matrixView(actor);
+      if (before === granted) return;
       if (granted) await this.repository.grant(role, permission, actor.id);
       else await this.repository.revoke(role, permission);
       await this.repository.event({ roleKey: role, permissionKey: permission, change: granted ? 'GRANT' : 'REVOKE', oldValue: { granted: before }, newValue: { granted }, reason, actorId: actor.id });
       await this.audit.record({ actorId: actor.id, entity: 'ACCESS_MATRIX', recordId: `${role}:${permission}`, action: granted ? 'GRANT' : 'REVOKE', oldValue: { granted: before }, newValue: { granted }, reason });
-      await this.load();
-      return this.matrixView(actor);
+
     });
+    // Idempotent HTTP handlers may own an outer transaction. In that case
+    // the next request refreshes by version after the outer commit.
+    if (!this.transactions.active) await this.load();
+    return this.matrixView(actor);
   }
 
   async createRole(actor, { key, name, description, requiresMfa, reason }) {
     this.require(actor, 'access.manage');
-    if (key === 'ADMIN' || name?.trim().toUpperCase() === 'ADMIN') throw validationFailed('Admin is undefined and cannot be created until its permissions are confirmed.');
-    return this.transactions.run(actor, reason, async () => {
+    await this.transactions.run(actor, reason, async () => {
+      await this.repository.lockMatrix();
       if (await this.repository.role(key)) throw conflict('A role with this key already exists.', 'DUPLICATE');
       await this.repository.createRole({ key, name, description, requiresMfa }, actor.id);
       await this.repository.event({ roleKey: key, change: 'ROLE_CREATED', newValue: { name, description, requiresMfa }, reason, actorId: actor.id });
       await this.audit.record({ actorId: actor.id, entity: 'ROLE', recordId: key, action: 'CREATE', newValue: { name, description, requiresMfa }, reason });
-      await this.load();
-      return this.matrixView(actor);
+
     });
+    // Idempotent HTTP handlers may own an outer transaction. In that case
+    // the next request refreshes by version after the outer commit.
+    if (!this.transactions.active) await this.load();
+    return this.matrixView(actor);
   }
 
   async updateRole(actor, key, { name, description, requiresMfa, status, reason }) {
     this.require(actor, 'access.manage');
-    if (name?.trim().toUpperCase() === 'ADMIN') throw validationFailed('Admin is undefined until its permissions are confirmed.');
-    return this.transactions.run(actor, reason, async () => {
+    await this.transactions.run(actor, reason, async () => {
+      await this.repository.lockMatrix();
       const old = await this.repository.role(key);
       if (!old) throw notFound('Role not found.');
       if (old.all_permissions && (status === 'INACTIVE' || requiresMfa === false)) throw conflict('The owner role must stay active and keep MFA enabled.', 'ROLE_LOCKED');
@@ -127,8 +157,11 @@ export class AccessService {
       const before = { name: old.name, description: old.description, requiresMfa: old.requires_mfa, status: old.status };
       await this.repository.event({ roleKey: key, change: 'ROLE_UPDATED', oldValue: before, newValue: next, reason, actorId: actor.id });
       await this.audit.record({ actorId: actor.id, entity: 'ROLE', recordId: key, action: 'UPDATE', oldValue: before, newValue: next, reason });
-      await this.load();
-      return this.matrixView(actor);
+
     });
+    // Idempotent HTTP handlers may own an outer transaction. In that case
+    // the next request refreshes by version after the outer commit.
+    if (!this.transactions.active) await this.load();
+    return this.matrixView(actor);
   }
 }

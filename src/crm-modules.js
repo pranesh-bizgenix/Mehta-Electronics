@@ -175,7 +175,7 @@ export async function decideCustomerOnboarding(db,customerId,body,user){
     const row=await db.prepare('SELECT * FROM crm_customer_onboarding WHERE customer_id=? FOR UPDATE').get(id(customerId));
     if(!row)throw error(409,'This established customer has no CRM onboarding review.');
     if(row.status!=='PENDING_APPROVAL'||row.version!==expected)throw error(409,'The customer review changed. Reload it before deciding.');
-    if(row.submitted_by===user.id)throw error(403,'The person who submitted or last edited this customer cannot approve or reject it.');
+    if([row.created_by,row.submitted_by].includes(user.id))throw error(403,'The person who created, submitted or last edited this customer cannot approve or reject it.');
     const next=decision==='APPROVE'?'APPROVED':'REJECTED';
     await db.prepare('UPDATE crm_customer_onboarding SET status=?,decided_by=?,decided_at=now(),decision_reason=?,updated_by=?,updated_at=now() WHERE customer_id=?').run(next,user.id,why,user.id,row.customer_id);
     await db.prepare('INSERT INTO crm_customer_onboarding_events(customer_id,version,action,from_status,to_status,reason,detail,created_by) VALUES(?,?,?,?,?,?,?::text::jsonb,?)').run(row.customer_id,row.version,decision==='APPROVE'?'APPROVED':'REJECTED',row.status,next,why,JSON.stringify({reviewedVersion:row.version}),user.id);

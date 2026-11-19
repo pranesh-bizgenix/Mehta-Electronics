@@ -5,6 +5,10 @@
 export class AccessRepository {
   constructor(db) { this.db = db; }
 
+  // Serialize event allocation through commit so max(event.id) is a reliable
+  // cache version even when two different roles are edited concurrently.
+  async lockMatrix() { await this.db.prepare('SELECT pg_advisory_xact_lock(73429924)').get(); }
+
   async version() {
     const row = await this.db.prepare('SELECT COALESCE(max(id),0) AS v FROM access_matrix_events').get();
     return Number(row.v);
@@ -13,7 +17,7 @@ export class AccessRepository {
     return this.db.prepare('SELECT key,name,description,requires_mfa,all_permissions,is_system,status,updated_at FROM roles ORDER BY is_system DESC,key').all();
   }
   async role(key) {
-    return this.db.prepare('SELECT key,name,description,requires_mfa,all_permissions,is_system,status FROM roles WHERE key=?').get(key);
+    return this.db.prepare('SELECT key,name,description,requires_mfa,all_permissions,is_system,status FROM roles WHERE key=? FOR UPDATE').get(key);
   }
   async permissions() {
     return this.db.prepare('SELECT key,resource,action,description,owner_only FROM permissions ORDER BY resource,action,key').all();
