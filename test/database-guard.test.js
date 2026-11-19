@@ -65,19 +65,28 @@ test('tagged queries, readiness and reserved connections all enforce live identi
 test('identity failures and missing rows fail closed without leaking driver errors', async () => {
   for (const value of [null, new Error('sensitive connection detail')]) {
     const { client, events } = pool([value]);
-    await assert.rejects(client.ready(), error => error.code === 'DATABASE_GUARD_REJECTED' && !error.message.includes('sensitive'));
-    assert.ok(events.some(e => e.closed));
+    await assert.rejects(client.ready(), error => error.code === (value===null?'DATABASE_GUARD_REJECTED':'DATABASE_UNAVAILABLE') && !error.message.includes('sensitive'));
+    assert.equal(events.some(e => e.closed),value===null);
   }
 });
 
-test('connection failures before reserve or transaction identity checks are redacted and close the pool', async () => {
+test('connection failures refuse the request and redact details without permanently closing the pool', async () => {
   for (const method of ['reserve', 'begin']) {
     const { raw, events } = pool();
     raw[method] = async () => { throw new Error('sensitive startup failure'); };
     const client = guardDatabaseClient(raw);
-    await assert.rejects(method === 'reserve' ? client.ready() : client.begin(() => {}), error => error.code === 'DATABASE_GUARD_REJECTED' && !error.message.includes('sensitive'));
-    assert.ok(events.some(e => e.closed));
+    await assert.rejects(method === 'reserve' ? client.ready() : client.begin(() => {}), error => error.code === 'DATABASE_UNAVAILABLE' && !error.message.includes('sensitive'));
+    assert.equal(events.some(e => e.closed),false);
   }
+});
+
+test('a transient identity query failure cannot run product SQL; a later connection must verify again',async()=>{
+ const {client,events}=pool([new Error('sensitive transport detail'),REQUIRED_DATABASE]);
+ await assert.rejects(client.unsafe('SELECT must_not_run'),{code:'DATABASE_UNAVAILABLE'});
+ assert.equal(events.some(e=>e.statement==='SELECT must_not_run'),false);
+ assert.deepEqual(await client.unsafe('SELECT verified_recovery'),[{value:'ok'}]);
+ assert.equal(events.filter(e=>e.statement==='SELECT current_database() AS name').length,2);
+ assert.equal(events.some(e=>e.closed),false);
 });
 
 test('each pool checkout is checked, so an earlier success cannot approve a replacement connection', async () => {
@@ -117,4 +126,24 @@ test('public guard verifies the live query response rather than accepting a name
   let query;
   assert.equal(await assertCurrentDatabase({ unsafe: async statement => { query = statement; return [{ name: REQUIRED_DATABASE }]; } }), REQUIRED_DATABASE);
   assert.equal(query, 'SELECT current_database() AS name');
+});
+
+// Pure preflight assertions: never contact RDS.
+test('authorized RDS target requires TLS and refuses database overrides', () => {
+  const url = 'postgresql://example:example@example.rds.amazonaws.com:5432/mehta_controldesk?sslmode=require';
+  assert.equal(assertDatabaseTarget(url), 'mehta_controldesk');
+  assert.throws(() => assertDatabaseTarget(url.replace('?sslmode=require', '')), /sslmode/);
+  assert.throws(() => assertDatabaseTarget(url, {ssl: false}), /sslmode/);
+  assert.throws(() => assertDatabaseTarget(url, {database: REQUIRED_DATABASE}), /override/);
+});
+test('live identity must match the selected target even when both names are permitted', async () => {
+  await assert.rejects(assertCurrentDatabase({unsafe: async () => [{name: REQUIRED_DATABASE}]}, 'mehta_controldesk'), /connected database name/);
+});
+
+test('postgres is permitted only on the named RDS endpoint with SSL', () => {
+ const url='postgresql://example:example@mehta-controldesk-db01.chs2eymsy2ec.ap-southeast-2.rds.amazonaws.com:5432/postgres?sslmode=require';
+ assert.equal(assertDatabaseTarget(url),'postgres');
+ assert.throws(()=>assertDatabaseTarget(url.replace('mehta-controldesk-db01.chs2eymsy2ec.ap-southeast-2.rds.amazonaws.com','localhost')),/authorized RDS/);
+ assert.throws(()=>assertDatabaseTarget(url,{host:'localhost'}),/authorized RDS/);
+ assert.throws(()=>assertDatabaseTarget(url.replace('?sslmode=require','')),/sslmode/);
 });

@@ -27,7 +27,9 @@ export async function runPostgresTool(name, databaseUrl, args) {
   if (args.some(arg => /^(?:--(?:create|clean|dbname|database|host|port|username)(?:=|$)|-[CcduhpU])/.test(arg))) throw new Error('Database tool refused: target overrides and create/drop options are disabled.');
   if (name === 'pg_dump') {
     const file = args.indexOf('--file');
-    if (file !== args.length - 2 || file < 0 || !path.isAbsolute(args.at(-1)) || args.slice(0, file).some(arg => !['--format=custom', '--no-owner', '--no-acl'].includes(arg))) throw new Error('Database tool refused: only the fixed same-database backup argument list is permitted.');
+    // A fixed lower compression level reduces archive CPU time for the large
+    // retained XML dataset; it cannot change the target or omit database data.
+    if (file !== args.length - 2 || file < 0 || !path.isAbsolute(args.at(-1)) || args.slice(0, file).some(arg => !['--format=custom', '--compress=1', '--no-owner', '--no-acl'].includes(arg))) throw new Error('Database tool refused: only the fixed same-database backup argument list is permitted.');
   }
   const sql = connectPostgres(databaseUrl);
   try { await sql.ready(); } finally { await sql.end({ timeout: 5 }); }

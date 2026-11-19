@@ -10,7 +10,8 @@ export const migrationsDirectory = path.resolve(path.dirname(fileURLToPath(impor
 export async function applyMigrations(sql, { directory = migrationsDirectory, migrations,
   environment = process.env.NODE_ENV || 'production',
   allowWithoutBackup = process.argv.includes('--allow-migrations-without-backup'), backupDirectory } = {}) {
-  await assertCurrentDatabase(sql);
+  const database = await assertCurrentDatabase(sql);
+  if (allowWithoutBackup && database !== 'mehta_electronics_local') throw new Error('RDS migrations always require a verified backup.');
   if (allowWithoutBackup && environment !== 'development') {
     const error = new Error('--allow-migrations-without-backup is permitted only with NODE_ENV=development; production migrations require a fresh backup.');
     error.code = 'MIGRATION_BACKUP_REQUIRED';
@@ -37,7 +38,7 @@ export async function applyMigrations(sql, { directory = migrationsDirectory, mi
       }
     }
     if (entries.some(entry => !applied.has(entry.name)) && !allowWithoutBackup) {
-      await requireRecentBackup({ directory: backupDirectory });
+      await requireRecentBackup({ directory: backupDirectory, database });
     }
     await tx`CREATE TABLE IF NOT EXISTS mehta_schema_migrations (
       name text PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now(), checksum text

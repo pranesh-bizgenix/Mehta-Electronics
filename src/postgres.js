@@ -3,7 +3,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import { assertDatabaseTarget, guardDatabaseClient } from './database-guard.js';
 
 export function connectPostgres(databaseUrl, options = {}) {
-  assertDatabaseTarget(databaseUrl, { ...options.postgresOptions, schema: options.schema });
+  const database = assertDatabaseTarget(databaseUrl, { ...options.postgresOptions, schema: options.schema });
   return guardDatabaseClient(postgres(databaseUrl, {
     max: 10, prepare: false,
     connection: { timezone: 'UTC', ...(options.schema ? { search_path: `${options.schema},public` } : {}) },
@@ -17,7 +17,7 @@ export function connectPostgres(databaseUrl, options = {}) {
     },
     onnotice: () => {},
     ...options.postgresOptions
-  }));
+  }), database);
 }
 
 export function parameterize(query) {
