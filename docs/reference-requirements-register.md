@@ -99,3 +99,12 @@ Drafting implications: preserve requested make, size, colour, insulation, voltag
 ### RFQ implementation update
 
 The quotation editor now has dedicated saved fields for RFQ reference, quantity instructions/review, line/customer reference, tag, make, requested specification, reviewed availability/check date/source and lead time from PO date. These fields are versioned and public details are printed; availability sources remain internal. Set/colour instructions require quantity confirmation before submission. This supersedes the earlier statement that specifications and delivery information could only be placed in free-text descriptions/terms. Automatic pricing, actual inventory verification and certification decisions remain unconfirmed/unimplemented as recorded above.
+
+### Supplied pricing references - 18 November 2026
+User approved four source selling levels (rather than the prior three-level assumption), and permitted expired files as development references. Siemens sheet discounts are fractional Excel values; import must select FRACTION and retain the original reviewed value. Do not use master-price sheet or CP columns as a proven landed-cost policy. Connectwell contracts remain customer-exclusive, retain their validity, and include concurrent old/new blocks and formula cells requiring review. Workbook1 has 35 requested lines without a price or customer identity. Screenshot terms (45 days, 12/18-month warranty, LD, certificates, set/colour quantities) are requests, not seller acceptance. New internal requested-term review is separate from printed accepted terms. Historical reference drafts cannot be submitted or issued. Hidden workbook metadata was excluded from the source review. See source-review.json under verification-output/quotation-policy/2026-11-18/.
+
+### 18 November 2026 - additional EML reference classification
+
+- Reviewed hash-deduplicated EMLs and PDF/XLSX attachments from the user-supplied Mehta Documents folder. The inventory is verification-output/quotation-policy/2026-11-18/email-reference-review.json; original files were not changed.
+- Multiple supplier/customer documents identify Mehta Electric Corporation as GSTIN 33AAGPM1577N1ZD. The source identity is documented but not combined with invented commercial policy to save quotation setup.
+- KGEP CR4 / 45 Days credit, supplier warranty and late-payment interest remain scoped to that supplier transaction. Incoming stock enquiries and blank availability columns do not prove inventory. No global Mehta selling margin or cost basis was established.
