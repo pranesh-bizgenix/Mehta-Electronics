@@ -18,7 +18,7 @@ const details={sourceLine:'7',tag:'16QM1',make:'VERIFY- RR',requestedSpecificati
 const body=f=>({customerId:f.customer.id,validUntil:'2099-12-31',placeOfSupply:'27',supplyType:'DOMESTIC_STANDARD',reason:'VERIFY- review RFQ',request:{reference:'VERIFY- RFQ <script>bad</script>',quantityInstructions:'VERIFY- 3 sets; confirm the final quantities',quantityConfirmed:false},lines:[{itemId:f.item.id,quantity:'2',unitPrice:'100.123456',discountPercent:'0',taxPercent:'18',requestDetails:details},{itemId:f.item.id,quantity:'1',unitPrice:'100',discountPercent:'0',taxPercent:'18',requestDetails:{...details,sourceLine:'23',tag:'24KM-1'}}]});
 
 test('manual RFQ validation starts empty, rejects malformed fields and never infers set or colour quantities',()=>{
- assert.deepEqual(quotationRequest(),{reference:'',quantityInstructions:'',quantityConfirmed:false});
+ assert.deepEqual(quotationRequest(),{reference:'',quantityInstructions:'',quantityConfirmed:false,customerTerms:'',termsConfirmed:false,referenceOnly:false,referenceDate:''});
  assert.equal(quotationLineRequest(undefined,'2026-11-04').availability,'');
  for(const bad of [null,[],{reference:1},{quantityConfirmed:'true'},{quantityInstructions:'x'.repeat(1001)}])assert.throws(()=>quotationRequest(bad));
  assert.match(quotationRequestBlock({quantityInstructions:'3 sets',quantityConfirmed:false}),/final quantities/);

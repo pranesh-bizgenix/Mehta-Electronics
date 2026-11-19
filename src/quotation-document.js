@@ -57,7 +57,7 @@ function taxRows(q) {
 }
 
 export function quotationPrintHtml(q) {
-  const e = escape, l = q.letterhead ?? {}, issued = ISSUED.includes(q.status);
+  const e = escape, l = q.letterhead ?? {}, issued = ISSUED.includes(q.status)&&!q.request?.referenceOnly;
   return `<!doctype html><html lang="en-IN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Quotation ${e(q.quotation_number)}</title><link rel="stylesheet" href="/quotation-print.css"></head><body>
 <div class="toolbar"><button id="print" type="button">Print or save as PDF</button></div>
 <article class="sheet${issued ? '' : ' draft'}">
@@ -65,6 +65,7 @@ ${issued ? '' : '<p class="watermark" aria-hidden="true">NOT APPROVED FOR ISSUE<
 <header class="letterhead"><div class="brand"><span class="mark">${e((l.name || 'M').trim().charAt(0))}</span><div><h1>${e(l.name)}</h1><p>${e(l.address)}</p></div></div>
 <dl class="contact">${l.gstin ? `<div><dt>GSTIN</dt><dd>${e(l.gstin)}</dd></div>` : ''}${l.phone ? `<div><dt>Phone</dt><dd>${e(l.phone)}</dd></div>` : ''}${l.email ? `<div><dt>Email</dt><dd>${e(l.email)}</dd></div>` : ''}</dl></header>
 <section class="title"><h2>Quotation</h2><p class="status">${issued ? '' : 'Draft — not approved for issue · '}Version ${e(q.version)}</p></section>
+${q.request?.referenceOnly?'<p class="block">DEVELOPMENT REFERENCE ONLY - HISTORICAL PRICING - NOT FOR CUSTOMER ISSUE</p>':''}
 <section class="parties"><div><h3>Bill to</h3><p class="strong">${e(q.customer_name)}</p><p class="multiline">${e(q.customerAddress || '')}</p>${q.customerGstin ? `<p>GSTIN ${e(q.customerGstin)}</p>` : ''}</div>
 <dl class="meta"><div><dt>Quotation no.</dt><dd>${e(q.quotation_number)}</dd></div><div><dt>Valid until</dt><dd>${e(dateText(q.validUntil))}</dd></div><div><dt>Place of supply</dt><dd>${e(stateLabel(q.placeOfSupply))}</dd></div></dl></section>
 ${q.request?.reference?`<section class="block"><h3>Customer RFQ / reference</h3><p>${e(q.request.reference)}</p></section>`:''}
@@ -88,7 +89,7 @@ export function quotationPdf(q) {
     const chunks = [];
     doc.on('data', (c) => chunks.push(c)); doc.on('end', () => resolve(Buffer.concat(chunks))); doc.on('error', reject);
     doc.font(fileURLToPath(new URL('./assets/NotoSansDevanagari.ttf', import.meta.url)));
-    const l = q.letterhead ?? {}, issued = ISSUED.includes(q.status);
+    const l = q.letterhead ?? {}, issued = ISSUED.includes(q.status)&&!q.request?.referenceOnly;
     const left = 48, width = doc.page.width - 96, right = left + width;
 
     // Letterhead band
@@ -110,6 +111,7 @@ export function quotationPdf(q) {
       doc.fillColor(INK).fontSize(9.5).text(v, right - 120, metaTop + i * 22 - 1, { width: 120, align: 'right' });
     });
 
+    if(q.request?.referenceOnly)doc.fillColor('#a8321f').fontSize(8).text('DEVELOPMENT REFERENCE ONLY - HISTORICAL PRICING - NOT FOR CUSTOMER ISSUE',left,151,{width});
     // Bill to
     let y = 172;
     doc.roundedRect(left, y, width, 64, 8).fill(SOFT);

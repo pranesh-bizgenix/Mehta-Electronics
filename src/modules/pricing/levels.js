@@ -4,7 +4,7 @@ import {fingerprint} from '../../core/runtime.js';
 import {decimal,mul,div,sub,format,compare} from '../../../public/money.js';
 const calculations=['LIST_ONLY','LINE_DISCOUNT','LIST_DISCOUNT','BOTH_DISCOUNTS'];
 const settings=s.object({label:s.string({min:1,max:100}),instructions:s.string({min:3,max:2000}),priceListId:s.id(),calculation:s.enum(calculations)});
-const levelNumber=value=>validate(s.int({min:1,max:3}),value,'level');
+const levelNumber=value=>validate(s.int({min:1,max:4}),value,'level');
 const revision=row=>row?fingerprint({id:row.id,label:row.label,meaning:row.meaning,configuration:row.configuration,status:row.status,updated_at:row.updated_at}):null;
 export class PriceLevelRepository {
  constructor(db){this.db=db;}
@@ -32,7 +32,7 @@ export class PriceLevelRepository {
 export class PriceLevelService {
  constructor(dependencies){Object.assign(this,dependencies);}
  read(actor){this.access.require(actor,'items.read');this.access.require(actor,'items.list_price.read');}
- async list(actor){this.read(actor);const rows=await this.repository.all();return {levels:[1,2,3].map(number=>{const row=rows.find(r=>r.level_number===number);return {number,label:row?.label??null,meaning:row?.meaning??null,configuration:row?.configuration??null,status:row?.is_deleted?'NOT_SET':row?.status??'NOT_SET',revision:revision(row)};}),priceLists:await this.repository.available()};}
+ async list(actor){this.read(actor);const rows=await this.repository.all();return {levels:[1,2,3,4].map(number=>{const row=rows.find(r=>r.level_number===number);return {number,label:row?.label??null,meaning:row?.meaning??null,configuration:row?.configuration??null,status:row?.is_deleted?'NOT_SET':row?.status??'NOT_SET',revision:revision(row)};}),priceLists:await this.repository.available()};}
  async save(actor,level,input){
   this.read(actor);this.access.require(actor,'items.update');if(actor.role!=='OWNER')throw forbidden('Only the Owner may confirm price-level meanings.');
   level=levelNumber(level);const {reason:rawReason,expectedRevision,clear,...rawSettings}=input,reason=validate(s.reason(),rawReason,'reason');

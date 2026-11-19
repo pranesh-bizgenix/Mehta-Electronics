@@ -43,7 +43,7 @@ export class PriceDispositionService {
  async locks(){
   // Same order as quotation preview/save: global quotation lock, then levels.
   await this.db.prepare('SELECT pg_advisory_xact_lock(812731)').get();
-  const levels=new PriceLevelRepository(this.db);for(const level of [1,2,3])await levels.lock(level);
+  const levels=new PriceLevelRepository(this.db);for(const level of [1,2,3,4])await levels.lock(level);
   await this.db.prepare('SELECT pg_advisory_xact_lock(hashtext(?))').get('rule:price_lists.retirement_policy');
  }
  async plan(input){

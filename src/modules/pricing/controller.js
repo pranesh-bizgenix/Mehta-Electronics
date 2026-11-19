@@ -33,15 +33,16 @@ export function priceImportRoutes({db,route,json,readJson}){
   route('POST','/api/crm/price-dispositions/:id/decision','items.update',async({req,res,user,params})=>json(res,200,{data:await disposition.decide(user,params.id,await readJson(req))})),
   route('POST','/api/crm/price-imports/manual/preview','items.update',async({req,res,user})=>json(res,200,{data:await manual.preview(user,await readJson(req))})),
   route('POST','/api/crm/price-imports/manual','items.update',async({req,res,user})=>json(res,200,{data:await manual.save(user,await readJson(req))})),
-  route('GET','/api/crm/quotation-price-levels','quotations.create',async({res})=>{const rows=await new PriceLevelRepository(db).all();json(res,200,{data:[1,2,3].map(level=>{const row=rows.find(r=>r.level_number===level);return {level,label:row?.status==='CONFIRMED'&&!row.is_deleted?row.label:null};})});}),
+  route('GET','/api/crm/quotation-price-levels','quotations.create',async({res})=>{const rows=await new PriceLevelRepository(db).all();json(res,200,{data:[1,2,3,4].map(level=>{const row=rows.find(r=>r.level_number===level);return {level,label:row?.status==='CONFIRMED'&&!row.is_deleted?row.label:null};})});}),
   route('POST','/api/crm/quotation-price-level-preview','quotations.create',async({req,res,user})=>{
-   const b=validate(s.object({customerId:s.id(),itemId:s.id(),quantity:s.string({pattern:/^\d{1,14}(?:\.\d{1,6})?$/}),level:s.int({min:1,max:3})}),await readJson(req));
+   const b=validate(s.object({customerId:s.id(),itemId:s.id(),quantity:s.string({pattern:/^\d{1,14}(?:\.\d{1,6})?$/}),level:s.int({min:1,max:4}),referenceDate:s.date().optional()}),await readJson(req));
+   if(b.referenceDate&&(process.env.NODE_ENV==='production'||b.referenceDate>pricingToday()))throw validationFailed('Historical pricing preview is for development only and cannot use a future date.');
    const result=await new TransactionRunner(db).run(user,'Preview configured net quotation price',async()=>{
     await db.prepare('SELECT pg_advisory_xact_lock(812731)').get();
     await requireQuotableCustomer(db,b.customerId);await requireCustomerHandler(db,b.customerId,user);
     if(!await db.prepare("SELECT id FROM customers WHERE id=? AND status='ACTIVE' AND NOT is_deleted").get(b.customerId))throw validationFailed('Select an active customer.');
-    const value=await resolveQuotationLevel(db,b.level,b.itemId,b.quantity);
-    await contractForLine(db,b.customerId,{itemId:b.itemId,quantity:b.quantity,unitPrice:value.unitPrice,discountPercent:'0'},pricingToday());
+    const at=b.referenceDate??pricingToday(),value=await resolveQuotationLevel(db,b.level,b.itemId,b.quantity,at);
+    await contractForLine(db,b.customerId,{itemId:b.itemId,quantity:b.quantity,unitPrice:value.unitPrice,discountPercent:'0'},at);
     return {level:value.level,unitPrice:value.unitPrice,currency:value.currency,fingerprint:value.fingerprint};
    });json(res,200,{data:result});
   }),

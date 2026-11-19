@@ -2,7 +2,7 @@ import crypto from 'node:crypto';
 import {sumMoney} from '../public/money.js';
 import {bindQuotationLevel} from './modules/pricing/quotation-source.js';
 import {transaction,id,validDate,validateTax} from './crm-modules.js';
-import {quotationRequest,quotationLineRequest,quotationRequestBlock} from '../public/quotation-request.js';
+import {quotationRequest,quotationLineRequest,quotationRequestBlock,quotationPricingDate} from '../public/quotation-request.js';
 import {writeAudit,recordQuotationRevision,quotationView} from './db.js';
 import {hasPermission} from './rbac.js';
 import {calculateQuotation,scaled} from '../public/quotation-math.js';
@@ -102,6 +102,7 @@ export async function quoteList(db,url,user){can(user,'quotations.read');const p
 }
 async function snapshot(db,b,number,enquiryId=null){
  let request;try{request=quotationRequest(b.request);}catch(error){fail(422,error.message);}
+ let pricingDate;try{pricingDate=quotationPricingDate(request,today(),process.env.NODE_ENV==='production');}catch(error){fail(422,error.message);}
  const policy=await quotePolicy(db);if(!policy)fail(409,'Quotation creation is blocked: ask the owner to open Quotations → Policy and letterhead and save the margin floor, margin basis, seller state and company name.');
  await requireSetting(db,'margin.floor_percent');
  const customer=await db.prepare("SELECT c.*,p.state_code FROM customers c LEFT JOIN crm_customer_profiles p ON p.customer_id=c.id WHERE c.id=? AND c.status='ACTIVE'").get(id(b.customerId));
@@ -116,8 +117,8 @@ async function snapshot(db,b,number,enquiryId=null){
  const c=await db.prepare('SELECT unit_cost::text AS value FROM crm_quotation_costs WHERE item_id=?').get(item.id);costs[String(item.id)]=c?.value??null;
  lines.push({itemId:item.id,partCode:item.part_code,hsn:item.hsn||'',description:text(l.description??item.description,1000),uom:item.uom,quantity:String(l.quantity),unitPrice:String(l.unitPrice),discountPercent:String(l.discountPercent??'0'),taxPercent:String(l.taxPercent??'0')});
  try{lines.at(-1).requestDetails=quotationLineRequest(l.requestDetails,today());}catch(error){fail(422,`Line ${lines.length}: ${error.message}`);}
- lines.at(-1).rateContractId=await contractForLine(db,customer.id,lines.at(-1),today());
- const selection=await bindQuotationLevel(db,lines.at(-1),l.pricingSelection);if(selection)lines.at(-1).pricingSelection=selection;
+ lines.at(-1).rateContractId=await contractForLine(db,customer.id,lines.at(-1),pricingDate);
+ const selection=await bindQuotationLevel(db,lines.at(-1),l.pricingSelection,pricingDate);if(selection)lines.at(-1).pricingSelection=selection;
  }
  let math;try{math=calculateQuotation(lines,policy.seller_state,pos,costs,policy.floor_percent,policy.margin_basis);}catch(e){fail(422,e.message);}
  if(scaled(math.total)>999999999999000000n)fail(422,'Quotation total exceeds the supported limit.');
@@ -152,7 +153,7 @@ export async function saveQuote(db,quoteId,b,user,duplicateOf=null){can(user,quo
  const row=await rowFor(db,qid);await persistVersion(db,row,user,why);await event(db,user,row,duplicateOf?'DUPLICATED':old?'REVISED':'CREATED',why,{status:'DRAFT',version:row.version,...(duplicateOf?{sourceId:duplicateOf}:{})});return visible(row,user);
  });
 }
-async function ensureCurrent(db,row,{complete=false,review=true}={}){const requestBlock=quotationRequestBlock(row.public_snapshot.request);if(requestBlock)fail(422,requestBlock);await requireQuotableCustomer(db,row.public_snapshot.customerId);for(const line of row.public_snapshot.lines){await requireContractBinding(db,row.public_snapshot.customerId,line,today());await bindQuotationLevel(db,line,line.pricingSelection);}const p=await quotePolicy(db);if(!p||p.revision!==row.policy_revision)fail(409,'Policy changed. Revise and resubmit the quotation.');
+async function ensureCurrent(db,row,{complete=false,review=true}={}){const requestBlock=quotationRequestBlock(row.public_snapshot.request,row.public_snapshot.terms);if(requestBlock)fail(422,requestBlock);await requireQuotableCustomer(db,row.public_snapshot.customerId);for(const line of row.public_snapshot.lines){await requireContractBinding(db,row.public_snapshot.customerId,line,today());await bindQuotationLevel(db,line,line.pricingSelection);}const p=await quotePolicy(db);if(!p||p.revision!==row.policy_revision)fail(409,'Policy changed. Revise and resubmit the quotation.');
  const margin=await requireSetting(db,'margin.floor_percent');
  if(row.private_snapshot.missingCost)fail(422,'Submission is blocked: ask the owner to enter costs for every item in Quotations → Item costs, then save the draft again to capture those costs.');
  for(const l of row.private_snapshot.lines){const c=await db.prepare('SELECT unit_cost::text AS value FROM crm_quotation_costs WHERE item_id=?').get(l.itemId);if(c?.value==null||scaled(c.value)!==scaled(l.unitCost??'0'))fail(409,'Item costs changed or are missing. Open Quotations → Item costs, then revise and resubmit the quotation.');}
@@ -204,7 +205,7 @@ export async function quoteHistory(db,quoteId,user){can(user,'quotations.read');
 }
 export async function duplicateQuote(db,quoteId,b,user){const source=await quoteDetail(db,quoteId,user),why=reason(b);
  // A fresh draft takes current costs/policy and never inherits approval.
- return saveQuote(db,null,{...source,...b,request:source.request?{...source.request,quantityConfirmed:false}:undefined,customerId:source.customerId,lines:source.lines,reason:why},user,id(quoteId));
+ return saveQuote(db,null,{...source,...b,request:source.request?{...source.request,quantityConfirmed:false,termsConfirmed:false}:undefined,customerId:source.customerId,lines:source.lines,reason:why},user,id(quoteId));
 }
 export async function emailWorkflowQuote(db,quoteId,b,user,config,sendMail){
  can(user,'quotations.send');const why=text(b.reason||'Approved quotation emailed');
