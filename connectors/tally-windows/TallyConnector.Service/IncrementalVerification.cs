@@ -25,6 +25,15 @@ internal static class IncrementalVerification
         Reject(() => TallyXmlRequests.IncrementalVouchersRequest(new DateOnly(2026, 1, 1), new DateOnly(2026, 12, 31), "ZZTEST_company", "0 OR 1", "2"));
         Assert(TallyXmlRequests.IncrementalVouchersRequest(new DateOnly(2026, 1, 1), new DateOnly(2026, 12, 31), "ZZTEST_<&", "1", "2").Contains("$AlterID &gt; 1 AND $AlterID &lt;= 2"));
         Assert(VoucherIncremental.UpperBound(VoucherIncremental.Identities(Collection(""))) == "0");
+        string withCounter = Collection(Voucher("a", "1")).Replace("<BODY>", "<BODY><DESC><CMPINFO><VOUCHER>98765</VOUCHER></CMPINFO></DESC>");
+        Assert(VoucherIncremental.Identities(withCounter).Count == 1);
+        Assert(TallyService.ExtractVoucherNodes(withCounter).Count() == 1);
+        string emptyWithCounter = Collection("").Replace("<BODY>", "<BODY><DESC><CMPINFO><VOUCHER>98765</VOUCHER></CMPINFO></DESC>");
+        Assert(VoucherIncremental.Identities(emptyWithCounter).Count == 0);
+        Assert(TallyService.ExtractVoucherNodes(emptyWithCounter).Count() == 0);
+        Assert(TallyService.ExtractVoucherNodes(Collection(Voucher("a", "1") + Voucher("b", "2"))).Count() == 2);
+        Reject(() => TallyService.ExtractVoucherNodes("<ENVELOPE><LINEERROR>error</LINEERROR></ENVELOPE>").ToList());
+        Reject(() => TallyService.ExtractVoucherNodes("<ENVELOPE/>").ToList());
         string logistics = TallyXmlRequests.LogisticsDocumentsRequest(new DateOnly(2026, 1, 1), new DateOnly(2026, 11, 4), "ZZTEST_<&");
         var logisticsXml = System.Xml.Linq.XDocument.Parse(logistics);
         Assert(logistics.Contains("Export") && !logistics.Contains("Import"));

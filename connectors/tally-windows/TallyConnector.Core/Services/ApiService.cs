@@ -235,63 +235,43 @@ public sealed class ApiService
         PendingSyncPackage package,
         CancellationToken cancellationToken)
     {
-        (ConnectorConfiguration updated, _) = await SendWithRefreshAsync(
-            configuration,
-            async (current, bearerToken, tokenCancellationToken) =>
+        // Refresh per HTTP request, never replay the whole historical package on 401.
+        ConnectorConfiguration current = configuration;
+        async Task<T> UploadRequest<T>(object payload)
+        {
+            (ConnectorConfiguration refreshed, T result) = await SendWithRefreshAsync(
+                current,
+                (active, token, ct) => PostGzipJsonAsync<T>(active.ApiBaseUrl,
+                    "/api/ingest/tally/chunks", payload, token, ct), cancellationToken);
+            current = refreshed;
+            return result;
+        }
+        ChunkStartResponse start = await UploadRequest<ChunkStartResponse>(BuildChunkStartPayload(package));
+        if (string.IsNullOrWhiteSpace(start.SessionId))
+            throw new InvalidOperationException("The server did not return a chunk session id.");
+        foreach (string field in EnumeratePackageFields(package))
+        {
+            int sequence = 0;
+            int received = start.ReceivedChunks.GetValueOrDefault(field);
+            await foreach (string chunk in ReadFieldChunksAsync(package, field, cancellationToken))
             {
-                ChunkStartResponse start = await PostGzipJsonAsync<ChunkStartResponse>(
-                    current.ApiBaseUrl,
-                    "/api/ingest/tally/chunks",
-                    BuildChunkStartPayload(package),
-                    bearerToken,
-                    tokenCancellationToken);
-
-                if (string.IsNullOrWhiteSpace(start.SessionId))
-                {
-                    throw new InvalidOperationException("The server did not return a chunk session id.");
-                }
-
-                foreach (string field in EnumeratePackageFields(package))
-                {
-                    int sequence = 0;
-                    await foreach (string chunk in ReadFieldChunksAsync(package, field, tokenCancellationToken))
-                    {
-                        await PostGzipJsonAsync<ChunkAckResponse>(
-                            current.ApiBaseUrl,
-                            "/api/ingest/tally/chunks",
-                            new
-                            {
-                                action = "append",
-                                sessionId = start.SessionId,
-                                field,
-                                sequence,
-                                content = chunk,
-                            },
-                            bearerToken,
-                            tokenCancellationToken);
-                        sequence += 1;
-                    }
-                }
-
-                ChunkAckResponse finalized = await PostGzipJsonAsync<ChunkAckResponse>(
-                    current.ApiBaseUrl,
-                    "/api/ingest/tally/chunks",
-                    new
-                    {
-                        action = "finalize",
-                        sessionId = start.SessionId,
-                    },
-                    bearerToken,
-                    tokenCancellationToken);
-
-                if (!finalized.Ok || !string.Equals(finalized.Status, "stored", StringComparison.OrdinalIgnoreCase))
-                    throw new InvalidOperationException("The app has not fully indexed this package. Retain it for retry; do not advance alteration checkpoints.");
-
-                return true;
-            },
-            cancellationToken);
-
-        return updated;
+                if (sequence >= received)
+                    await UploadRequest<ChunkAckResponse>(new { action = "append", sessionId = start.SessionId, field, sequence, content = chunk });
+                sequence += 1;
+            }
+        }
+        ChunkAckResponse finalized = await UploadRequest<ChunkAckResponse>(new { action = "finalize", sessionId = start.SessionId, async = true });
+        DateTime deadline = DateTime.UtcNow.AddHours(1);
+        while (finalized.Ok && string.Equals(finalized.Status, "indexing", StringComparison.OrdinalIgnoreCase))
+        {
+            if (DateTime.UtcNow >= deadline)
+                throw new TimeoutException("Indexing is still pending. Retain this package and its checkpoints for retry.");
+            await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken);
+            finalized = await UploadRequest<ChunkAckResponse>(new { action = "finalize-status", sessionId = start.SessionId });
+        }
+        if (!finalized.Ok || !string.Equals(finalized.Status, "stored", StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException("The app has not fully indexed this package. Retain it for retry; do not advance alteration checkpoints.");
+        return current;
     }
 
     private async Task<ConnectorConfiguration> RefreshAsync(
@@ -576,6 +556,8 @@ public sealed class ApiService
         public bool Ok { get; set; }
 
         public string SessionId { get; set; } = "";
+
+        public Dictionary<string, int> ReceivedChunks { get; set; } = new(StringComparer.Ordinal);
     }
 
     private sealed class SyncJobStartResponse

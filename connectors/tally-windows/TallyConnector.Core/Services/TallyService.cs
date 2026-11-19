@@ -140,7 +140,7 @@ public sealed partial class TallyService
                     TallyXmlRequests.IncrementalVouchersRequest(prepared.SalesDocumentsFrom, plan.SnapshotTo, selectedCompany, lower, upper), cancellationToken);
                 VoucherIncremental.Validate(changed, probe, lower, upper);
                 checkpointAfter = lower;
-                voucherNodes.AddRange(VoucherRegex().Matches(changed).Select(match => match.Value));
+                voucherNodes.AddRange(ExtractVoucherNodes(changed));
                 nextCheckpoint = new VoucherCheckpoint { CompanyGuid = prepared.CompanyGuid!, From = prepared.SalesDocumentsFrom, ThroughDate = plan.SnapshotTo, AlterId = upper };
                 usedIncremental = true;
                 _logger.LogInformation("Validated voucher alteration pull {After} -> {Through}; {Count} changed vouchers. Masters, orders and reports remain snapshot reads.", lower, upper, voucherNodes.Count);
@@ -162,9 +162,9 @@ public sealed partial class TallyService
                 cancellationToken);
 
             int rangeVoucherCount = 0;
-            foreach (Match match in VoucherRegex().Matches(xml))
+            foreach (string node in ExtractVoucherNodes(xml))
             {
-                voucherNodes.Add(match.Value);
+                voucherNodes.Add(node);
                 rangeVoucherCount++;
             }
 
@@ -508,6 +508,28 @@ public sealed partial class TallyService
 
     [GeneratedRegex("<VOUCHER\\b[\\s\\S]*?</VOUCHER>", RegexOptions.IgnoreCase)]
     private static partial Regex VoucherRegex();
+
+    [GeneratedRegex("<COLLECTION\\b[^>]*>([\\s\\S]*?)</COLLECTION>", RegexOptions.IgnoreCase)]
+    private static partial Regex CollectionRegex();
+
+    public static IEnumerable<string> ExtractVoucherNodes(string xml)
+    {
+        if (xml.Contains("<LINEERROR", StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException("Tally returned a voucher extraction error; do not advance the checkpoint.");
+        bool found = false;
+        foreach (Match collection in CollectionRegex().Matches(xml))
+        {
+            found = true;
+            Group content = collection.Groups[1];
+            foreach (Match voucher in VoucherRegex().Matches(xml, content.Index))
+            {
+                if (voucher.Index + voucher.Length > content.Index + content.Length) break;
+                yield return voucher.Value;
+            }
+        }
+        if (!found && !Regex.IsMatch(xml, "<COLLECTION\\b[^>]*/>", RegexOptions.IgnoreCase))
+            throw new InvalidOperationException("Tally did not return a complete voucher collection.");
+    }
 
     private sealed record TallyCompany(string Name, string? Guid, DateOnly? BooksFrom);
 }

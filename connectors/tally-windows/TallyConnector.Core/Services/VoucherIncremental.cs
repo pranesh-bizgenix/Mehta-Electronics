@@ -15,7 +15,8 @@ public static class VoucherIncremental
         if (document.Root?.Name.LocalName != "ENVELOPE" || !document.Descendants("COLLECTION").Any() || document.Descendants("LINEERROR").Any())
             throw new InvalidOperationException("A complete voucher collection is required for an alteration checkpoint.");
         Dictionary<string, BigInteger> result = new(StringComparer.Ordinal);
-        foreach (XElement voucher in document.Descendants("VOUCHER"))
+        // CMPINFO also contains a numeric VOUCHER counter; it is not a document.
+        foreach (XElement voucher in document.Descendants("COLLECTION").Elements("VOUCHER"))
         {
             string guid = voucher.Element("GUID")?.Value.Trim() ?? "";
             string master = voucher.Element("MASTERID")?.Value.Trim() ?? "";
