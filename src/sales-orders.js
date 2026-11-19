@@ -1,3 +1,4 @@
+import {compareCustomerPo} from './customer-po-comparison.js';
 import {orderSyncStates} from './tally-order-sync-state.js';
 import {tallyWriteActive,guardTallyWriteMutation,notifyTallyWrite,requireTallyWriteConfirmation} from './modules/tally-write/module.js';
 import {workflowRule} from './modules/rules/workflow-rules.js';
@@ -136,19 +137,6 @@ export async function saveOrder(db,orderId,b,user){can(user,orderId?'orders.upda
  await event(db,r,user,old?'REVISED':'CREATED',reason,{version:r.version,quotationId:s.quotationId,total:s.total});return orderDetail(db,oid,user);
  }).then(async result=>{if(tallyWriteActive(db,'SALES_ORDER'))await notifyTallyWrite(db,'SALES_ORDER',result.id,user);return result;});
 }
-function compareQuote(order,quote){const flags=[],comparisons=[];
- if(!quote)return {flags:['MANUAL_ORDER'],comparisons};
- const used=new Set();for(const l of order.lines){const candidates=quote.lines.map((q,i)=>({q,i})).filter(({q})=>q.partCode===l.partCode||q.itemId===l.itemId&&l.itemId!=null);
- const match=candidates.find(({i})=>!used.has(i));if(!match){comparisons.push({partCode:l.partCode,issues:['PART_NOT_IN_QUOTE'],po:l,quote:null});flags.push('PART_NOT_IN_QUOTE');continue;}
- used.add(match.i);const q=match.q,issues=[];
- for(const [field,code]of [['unitPrice','RATE_DIFFERENCE'],['quantity','QUANTITY_DIFFERENCE'],['taxPercent','TAX_DIFFERENCE'],['discountPercent','DISCOUNT_DIFFERENCE']])if(scaled(l[field])!==scaled(q[field]))issues.push(code);
- if(l.uom!==q.uom)issues.push('UOM_DIFFERENCE');comparisons.push({partCode:l.partCode,issues,po:l,quote:q});flags.push(...issues);
- }
- if(used.size!==quote.lines.length)flags.push('QUOTE_ITEMS_MISSING');
- if(order.placeOfSupply!==quote.placeOfSupply||order.sellerState!==quote.sellerState)flags.push('TAX_JURISDICTION_DIFFERENCE');
- const delta=cents(order.poTotal)-cents(quote.total);if(delta>100n||delta< -100n)flags.push('QUOTE_TOTAL_DIFFERENCE_OVER_1');
- return {flags,comparisons,quoteTotal:quote.total,quoteDifference:money(delta)};
-}
 const quantity=n=>`${n<0n?'-':''}${(n<0n?-n:n)/1000000n}.${String((n<0n?-n:n)%1000000n).padStart(6,'0')}`;
 export async function verifyOrder(db,r){const s=r.public_snapshot,flags=[],costs={},costInputs={};
  const policy=await quotePolicy(db);if(!policy||!await usableSetting(db,'margin.floor_percent'))flags.push('MISSING_POLICY');if(policy&&policy.seller_state!==s.sellerState)flags.push('SELLER_STATE_CHANGED');
@@ -182,7 +170,7 @@ export async function verifyOrder(db,r){const s=r.public_snapshot,flags=[],costs
   if(balance===null&&!confirmedCreditPolicy.allowUnavailableOwnerReview)flags.push('CREDIT_UNAVAILABLE_REVIEW_DISABLED');
  }
  const credit={available:balance!==null,closingBalance:balance===null?null:money(balance),openOrderExposure:money(exposure),thisOrder:s.total,exposure:balance===null?null:money(used),knownExposure:money(used),limit:customer.credit_limit,exceeded,fetchedAt:customer.dues.fetchedAt??null,note:controls?.credit_exempt?'Owner-authorised credit exemption. Other order checks still apply.':!confirmedCreditPolicy?'Credit policy has not been configured; approval is blocked.':confirmedCreditPolicy.exposureBasis==='DEBIT_BALANCE_ONLY'?'Configured credit check uses the stored Tally debit balance. Source age and availability are checked.':'Configured credit check uses Tally debit balance plus open CRM orders; invoiced open orders may overlap. This is not bill-level reconciliation.'};
- const comparison=compareQuote(s,r.source_quote_snapshot);flags.push(...comparison.flags);
+ const comparison=compareCustomerPo(s,r.source_quote_snapshot);flags.push(...comparison.flags);
  if(s.quotationId&&!await db.prepare('SELECT id FROM crm_shipments WHERE sales_order_id=? LIMIT 1').get(r.sales_order_id)){const q=await db.prepare('SELECT version,status FROM crm_quotation_workflows WHERE quotation_id=?').get(s.quotationId);if(!q||q.version!==r.source_quote_version||!['APPROVED','SENT','WON'].includes(q.status))flags.push('QUOTE_CHANGED_OR_UNAPPROVED');}
  const delta=cents(s.poTotal)-cents(s.total);if(delta>100n||delta< -100n)flags.push('PO_TOTAL_DIFFERENCE_OVER_1');
  const document=await db.prepare("SELECT id,sha256 FROM crm_order_documents WHERE sales_order_id=? AND kind='CUSTOMER_PO' AND status='ACTIVE'").get(r.sales_order_id);if(!document)flags.push('MISSING_PO_FILE');
@@ -220,6 +208,7 @@ export async function orderAction(db,orderId,b,user){const reason=why(b),action=
  if(r.status!=='HELD')fail(409,'Verify the order before reviewer approval.');
  const last=await db.prepare('SELECT created_by FROM crm_order_versions WHERE sales_order_id=? AND version=?').get(r.sales_order_id,r.version);
  if(r.created_by===user.id||last.created_by===user.id)fail(403,'A different manager or owner must review this order.');
+ if(v.flags.includes('AMBIGUOUS_QUOTE_LINE'))fail(409,'Resolve duplicate or ambiguous quotation item matches before approval.');
  if(v.flags.includes('MISSING_PO_FILE'))fail(422,'Upload the original customer PO before approval.');
  if(v.flags.some(f=>['CREDIT_EXCEEDED','CREDIT_BALANCE_UNAVAILABLE'].includes(f))&&!hasPermission(user,'orders.credit.review'))fail(403,'Owner review is required for financial credit exceptions.');
  if(v.flags.includes('QUOTE_CHANGED_OR_UNAPPROVED')||v.flags.includes('SELLER_STATE_CHANGED')||v.flags.includes('INACTIVE_CUSTOMER')||v.flags.includes('INACTIVE_ITEM')||v.flags.includes('MISSING_COST')||v.flags.includes('MISSING_POLICY'))fail(409,'Correct the source quotation, seller state, inactive records or missing item costs before approval.');
