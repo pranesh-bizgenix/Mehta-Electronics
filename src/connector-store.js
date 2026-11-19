@@ -14,6 +14,7 @@ export function connectorConnectionState(connector, now = Date.now()) {
   if (connector.status === 'error') return 'error';
   if (connector.pairing_expires_at) return new Date(connector.pairing_expires_at).getTime() > now ? 'awaiting_pairing' : 'pairing_expired';
   if (!connector.last_seen_at) return 'awaiting_connection';
+  if (connector.upload_progress_at && now - new Date(connector.upload_progress_at).getTime() < 3 * 60_000) return 'uploading';
   const seen = connector.heartbeat_at || connector.last_seen_at;
   if (now - new Date(seen).getTime() > 3 * 60_000) return 'offline';
   if (connector.tally_available === false) return 'tally_unavailable';
@@ -190,10 +191,11 @@ export function createConnectorStore(config, {database:providedDatabase} = {}) {
       const database = requireDb();
       if (!readOnly) await markStalledRuns(database,config.tallyStalledRunMinutes || 30);
       const connectors = await database`SELECT c.id,c.profile_name,c.expected_company_name,c.machine_name,c.agent_version,c.status,c.created_at,c.last_seen_at,c.last_sync_at,c.revoked_at,c.pairing_expires_at,
-        h.tally_available,h.selected_company,h.open_companies,h.updated_at AS heartbeat_at
+        h.tally_available,h.selected_company,h.open_companies,h.updated_at AS heartbeat_at,
+        (SELECT max(j.last_progress_at) FROM tally_sync_jobs j WHERE j.connector_id=c.id AND j.status='running') AS upload_progress_at
         FROM tally_connectors c LEFT JOIN tally_connector_heartbeats h ON h.connector_id=c.id ORDER BY c.created_at DESC`;
       const jobs = await database`SELECT id,connector_id,company_name,company_guid,status,message,record_count,started_at,completed_at FROM tally_sync_jobs ORDER BY started_at DESC LIMIT 20`;
-      return { connectors: connectors.map(connector => ({ ...connector, connector_version:connector.heartbeat_at ? connector.agent_version : null,connection_state: connectorConnectionState(connector) })), jobs };
+      return { connectors: connectors.map(connector => ({ ...connector, connector_version:connector.heartbeat_at ? connector.agent_version : null,connection_state: connectorConnectionState({...connector,last_sync_at:jobs.some(j=>j.connector_id===connector.id&&j.status==='stored')?connector.last_sync_at:null}) })), jobs };
     },
     async revoke(id) { const database = requireDb(); const result = await database`UPDATE tally_connectors SET status='revoked',revoked_at=now() WHERE id=${id} AND status='active' RETURNING id`; if (!result.length) { const error = new Error('Active connector not found.'); error.status = 404; throw error; } },
     async authenticate(headers) {
@@ -249,6 +251,20 @@ export function createConnectorStore(config, {database:providedDatabase} = {}) {
       if (!sameCompany(company, connector.expected_company_name) || !validDate(from) || !validDate(to) || from > to) { const error = new Error('Invalid company or sync window.'); error.status = 422; throw error; }
       const [knownCompany]=await database`SELECT tally_guid FROM tally_companies WHERE name=${company}`;
       if(knownCompany?.tally_guid&&(!clean(body.companyGuid)||knownCompany.tally_guid.trim().toLowerCase()!==clean(body.companyGuid).toLowerCase()))throw Object.assign(new Error('Company GUID is missing or does not match the imported company. Review connector company selection.'),{status:422});
+      // A token refresh/restart must resume the same immutable package rather than
+      // create another historical upload. Connector and exact source scope match.
+      const syncId=clean(body.syncId,200);
+      if(syncId){
+        const [prior]=await database`SELECT id,sync_job_id FROM tally_upload_sessions WHERE connector_id=${connector.id}
+          AND sync_id=${syncId} AND company_name=${company} AND sync_from=${from} AND sync_to=${to}
+          AND company_guid IS NOT DISTINCT FROM ${clean(body.companyGuid)||null}
+          AND collection_metadata=${database.json(metadata)} AND read_request_ids=ARRAY(SELECT jsonb_array_elements_text(${JSON.stringify(requests)}::text::jsonb)::uuid)
+          AND status IN ('receiving','stored') ORDER BY created_at DESC,id DESC LIMIT 1`;
+        if(prior && (!body.syncJobId || clean(body.syncJobId,80)===prior.sync_job_id)){
+          const chunks=await database`SELECT field_name,count(*)::integer AS n,min(sequence) AS first,max(sequence) AS last FROM tally_upload_chunks WHERE session_id=${prior.id} GROUP BY field_name`;
+          return {sessionId:prior.id,syncJobId:prior.sync_job_id,receivedChunks:Object.fromEntries(chunks.filter(c=>c.first===0&&c.last+1===c.n).map(c=>[c.field_name,c.n]))};
+        }
+      }
       const sessionId = crypto.randomUUID();
       let jobId = clean(body.syncJobId, 80);
       if (jobId) {
@@ -312,15 +328,17 @@ export function createConnectorStore(config, {database:providedDatabase} = {}) {
       if (!supportedFields.has(field) || !Number.isInteger(sequence) || sequence < 0 || sequence > 100_000 || content.length > 6_000_000) { const error = new Error('Invalid upload chunk.'); error.status = 422; throw error; }
       const stored=await database`SELECT id FROM tally_upload_sessions WHERE id=${body.sessionId} AND connector_id=${connector.id} AND status='stored'`;
       if(stored.length){
-        const prior=await database`SELECT content FROM tally_upload_chunks WHERE session_id=${body.sessionId} AND field_name=${field} AND sequence=${sequence}`;
-        if(prior[0]?.content===content)return;
+        const prior=await database`SELECT content=${content} AS matches FROM tally_upload_chunks WHERE session_id=${body.sessionId} AND field_name=${field} AND sequence=${sequence}`;
+        if(prior[0]?.matches)return;
         const error=new Error('Stored upload differs from retried chunk; create a new sync session.');error.status=409;throw error;
       }
       const session = await database`SELECT id FROM tally_upload_sessions WHERE id=${body.sessionId} AND connector_id=${connector.id} AND status='receiving'`;
       if (!session.length) { const error = new Error('Upload session is unavailable.'); error.status = 404; throw error; }
-      await database`INSERT INTO tally_upload_chunks(session_id,field_name,sequence,content) VALUES(${body.sessionId},${field},${sequence},${content}) ON CONFLICT(session_id,field_name,sequence) DO NOTHING`;
-      const prior=await database`SELECT content FROM tally_upload_chunks WHERE session_id=${body.sessionId} AND field_name=${field} AND sequence=${sequence}`;
-      if(prior[0]?.content!==content)throw Object.assign(new Error('Chunk differs from retained data; create a new sync session.'),{status:409});
+      const inserted=await database`INSERT INTO tally_upload_chunks(session_id,field_name,sequence,content) VALUES(${body.sessionId},${field},${sequence},${content}) ON CONFLICT(session_id,field_name,sequence) DO NOTHING RETURNING sequence`;
+      if(!inserted.length){
+        const prior=await database`SELECT content=${content} AS matches FROM tally_upload_chunks WHERE session_id=${body.sessionId} AND field_name=${field} AND sequence=${sequence}`;
+        if(!prior[0]?.matches)throw Object.assign(new Error('Chunk differs from retained data; create a new sync session.'),{status:409});
+      }
       await database`UPDATE tally_sync_jobs SET last_progress_at=now() WHERE id=(SELECT sync_job_id FROM tally_upload_sessions WHERE id=${body.sessionId}) AND status='running'`;
     },
   };

@@ -16,6 +16,19 @@ export async function indexCompanyMetadata(sql,companyId,sessionId,at) {
     FROM tally_companies c WHERE c.id=${companyId} ON CONFLICT DO NOTHING RETURNING id`;
 }
 
+// Bound each network write; retain the same source fields, hashes and row IDs.
+export function* visibilityBatches(records,payload,{maxRows=100,maxBytes=2*1024*1024}={}) {
+  let batch=[],bytes=0;
+  for(const row of records){
+    const item={entity:row.entity,key:row.key,name:row.name,parent:row.parent||null,raw:row.raw,
+      stored:{...row.stored,raw_record:undefined,session_id:payload.session_id,company_id:payload.company_id}};
+    const size=Buffer.byteLength(JSON.stringify(item));
+    if(batch.length&&(batch.length>=maxRows||bytes+size>maxBytes)){yield batch;batch=[];bytes=0;}
+    batch.push(item);bytes+=size;
+  }
+  if(batch.length)yield batch;
+}
+
 /** Replays immutable payloads into the additive index ONLY; no source-table writes. */
 export async function replayVisibilityPayload(sql,payload) {
   const xml=cleanXml(payload.content);
@@ -76,11 +89,12 @@ export async function replayVisibilityPayload(sql,payload) {
   let indexed=0;
   for(const row of invalid)await sql`INSERT INTO tally_import_quarantine(id,company_id,session_id,dataset,record_index,reason,raw_record)
     VALUES(${crypto.randomUUID()},${payload.company_id},${payload.session_id},${payload.dataset},${row.index},${row.reason},${sql.json(row.raw)}) ON CONFLICT(session_id,dataset,record_index) DO NOTHING`;
-  for(const row of records) {
-    const raw=sql.json(row.raw),stored=sql.json({...row.stored,raw_record:undefined,session_id:payload.session_id,company_id:payload.company_id});
+  for(const batch of visibilityBatches(records,payload)) {
     const inserted=await sql`INSERT INTO tally_visibility_records(id,company_id,entity,record_key,session_id,payload_id,name,parent_name,raw_record,fields,content_hash,observed_at)
-      SELECT md5(${row.entity} || ${row.key} || ${payload.session_id} || md5(${raw}::jsonb::text)),${payload.company_id},${row.entity},${row.key},${payload.session_id},${payload.id},${row.name},${row.parent || null},${raw},
-        tally_flatten_fields(${stored}::jsonb - 'raw_record' - 'fetched_at','/stored') || tally_flatten_fields(${raw}::jsonb,'/xml'),md5(${raw}::jsonb::text),${payload.received_at}
+      SELECT md5((r->>'entity') || (r->>'key') || ${payload.session_id}::text || md5((r->'raw')::text)),
+        ${payload.company_id}::uuid,r->>'entity',r->>'key',${payload.session_id}::uuid,${payload.id}::uuid,r->>'name',r->>'parent',r->'raw',
+        tally_flatten_fields((r->'stored') - 'raw_record' - 'fetched_at','/stored') || tally_flatten_fields(r->'raw','/xml'),md5((r->'raw')::text),${payload.received_at}::timestamptz
+      FROM jsonb_array_elements(${sql.json(batch)}::jsonb) AS r
       ON CONFLICT DO NOTHING RETURNING id`;
     indexed+=inserted.length;
   }

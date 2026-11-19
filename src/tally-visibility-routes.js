@@ -1,6 +1,6 @@
 import { hasPermission } from './rbac.js';
 import {readTallyFreshness} from './tally-freshness.js';
-import {tallySyncMonitor,retryTallyRead} from './tally-sync-monitor.js';
+import {tallySyncMonitor,tallyInitialSyncMonitor,retryTallyRead} from './tally-sync-monitor.js';
 import {requestTallyRead} from './tally-read-requests.js';
 import {TallyConflictService} from './tally-conflicts.js';
 import {downloadRetainedPayload} from './tally-payload-download.js';
@@ -19,6 +19,7 @@ export function tallyVisibilityRoutes({db,route,json,readJson,service:injectedSe
     if (!hasPermission(user,visibilityPermission(kind))) throw fail(403,'Permission denied.');
   };
   const routes = [
+    route('GET','/api/tally/monitor/initial','tally.read',async({res,user})=>json(res,200,await tallyInitialSyncMonitor(db,user))),
     route('GET','/api/tally/monitor','tally.read',async({res,url,user})=>json(res,200,await tallySyncMonitor(db,url,user))),
     route('POST','/api/tally/monitor/request-read','tally.sync',async({req,res,url,user})=>json(res,202,await requestTallyRead(db,url,await readJson(req),user))),
     route('POST','/api/tally/monitor/jobs/:id/retry','tally.sync',async({req,res,url,user,params})=>json(res,202,await retryTallyRead(db,url,params.id,await readJson(req),user))),

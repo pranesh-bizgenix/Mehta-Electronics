@@ -21,6 +21,7 @@ import { createQuotationPdf } from './quotation-pdf.js';
 import { sendQuotationEmail } from './mailer.js';
 import { createConnectorStore } from './connector-store.js';
 import { importTallySession } from './tally-import.js';
+import { createTallyImportCoordinator } from './tally-import-coordinator.js';
 import { tallyMasterList,masterDefinition } from './tally-masters.js';
 import {readCompany} from './tally-read-service.js';
 import { tallyVisibilityRoutes } from './tally-visibility-routes.js';
@@ -179,6 +180,7 @@ function publicUser(row) {
 }
 
 export function createApp({ db, config, fetchImpl = fetch, sendMailImpl = sendQuotationEmail, clock, outboundMailer, connectorStore:providedConnectorStore }) {
+  const pendingTallyImports = createTallyImportCoordinator(id => importTallySession(db,id));
   const connectorStore = providedConnectorStore ?? createConnectorStore(config,{database:db.sql});
   const modules = createModules({ db, config, clock, outboundMailer });
   const automationCredentials=createAutomationCredentials(db,clock);
@@ -389,10 +391,22 @@ export function createApp({ db, config, fetchImpl = fetch, sendMailImpl = sendQu
       const connector = await connectorStore.authenticate(req.headers); const body = await readConnectorJson(req);
       if (body.action === 'start') return json(res, 200, { ok: true, ...(await connectorStore.start(connector, body)) });
       if (body.action === 'append') { await connectorStore.append(connector, body); return json(res, 200, { ok: true, sequence: body.sequence }); }
-      if (body.action === 'finalize') {
+      if (body.action === 'finalize' || body.action === 'finalize-status') {
         if(!/^[0-9a-f-]{36}$/i.test(body.sessionId||''))throw new HttpError(422,'Invalid upload session.');
         const session=await db.prepare('SELECT id FROM tally_upload_sessions WHERE id=? AND connector_id=?').get(body.sessionId,connector.id);
         if(!session)throw new HttpError(404,'Upload session is unavailable.');
+        if (body.async === true || body.action === 'finalize-status') {
+          const state = await db.prepare('SELECT status,import_summary FROM tally_upload_sessions WHERE id=? AND connector_id=?').get(body.sessionId,connector.id);
+          if (pendingTallyImports.isPending(body.sessionId)) {
+            await db.prepare("UPDATE tally_sync_jobs SET status='running',message='Indexing retained XML',last_progress_at=now(),completed_at=NULL WHERE id=(SELECT sync_job_id FROM tally_upload_sessions WHERE id=? AND connector_id=?) AND status IN ('running','stalled') AND last_progress_at < now()-interval '30 seconds'").run(body.sessionId,connector.id);
+            return json(res,202,{ok:true,status:'indexing'});
+          }
+          if (state.status === 'stored' || (body.action === 'finalize-status' && state.status === 'failed')) return json(res,200,{ok:true,...state.import_summary,status:state.import_summary?.status || state.status});
+          if (body.action === 'finalize-status') return json(res,200,{ok:true,status:'receiving'});
+          await db.prepare("UPDATE tally_sync_jobs SET status='running',message='Indexing retained XML',last_progress_at=now(),completed_at=NULL WHERE id=(SELECT sync_job_id FROM tally_upload_sessions WHERE id=? AND connector_id=?)").run(body.sessionId,connector.id);
+          pendingTallyImports.start(body.sessionId);
+          return json(res,202,{ok:true,status:'indexing'});
+        }
         const summary=await importTallySession(db,body.sessionId);
         if(summary.status==='failed')throw new HttpError(422,'Import failed; raw data retained. See Tally Connector for dataset errors.');
         return json(res,200,{ok:true,...summary});
