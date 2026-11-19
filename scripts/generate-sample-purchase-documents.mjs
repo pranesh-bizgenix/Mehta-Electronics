@@ -1,0 +1,11 @@
+import fs from 'node:fs';import {purchaseDocumentPdf} from '../src/purchase-document-pdf.js';import {purchaseDocumentTotals} from '../src/purchase-document-math.js';
+const out='verification-output/purchase-documents/2026-11-18';fs.mkdirSync(out,{recursive:true});
+const line={partCode:'DEMO-CODE-001',description:'Fictional electrical component for layout testing only',make:'DEMO MAKE',quantity:'2',uom:'NOS',hsn:'00000000',unitPrice:'100',discountPercent:'10',taxPercent:'18'};
+const company={name:'DEMO Mehta issuer - sample only',address:'[Registered address pending confirmation]',gstin:'[GSTIN pending confirmation]',contact:'[Contact pending confirmation]',footer:'SAMPLE - fictional data - not for issue',showListPriceDiscount:true};
+const supplier={name:'DEMO Supplier - fictional',address:'Fictional supplier address',gstin:'[Sample GSTIN placeholder]'};
+const common={date:'2026-11-18',company,supplier,terms:'[Purchasing terms pending confirmation]'};
+const rfq={kind:'RFQ',number:'DEMO-RFQ/2026-27/000001',status:'DRAFT',payload:{...common,lines:[line],responseDeadline:'2026-11-25',requestedLeadTime:'[To be entered]',requestedTerms:{priceBasis:'[To be entered]',delivery:'[To be entered]',payment:'[To be entered]',validity:'[To be entered]'}}};
+await fs.promises.writeFile(out+'/sample-vendor-rfq.pdf',await purchaseDocumentPdf(rfq,{sample:true,draft:true}));
+for(const state of ['33','19']){const totals=purchaseDocumentTotals([line],state,'33',true),po={kind:'PO',number:`DEMO-PO/2026-27/0000${state}`,status:'DRAFT',payload:{...common,lines:totals.lines.map(l=>({...l,netRate:'90.00'})),totals,billTo:'[Mehta billing address pending]',shipTo:'[Delivery address pending]',deliveryDate:'2026-11-30',paymentTerms:'[Pending confirmation]',freightPacking:'[Pending confirmation]',signatory:'[Pending confirmation]'}};await fs.promises.writeFile(`${out}/sample-supplier-po-${state}.pdf`,await purchaseDocumentPdf(po,{sample:true,draft:true}));}
+const long={...rfq,payload:{...rfq.payload,lines:Array.from({length:36},(_,i)=>({...line,partCode:`DEMO-${i+1}`}))}};await fs.promises.writeFile(out+'/sample-rfq-multipage.pdf',await purchaseDocumentPdf(long,{sample:true,draft:true}));
+console.log('Generated four fictional, watermarked PDF samples; no database writes.');
