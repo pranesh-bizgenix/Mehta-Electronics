@@ -11,6 +11,8 @@ node_modules/
 *.log
 *.tsbuildinfo
 coverage/
+# Local verification evidence, credentials, generated PDFs and diagnostic helpers.
+verification-output/
 .next-capture/
 apps/web/.next-capture/
 apps/web/.next-tally-visibility/
