@@ -35,6 +35,7 @@ import { managedQuote,quoteDetail,saveQuote,quoteAction,emailWorkflowQuote,legac
 import { quotationPdf } from './quotation-document.js';
 import { salesOrderRoutes } from './sales-order-routes.js';
 import { procurementRoutes } from './procurement-routes.js';
+import { purchaseDocumentRoutes } from './purchase-document-routes.js';
 import { logisticsRoutes } from './logistics-routes.js';
 import { managedOrder,orderDetail,orderAction,saveOrder,orderQuoteSource,legacyOrderDetail } from './sales-orders.js';
 
@@ -197,6 +198,7 @@ export function createApp({ db, config, fetchImpl = fetch, sendMailImpl = sendQu
     ...quotationWorkflowRoutes({db,config,route,json,readJson}),
     ...salesOrderRoutes({db,config,route,json,readJson}),
     ...procurementRoutes({db,route,json,readJson}),
+    ...purchaseDocumentRoutes({db,route,json,readJson}),
     ...logisticsRoutes({db,route,json,readJson}),
     ...storedTallyRoutes({db,config,route,json,readJson}),
     ...tallyVisibilityRoutes({db,route,json,readJson}),
