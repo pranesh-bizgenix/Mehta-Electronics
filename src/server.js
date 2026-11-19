@@ -10,7 +10,7 @@ process.env.NEXT_DIST_DIR ||= dev?'.next-dev':'.next';
 let config;
 try { config = getConfig(); }
 catch (error) {
-  console.error(error.code === 'LOCAL_REVIEW_PRODUCTION_FORBIDDEN' ? error.message : 'ControlDesk configuration is invalid. Check the local configuration.');
+  console.error(['LOCAL_REVIEW_PRODUCTION_FORBIDDEN','MFA_PRODUCTION_REQUIRED','MFA_ENCRYPTION_KEY_REQUIRED'].includes(error.code) ? error.message : 'ControlDesk configuration is invalid. Check the local configuration.');
   process.exit(1);
 }
 let db;

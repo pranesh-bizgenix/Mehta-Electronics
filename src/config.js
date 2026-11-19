@@ -59,5 +59,11 @@ export function getConfig(overrides = {}) {
   if ((config.isProduction || process.env.NODE_ENV === 'production') && config.localReviewAccess) {
     throw Object.assign(new Error('ControlDesk cannot start in production with LOCAL_REVIEW_ACCESS=true. Set LOCAL_REVIEW_ACCESS=false and use normal staff authentication.'), { code: 'LOCAL_REVIEW_PRODUCTION_FORBIDDEN' });
   }
+  if ((config.isProduction || process.env.NODE_ENV === 'production') && !config.mfaEnabled) {
+    throw Object.assign(new Error('ControlDesk production requires MFA_ENABLED=true. Enroll required staff through the normal two-factor setup before business access.'), {code:'MFA_PRODUCTION_REQUIRED'});
+  }
+  if ((config.isProduction || process.env.NODE_ENV === 'production') && Buffer.from(String(config.appEncryptionKey),'base64').length !== 32) {
+    throw Object.assign(new Error('ControlDesk production requires APP_ENCRYPTION_KEY to be a base64-encoded 32-byte key for two-factor secrets.'),{code:'MFA_ENCRYPTION_KEY_REQUIRED'});
+  }
   return config;
 }

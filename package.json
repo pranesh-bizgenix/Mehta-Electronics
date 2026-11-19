@@ -10,6 +10,7 @@
     "seed:demo": "node scripts/seed-demo.mjs",
     "pdf:sample": "node scripts/generate-sample-quotation.mjs",
     "reset-password": "node scripts/reset-password.mjs",
+    "provision:first-owner": "node scripts/provision-first-owner.mjs",
     "test": "node scripts/run-tests.mjs",
     "lint": "node scripts/lint.mjs",
     "build": "node scripts/build.mjs",

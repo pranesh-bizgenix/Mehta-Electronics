@@ -14,13 +14,12 @@ the authorised development-only localhost review mode remain unchanged.
 
 ## Operator procedure
 
-1. Use only the configured `mehta_electronics_local` database and the existing
-   startup commands. Do not create another database or overwrite the real `.env`.
+1. Use only the configured, authorized database and the existing startup commands.
+   The user-authorized RDS exception is documented in `rds-decision-log.md`.
 2. If startup reports `ACTIVE_OWNER_REQUIRED`, stop. Confirm the intended host and
    database with the deployment owner, without copying credentials into logs.
 3. Obtain an explicitly approved first-Owner provisioning or account recovery
-   procedure from the deployment owner/security engineer. This repository has no
-   first-account creation CLI; changing historical seed variables will not help.
+   procedure from the deployment owner/security engineer. The explicit first-account CLI is documented below; changing historical seed variables will not help.
    Do not invent a user, email, password or approval record.
 4. Once an authorised active Owner exists, start normally and sign in with that
    account. The existing Owner provisions staff through `/users`; established
@@ -29,3 +28,13 @@ the authorised development-only localhost review mode remain unchanged.
 This guard does not certify real staff/reviewer coverage or deployment readiness.
 `test/owner-startup.test.js` verifies refusal, existing access and absence of
 database mutations using protocol spies without connecting to any database.
+
+## Explicit first-Owner command
+
+Run in an interactive PowerShell window only after authorizing the intended person's identity:
+
+```powershell
+npm run provision:first-owner -- "Full name" "owner@example.com" "Approved first Owner setup" --confirm-first-owner
+```
+
+The command verifies the migration ledger and checks that there are no staff accounts under a database lock. It requires the active protected Owner role, privately prompts twice for a strong password, hashes it, writes an audit record and requires a password change at first login. No password is accepted on the command line or printed. Audit failure rolls back account creation. It refuses to act as account recovery when any users exist. Normal startup still never creates an account.

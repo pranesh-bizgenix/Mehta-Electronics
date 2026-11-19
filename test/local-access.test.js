@@ -24,7 +24,7 @@ test('local review clears onboarding gates in request context only and keeps rea
 
 test('production refuses local review before startup and config overrides cannot weaken the environment',()=>{
   assert.throws(()=>getConfig({...config,isProduction:true}),{code:'LOCAL_REVIEW_PRODUCTION_FORBIDDEN'});
-  assert.equal(getConfig({...config,isProduction:true,localReviewAccess:false}).localReviewAccess,false);
+  assert.equal(getConfig({...config,isProduction:true,localReviewAccess:false,mfaEnabled:true,appEncryptionKey:Buffer.alloc(32).toString('base64')}).localReviewAccess,false);
   const result=spawnSync(process.execPath,['--input-type=module','--eval',`
     import {getConfig} from './src/config.js';
     import {localAccessAllowed} from './src/local-access.js';
@@ -50,4 +50,21 @@ test('production never grants local review or clears onboarding gates even for l
   }
   assert.equal(getConfig({...config,isProduction:false}).localReviewAccess,true);
   assert.equal(localAccessAllowed(request(),{...config,isProduction:false}),true);
+});
+
+test('production requires MFA even when a caller tries to override the production environment',()=>{
+ const result=spawnSync(process.execPath,['--input-type=module','--eval',`
+  import {getConfig} from './src/config.js';
+  for(const overrides of [{},{isProduction:false},{mfaEnabled:false}]){
+   try{getConfig(overrides);process.exitCode=1;}
+   catch(error){if(error.code!=='MFA_PRODUCTION_REQUIRED')throw error;}
+  }
+  if(!getConfig({mfaEnabled:true,appEncryptionKey:Buffer.alloc(32).toString('base64')}).mfaEnabled)process.exitCode=1;
+ `],{cwd:fileURLToPath(new URL('..',import.meta.url)),env:{...process.env,NODE_ENV:'production',LOCAL_REVIEW_ACCESS:'false',MFA_ENABLED:'false'},encoding:'utf8',windowsHide:true});
+ assert.equal(result.status,0,result.stderr);
+});
+
+test('production rejects a missing or malformed MFA encryption key before opening a database',()=>{
+ for(const appEncryptionKey of ['',Buffer.alloc(16).toString('base64'),'invalid'])assert.throws(()=>getConfig({isProduction:true,localReviewAccess:false,mfaEnabled:true,appEncryptionKey}),{code:'MFA_ENCRYPTION_KEY_REQUIRED'});
+ assert.equal(getConfig({isProduction:true,localReviewAccess:false,mfaEnabled:true,appEncryptionKey:Buffer.alloc(32).toString('base64')}).mfaEnabled,true);
 });
