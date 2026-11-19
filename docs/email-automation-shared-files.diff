@@ -1,0 +1,105 @@
+diff --git a/apps/web/components/shell/app-shell.tsx b/apps/web/components/shell/app-shell.tsx
+index 2d869da..669b254 100644
+--- a/apps/web/components/shell/app-shell.tsx
++++ b/apps/web/components/shell/app-shell.tsx
+@@ -25,13 +25,13 @@ export function AppShell({ children }: { children: ReactNode }) {
+   const router = useRouter();
+   const { preferences, update } = usePreferences();
+   const [drawerOpen, setDrawerOpen] = useState(false);
+-  const [adminOpen, setAdminOpen] = useState(false);
++  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
+   const [paletteOpen, setPaletteOpen] = useState(false);
+   const [badges, reloadBadges] = useAsync(() => state.kind === 'ready' && !state.user.mustChangePassword ? api.data<Badges>('GET', '/api/v1/me/badges') : Promise.resolve({} as Badges), [state.kind, state.kind === 'ready' && state.user.mustChangePassword, pathname]);
+ 
+   useHotkey('k', () => setPaletteOpen(true));
+   useEffect(() => { setDrawerOpen(false); }, [pathname]);
+-  useEffect(() => {if(NAV.find(group=>group.label==='Admin')?.items.some(item=>pathname===item.href))setAdminOpen(true);},[pathname]);
++  useEffect(() => {for(const group of NAV)if((group.label==='Admin'||group.collapsible)&&group.items.some(item=>pathname===item.href||(group.collapsible&&pathname.startsWith(`${item.href}/`))))setOpenGroups(value=>({...value,[group.label]:true}));},[pathname]);
+   useEffect(() => {
+     if (state.kind === 'anonymous') router.replace(`/login?next=${encodeURIComponent(pathname)}`);
+     if (state.kind === 'ready' && state.mfa.required && !state.mfa.verified) router.replace('/login');
+@@ -65,8 +65,8 @@ export function AppShell({ children }: { children: ReactNode }) {
+             if (!items.length) return null;
+             return (
+               <div key={group.label} className="ds-nav">
+-                {group.label==='Admin'?<button type="button" className="ds-nav-group ds-nav-group-toggle" aria-expanded={adminOpen||collapsed} onClick={()=>setAdminOpen(value=>!value)}>Administration<Icon name={adminOpen?'chevronDown':'chevronRight'}/></button>:<p className="ds-nav-group">{group.label}</p>}
+-                {(group.label!=='Admin'||adminOpen||collapsed)&&items.map((item) => {
++                {group.label==='Admin'||group.collapsible?<button type="button" className="ds-nav-group ds-nav-group-toggle" aria-expanded={Boolean(openGroups[group.label])||collapsed} onClick={()=>setOpenGroups(value=>({...value,[group.label]:!value[group.label]}))}>{group.label==='Admin'?'Administration':group.label}<Icon name={openGroups[group.label]?'chevronDown':'chevronRight'}/></button>:<p className="ds-nav-group">{group.label}</p>}
++                {(!(group.label==='Admin'||group.collapsible)||openGroups[group.label]||collapsed)&&items.map((item) => {
+                   const count = item.badge ? counts[item.badge] : undefined;
+                   const current = pathname === item.href || (item.href !== '/tally' && item.href !== '/purchasing' && pathname.startsWith(`${item.href}/`));
+                   const content = <><Icon name={item.icon} /><span className="ds-nav-label">{item.label}</span>{!!count && <span className="ds-nav-badge" data-tone={item.badgeTone} aria-label={`${count} pending`}>{count > 99 ? '99+' : count}</span>}</>;
+diff --git a/apps/web/components/shell/nav-config.ts b/apps/web/components/shell/nav-config.ts
+index 8eb5328..85c9fb4 100644
+--- a/apps/web/components/shell/nav-config.ts
++++ b/apps/web/components/shell/nav-config.ts
+@@ -1,4 +1,5 @@
+ import type { IconName } from '@/components/ds/icons';
++import {emailAutomationEnabled} from '../../features/email-automation/config';
+ 
+ export type BadgeKey = 'myOpenWork' | 'slaBreaches' | 'openTasks' | 'openExceptions' | 'draftsAwaitingApproval';
+ 
+@@ -13,9 +14,17 @@ export interface NavItem {
+   badgeTone?: 'danger' | 'warning';
+   keywords?: string;
+ }
+-export interface NavGroup { label: string; items: NavItem[] }
++export interface NavGroup { label: string; items: NavItem[]; collapsible?: boolean }
+ 
+ export const NAV: NavGroup[] = [
++  ...(emailAutomationEnabled() ? [{ label: 'EMAIL AUTOMATION', collapsible: true, items: [
++    { href: '/email-automation/inbox', label: 'Unified email inbox', icon: 'mail' as IconName, permission: 'email_automation.read' },
++    { href: '/email-automation/attachments', label: 'Attachment manager', icon: 'items' as IconName, permission: 'email_automation.read' },
++    { href: '/email-automation/processing', label: 'Processing monitor', icon: 'clock' as IconName, permission: 'email_automation.read' },
++    { href: '/email-automation/dashboard', label: 'Automation dashboard', icon: 'dashboard' as IconName, permission: 'email_automation.read' },
++    { href: '/email-automation/integrations', label: 'Integration monitor', icon: 'plug' as IconName, permission: 'email_automation.integrations.read' },
++    { href: '/email-automation/errors', label: 'Error center', icon: 'alert' as IconName, permission: 'email_automation.read' }
++  ] }] : []),
+   { label: 'Overview', items: [
+     { href: '/dashboard', label: 'Dashboard', icon: 'dashboard', permission: 'dashboard.read', keywords: 'home owner kpi' },
+     { href: '/work', label: 'My work', icon: 'clock', permission: 'work.read', badge: 'slaBreaches', badgeTone: 'danger', keywords: 'sla due' }
+diff --git a/apps/web/next.config.ts b/apps/web/next.config.ts
+index 8f3c981..b5a6542 100644
+--- a/apps/web/next.config.ts
++++ b/apps/web/next.config.ts
+@@ -9,6 +9,7 @@ if (!['http:', 'https:'].includes(parsedBackendUrl.protocol) || parsedBackendUrl
+ 
+ const nextConfig: NextConfig = {
+   agentRules: false,
++  env: { NEXT_PUBLIC_EMAIL_AUTOMATION_ENABLED: process.env.EMAIL_AUTOMATION_ENABLED === 'true' ? 'true' : 'false' },
+   // Verification builds use a separate directory so they never disturb a running dev server.
+   distDir: process.env.NEXT_DIST_DIR || '.next',
+   poweredByHeader: false,
+diff --git a/src/app.js b/src/app.js
+index 5abd823..32cfc29 100644
+--- a/src/app.js
++++ b/src/app.js
+@@ -36,6 +36,7 @@ import { quotationPdf } from './quotation-document.js';
+ import { salesOrderRoutes } from './sales-order-routes.js';
+ import { procurementRoutes } from './procurement-routes.js';
+ import { purchaseDocumentRoutes } from './purchase-document-routes.js';
++import { emailAutomationRoutes } from './modules/email-automation/routes.js';
+ import { logisticsRoutes } from './logistics-routes.js';
+ import { managedOrder,orderDetail,orderAction,saveOrder,orderQuoteSource,legacyOrderDetail } from './sales-orders.js';
+ 
+@@ -199,6 +200,7 @@ export function createApp({ db, config, fetchImpl = fetch, sendMailImpl = sendQu
+     ...salesOrderRoutes({db,config,route,json,readJson}),
+     ...procurementRoutes({db,route,json,readJson}),
+     ...purchaseDocumentRoutes({db,route,json,readJson}),
++    ...emailAutomationRoutes({db,config,route,json}),
+     ...logisticsRoutes({db,route,json,readJson}),
+     ...storedTallyRoutes({db,config,route,json,readJson}),
+     ...tallyVisibilityRoutes({db,route,json,readJson}),
+diff --git a/src/config.js b/src/config.js
+index 37fe5cc..a164576 100644
+--- a/src/config.js
++++ b/src/config.js
+@@ -27,6 +27,8 @@ export function getConfig(overrides = {}) {
+     host: process.env.HOST || '127.0.0.1',
+     port: integer(process.env.PORT, 3000),
+     localReviewAccess: process.env.LOCAL_REVIEW_ACCESS === 'true',
++    emailAutomationEnabled: process.env.EMAIL_AUTOMATION_ENABLED === 'true',
++    emailAutomationDataMode: process.env.EMAIL_AUTOMATION_DATA_MODE === 'stored' ? 'stored' : 'mock',
+     tallyOrderComparisonEnabled: process.env.TALLY_ORDER_COMPARISON_ENABLED === 'true',
+     databaseUrl,
+     tallyConnectorOrgId: process.env.TALLY_CONNECTOR_ORG_ID || 'mehta-electronics',
