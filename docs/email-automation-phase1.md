@@ -77,7 +77,7 @@ The dedicated migration helper refuses to run unless 0061 is the sole pending mi
 | Existing purchasing regression tests | 10 passed | 10 passed within the focused regression run |
 | Focused frontend/config/auth/purchasing/module regression run | Purchasing baseline above | 41 passed, 0 failed, 2 opt-in database tests skipped in this run |
 | `npm.cmd run lint` | Not separately run before editing | Passed |
-| Explicit RDS rollback HTTP verification | Not applicable | 2 passed; stored-adapter schema test skipped because 0061 is not applied |
+| Explicit RDS rollback HTTP verification | Not applicable | After migration: 3 passed, 0 failed, 0 skipped, including stored-adapter SQL |
 | Browser verification with intercepted APIs | Not applicable | 13 checks passed, zero browser runtime errors; desktop and 390px mobile screenshots saved |
 
 The broader attempted regression run also encountered two existing local-only database tests (connectivity and live NUMERIC verification) blocked by the same environment guard. The final focused run excludes those two database-dependent files rather than bypassing their guard. Its command is:
@@ -87,15 +87,15 @@ $emailRegressionTests = (Get-ChildItem apps/web/test -Filter '*.test.mjs' | Wher
 node --test @emailRegressionTests test/local-access.test.js test/purchase-documents.test.js test/email-automation.test.js test/email-automation-http.test.js
 ```
 
-The separately authorized database check used `VERIFY_AUTHORIZED_RDS_ROLLBACK=true` for `node --test test/email-automation-http.test.js`. It verified real sessions, authenticated GETs, MFA rejection, no automatic role grants and privacy-safe audit events inside an outer transaction that rolled back. It creates no users or mailbox fixtures. Stored-adapter SQL and new table constraints remain unverified against the live database until 0061 is applied.
+The separately authorized database check used `VERIFY_AUTHORIZED_RDS_ROLLBACK=true` for `node --test test/email-automation-http.test.js`. It verified real sessions, authenticated GETs, MFA rejection, no automatic role grants and privacy-safe audit events inside an outer transaction that rolled back. It creates no users or mailbox fixtures. After the successful migration on 19 November 2026, the same check was rerun: all three tests passed, including the stored-adapter queries against the new schema, with no skipped tests.
 
 Browser testing used the existing listener, an ephemeral frontend-only flag override and intercepted in-memory API responses. Both the override and earlier configuration experiment were restored. No real mailbox traffic or ingestion was exercised. It covered the six landing screens, email details, shared attachment IDs, empty searches, API errors, existing Administration expansion, independent module collapse, denied roles and narrow-screen overflow. Screenshots and detailed results are in ignored `verification-output/email-automation/2026-11-19/`.
 
 Final live checks with the restored OFF flag: `/email-automation/inbox`, `/email-automation/attachments` and `/api/v1/email-automation/emails` return 404; existing `/api/health` returns 200. Handler tests cover all seven API paths when OFF and reject POST/PUT/PATCH/DELETE with 405 when enabled.
 
-**Deployment blocker:** migration 0061 is authored but **not applied**. The ledger confirmed 60 applied migrations, exactly 0061 pending and no checksum mismatches. A full backup completed and was verified, but its snapshot age exceeded the existing ten-minute migration freshness limit. The guarded runner refused with `MIGRATION_BACKUP_REQUIRED` before applying any schema changes. No migration guard was weakened. The existing running server was left running; a restart must wait until the pending migration is applied with an acceptable fresh backup. Run the guarded helper from an environment where the full backup can finish inside the existing window, or agree a separately reviewed operational solution. Permission keys cannot be assigned in the live UI until migration succeeds.
+**Deployment resolved — 19 November 2026:** the initial full backup exceeded the existing ten-minute freshness limit, so migration 0061 was correctly blocked. A subsequent full backup completed and passed archive, checksum and freshness verification. The existing guarded runner then applied exactly `0061_email_automation_read_models.sql` successfully: one migration applied, 61 total. No backup guard, existing migration or application source code was changed to resolve startup. The development server was started on the existing port 3000; `/api/health` and `/login` both returned 200. The module remains default OFF, so its pages and APIs still return 404. The two permission catalogue keys now exist and can be assigned through Users & roles; no role grants or mailbox fixtures were inserted.
 
-Automatic approval review initially rejected a broad backup/migration command because unrelated migrations had not been ruled out. Read-only ledger/checksum evidence and the new 0061-only helper resolved that approval concern. The remaining blocker is the technical backup freshness check, not an unapproved action.
+Automatic approval review initially rejected a broad backup/migration command because unrelated migrations had not been ruled out. Read-only ledger/checksum evidence and the 0061-only helper resolved that approval concern. The later successful backup and migration resolved the technical freshness blocker without weakening the check.
 
 ## Needs confirmation
 
@@ -104,6 +104,5 @@ Automatic approval review initially rejected a broad backup/migration command be
 - Gmail, S3 and AI provider health-check contracts, credential ownership and acceptable check freshness.
 - Email/body/attachment retention, access policy and whether future file preview/download is allowed.
 - Whether the first deployment should remain in labeled sample mode or use stored metadata, and whether the 1,000-record window needs database-wide search/pagination before live mailbox rollout.
-- Where to run the guarded migration so its verified full backup satisfies the existing ten-minute freshness requirement before deployment/restart.
 
 Phase 2 review queues, routing rules, workflows, drafts, approvals, templates and switches remain excluded.
