@@ -3,8 +3,17 @@ import { getConfig } from '../src/config.js';
 import { connectPostgres, parameterize } from '../src/postgres.js';
 import { assertCurrentDatabase } from '../src/database-guard.js';
 
+function testDatabaseUrl() {
+  const url = getConfig().databaseUrl;
+  const target = new URL(url);
+  if (decodeURIComponent(target.pathname.slice(1)) !== 'mehta_electronics_local' || !['localhost','127.0.0.1','[::1]'].includes(target.hostname)) {
+    throw new Error('Database-backed tests require the local mehta_electronics_local database. RDS fixtures are disabled. Set DATABASE_URL for this test process only; do not overwrite the deployment .env.');
+  }
+  return url;
+}
+
 const quote = name => `"${name.replaceAll('"', '""')}"`;
-const sessionKeys = ['mehta.actor_id','mehta.audit_reason','mehta.quotation_write','mehta.order_write','mehta.procurement_write','mehta.automation_credential_id'];
+const sessionKeys = ['mehta.actor_id','mehta.audit_reason','mehta.quotation_write','mehta.order_write','mehta.procurement_write','mehta.purchase_document_write','mehta.automation_credential_id'];
 function managed(statement) {
   const text = statement.replace(/'(?:''|[^'])*'/g, '').replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/--[^\r\n]*/g, ' ');
   if (/\b(?:BEGIN|COMMIT|ROLLBACK|SAVEPOINT|RELEASE|CREATE|ALTER|DROP|TRUNCATE|COPY|VACUUM|GRANT|REVOKE|RESET)\b|^\s*(?:END|SET|DO)\b/i.test(text) || text.includes(';')) {
@@ -22,7 +31,7 @@ export async function assertNoTestRows(sql) {
     if (dirty.length) throw new Error(`Test residue: VERIFY- rows remain in ${dirty.join(', ')}. No rows were deleted.`);
   };
   if (sql) return check(sql);
-  const connection = connectPostgres(getConfig().databaseUrl);
+  const connection = connectPostgres(testDatabaseUrl());
   try { await connection.begin('read only', check); } finally { await connection.end({ timeout: 5 }); }
 }
 
@@ -30,7 +39,21 @@ export async function assertNoTestRows(sql) {
  * Root workflows are serialized. Promise.all is not an independent-session race.
  */
 export async function withTestTransaction(run) {
-  const pool = connectPostgres(getConfig().databaseUrl);
+  return withRollbackTransaction(testDatabaseUrl(),run);
+}
+
+/** Explicit operational verification only; ordinary test suites remain local-only.
+ * User authorized this exact RDS target on 17 Nov. All changes must roll back.
+ */
+export async function withAuthorizedRdsRollbackVerification(run) {
+  if(process.env.VERIFY_AUTHORIZED_RDS_ROLLBACK !== 'true')throw new Error('Explicit RDS rollback verification opt-in is required.');
+  const url=getConfig().databaseUrl,target=new URL(url);
+  if(target.hostname!=='mehta-controldesk-db01.chs2eymsy2ec.ap-southeast-2.rds.amazonaws.com'||decodeURIComponent(target.pathname.slice(1))!=='postgres'||target.searchParams.get('sslmode')!=='require')throw new Error('RDS rollback verification refused an unexpected target.');
+  return withRollbackTransaction(url,run);
+}
+
+async function withRollbackTransaction(databaseUrl,run) {
+  const pool = connectPostgres(databaseUrl);
   let connection;
   try {
     connection = await pool.reserve();
@@ -67,8 +90,7 @@ export async function withTestTransaction(run) {
       }
       if (/^BEGIN(?: ISOLATION LEVEL REPEATABLE READ READ ONLY)?$/i.test(statement.trim())) {
         const name = `verify_workflow_${++counter}`;
-        const settings = [];
-        for (const key of sessionKeys) settings.push((await connection.unsafe('SELECT current_setting($1,true) AS value', [key]))[0].value || '');
+        const settings = (await connection.unsafe('SELECT current_setting(key,true) AS value FROM unnest($1::text[]) WITH ORDINALITY AS settings(key,position) ORDER BY position',[sessionKeys])).map(row=>row.value||'');
         await connection.unsafe(`SAVEPOINT ${name}`); stack.push({ name, settings }); return;
       }
       if (/^(COMMIT|ROLLBACK)$/i.test(statement.trim())) {
@@ -78,7 +100,7 @@ export async function withTestTransaction(run) {
         if (/ROLLBACK/i.test(statement)) await connection.unsafe(`ROLLBACK TO SAVEPOINT ${name}`);
         await connection.unsafe(`RELEASE SAVEPOINT ${name}`);
         // Production COMMIT clears SET LOCAL. Releasing a savepoint does not.
-        for (const [index, key] of sessionKeys.entries()) await connection.unsafe('SELECT set_config($1,$2,true)', [key, settings[index]]);
+        await connection.unsafe('SELECT set_config(key,value,true) FROM unnest($1::text[],$2::text[]) AS settings(key,value)',[sessionKeys,settings]);
         return;
       }
       managed(statement);
