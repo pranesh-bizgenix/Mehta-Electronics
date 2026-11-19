@@ -36,10 +36,14 @@ export function ScopeProvider({ children }: { children: ReactNode }) {
   }, []);
   useEffect(() => {
     if (state.kind !== 'ready' || state.user.mustChangePassword || !(can('customers.read') || can('items.read') || can('logistics.orders.read'))) return;
-    api.data<Company[]>('GET', '/api/tally/read-companies').then((list) => {
+    let active = true, busy = false;
+    const load = () => { if (busy) return; busy = true; void api.data<Company[]>('GET', '/api/tally/read-companies').then((list) => {
+      if (!active) return;
       setCompanies(list);
       setCompanyId((current) => current && list.some((c) => c.id === current) ? current : list[0]?.id ?? null);
-    }).catch(() => setCompanies([]));
+    }).catch(() => { /* Retain last known company selection on transient failures. */ }).finally(() => { busy = false; }); };
+    load(); const timer = setInterval(load, 30000);
+    return () => { active = false; clearInterval(timer); };
   }, [api, state.kind, state.kind === 'ready' && state.user.mustChangePassword, can]);
   useEffect(() => { localStorage.setItem(KEY, JSON.stringify({ companyId, period: periodKey })); }, [companyId, periodKey]);
 

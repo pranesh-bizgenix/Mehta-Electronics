@@ -1,5 +1,6 @@
 'use client';
 import Link from 'next/link';
+import {TallyInitialSync} from '@/features/workflows/tally-initial-sync';
 import {useState} from 'react';
 import {WriteMonitorSummary} from '@/features/tally-write/monitor-summary';
 import {useApi} from '@/lib/api/provider';
@@ -19,7 +20,7 @@ export default function SyncMonitorPage(){
  if(state.kind==='loading')return <CardSkeleton/>;
  if(!can('tally.read'))return <UnauthorizedState/>;
  const company=companies.find(c=>c.id===companyId);
- return company?<Monitor key={company.id} companyId={company.id}/>:<EmptyState title="Select a company">Choose the imported source company in the header.</EmptyState>;
+ return <div className="stack-lg"><TallyInitialSync/>{company&&<Monitor key={company.id} companyId={company.id}/>}</div>;
 }
 function Monitor({companyId}:{companyId:string}){
  const api=useApi(),toast=useToast(),[version,setVersion]=useState(0),[reason,setReason]=useState(''),[busy,setBusy]=useState(false),[actionError,setActionError]=useState<unknown>();

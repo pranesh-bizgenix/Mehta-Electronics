@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import {TallyInitialSync} from './tally-initial-sync';
 import {tallyRecordHref} from '../../../../public/crm-navigation.js';
 import {FreshnessBadge,type DatasetFreshness} from './tally-freshness';
 import {TallySalesDocuments} from './tally-sales-documents';
@@ -38,7 +39,12 @@ export function RecordWorkspace({ kind, children, preferredSource }: { kind: 'cu
   </section>;
 }
 
-export function TallyImports({kind}:{kind:'customers'|'items'}){const {companyId}=useScope();return companyId?<CompanyTallyImports key={companyId} kind={kind}/>:<EmptyState title="Select a company">Choose an imported company in the header.</EmptyState>;}
+export function TallyImports({kind}:{kind:'customers'|'items'}){
+ const {companyId,companies}=useScope(),{can}=useSession();
+ if(companyId)return <CompanyTallyImports key={companyId} kind={kind}/>;
+ if(!companies.length)return can('tally.read')?<TallyInitialSync/>:<EmptyState title="Tally data is not available yet">The first company import has not completed. Ask your Manager to check the sync monitor.</EmptyState>;
+ return <EmptyState title="Select a company">Choose an imported company in the header.</EmptyState>;
+}
 function CompanyTallyImports({ kind }: { kind: 'customers' | 'items' }) {
   const api = useApi(), { companyId } = useScope(), { can } = useSession();
   const [page, setPage] = useState(1), [search, setSearch] = useState(''), [version, setVersion] = useState(0);
@@ -95,12 +101,13 @@ function CompanyTallyImports({ kind }: { kind: 'customers' | 'items' }) {
 }
 
 export function TallyImportCoverage() {
-  const api = useApi(), { companyId } = useScope(), { can } = useSession();
+  const api = useApi(), { companyId, companies } = useScope(), { can } = useSession();
   const [data, setData] = useState<Overview>(), [customers, setCustomers] = useState<number>(), [error, setError] = useState<unknown>(), [version, setVersion] = useState(0);
   const allowed = can('tally.read');
   useEffect(() => {
-    if (!allowed) return;
-    const controller = new AbortController(); setData(undefined); setCustomers(undefined); setError(undefined);
+    setData(undefined); setCustomers(undefined); setError(undefined);
+    if (!allowed || !companyId) return;
+    const controller = new AbortController();
     Promise.all([
       api.get<Overview>('/api/v1/tally/visibility/overview', { query: { companyId }, signal: controller.signal }),
       can('customers.read') ? api.get<Listing>('/api/v1/tally/visibility/customers', { query: { companyId, pageSize: 1 }, signal: controller.signal }) : Promise.resolve(undefined)
@@ -114,8 +121,9 @@ export function TallyImportCoverage() {
   const missing = entities.filter(entity => !Number(data?.counts.find(c => c.entity === entity.id)?.count ?? 0));
   const imported = entities.length - missing.length;
   const itemCount = data?.counts.find(c => c.entity === 'items')?.count;
-  return <Card title="Tally data overview" actions={<Link className="workspace-text-link" href="/tally/connector">Connection details <Icon name="chevronRight" /></Link>}>
-    {error ? <ErrorState error={error} onRetry={() => setVersion(v => v + 1)} /> : !data ? <CardSkeleton /> : <div className="import-overview">
+  if (!companyId && !companies.length) return <TallyInitialSync/>;
+  return <Card title="Tally data overview" actions={<Link className="workspace-text-link" href={can('tally.connector.manage') ? '/tally/connector' : '/tally/monitor'}>{can('tally.connector.manage') ? 'Connection details' : 'Sync monitor'} <Icon name="chevronRight" /></Link>}>
+    {!companyId ? <EmptyState title={companies.length ? 'Select a Tally company' : 'No Tally data imported yet'}>{companies.length ? 'Choose a company from the company and period menu at the top of the page.' : 'The CRM has not received an imported company yet. Pairing or a heartbeat alone does not mean data has arrived. Complete a successful connector upload, then refresh this page.'}</EmptyState> : error ? <ErrorState error={error} onRetry={() => setVersion(v => v + 1)} /> : !data ? <CardSkeleton /> : <div className="import-overview">
       <div className="import-metrics">
         <Link href="/customers"><span>Imported customers</span><strong>{customers === undefined ? 'Unavailable' : customers.toLocaleString('en-IN')}</strong><small>Browse customer directory <Icon name="arrowRight" /></small></Link>
         <Link href="/items"><span>Stock items</span><strong>{Number(itemCount ?? 0).toLocaleString('en-IN')}</strong><small>Browse stock catalogue <Icon name="arrowRight" /></small></Link>

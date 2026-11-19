@@ -11,6 +11,7 @@ interface Job {id:string;connector_id:string;company_name:string;status:string;m
 interface Status {connectors:Connector[];jobs:Job[]}
 interface Credential {id:string;profileName:string;companyName:string;pairingCode?:string;apiBaseUrl?:string;expiresAt?:string;token?:string;orgId?:string}
 const guidance:Record<string,string>={
+ uploading:'Data chunks are reaching this CRM. Open the sync monitor for upload progress. A completed import is required before company records appear.',
  awaiting_pairing:'Enter a fresh pairing code in the Windows connector and click Connect and Start Service. Entering the code alone does not connect it.',
  pairing_expired:'The pairing code expired. Generate a fresh code and complete pairing within ten minutes.',
  awaiting_connection:'Start the configured connector on the Tally PC and check that it can reach this ControlDesk address.',
