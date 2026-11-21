@@ -1,5 +1,6 @@
 import PDFDocument from 'pdfkit';
 import {formatIndian,lineNet,format} from '../public/money.js';
+import {drawCompanyLogo} from './document-branding.js';
 
 const clean=(value)=>String(value??'').replace(/[–—−]/g,'-').replace(/₹/g,'INR ').replace(/[^\x0A\x20-\x7E]/g,'');
 const money=(value)=>`INR ${formatIndian(value)}`;
@@ -9,7 +10,15 @@ export function createQuotationPdf(config,quote){
     const doc=new PDFDocument({size:'A4',margin:42,bufferPages:true,info:{Title:`Quotation ${quote.quotation_number}`,Author:config.companyName,Subject:`Quotation for ${quote.customer_name}`}});
     const chunks=[];doc.on('data',chunk=>chunks.push(chunk));doc.on('end',()=>resolve(Buffer.concat(chunks)));doc.on('error',reject);
     const left=42;const right=553;const widths=[78,207,50,88,88];
-    const header=()=>{doc.rect(0,0,595,82).fill('#174c36');doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(22).text(clean(config.companyName),left,24);doc.font('Helvetica').fontSize(9).text(clean(config.companyAddress),left,52,{width:340});doc.font('Helvetica-Bold').fontSize(10).text('QUOTATION',430,25,{width:123,align:'right'});doc.font('Helvetica').fontSize(9).text(`${clean(quote.quotation_number)}  |  Rev ${quote.revision_number||1}`,395,46,{width:158,align:'right'});doc.fillColor('#17211c')};
+    const header=()=>{
+      doc.rect(0,0,595,82).fill('#174c36');
+      drawCompanyLogo(doc,left,15);
+      doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(16).text(clean(config.companyName),left+66,22,{width:280,height:23,ellipsis:true});
+      doc.font('Helvetica').fontSize(8.5).text(clean(config.companyAddress),left+66,49,{width:270,height:26,ellipsis:true});
+      doc.font('Helvetica-Bold').fontSize(10).text('QUOTATION',430,25,{width:123,align:'right'});
+      doc.font('Helvetica').fontSize(9).text(`${clean(quote.quotation_number)}  |  Rev ${quote.revision_number||1}`,395,46,{width:158,align:'right'});
+      doc.fillColor('#17211c');
+    };
     const tableHeader=(y)=>{doc.rect(left,y,right-left,24).fill('#e6efe9');doc.fillColor('#174c36').font('Helvetica-Bold').fontSize(8);['Item','Description','Qty','Net unit rate','Amount'].forEach((label,index)=>doc.text(label,left+widths.slice(0,index).reduce((a,b)=>a+b,0)+5,y+8,{width:widths[index]-10,align:index>1?'right':'left'}));doc.fillColor('#17211c');return y+24};
     const newPage=()=>{doc.addPage();header();return tableHeader(105)};
     header();

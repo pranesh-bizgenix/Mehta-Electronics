@@ -1,6 +1,7 @@
 import {lineNet,format,formatIndian} from '../public/money.js';
 import PDFDocument from 'pdfkit';
 import { fileURLToPath } from 'node:url';
+import {drawCompanyLogo} from './document-branding.js';
 
 // Customer-facing quotation documents (print view and PDF).
 // Whitelist of public fields only: item code, description, HSN, quantity, the
@@ -94,10 +95,9 @@ export function quotationPdf(q) {
 
     // Letterhead band
     doc.rect(0, 0, doc.page.width, 6).fill(BRAND);
-    doc.roundedRect(left, 30, 34, 34, 8).fill(BRAND);
-    doc.fillColor('#ffffff').fontSize(18).text((l.name || 'M').trim().charAt(0), left, 34, { width: 34, align: 'center' });
-    doc.fillColor(INK).fontSize(17).text(l.name ?? '', left + 46, 30, { width: width / 2 });
-    doc.fillColor(MUTED).fontSize(8.5).text(l.address ?? '', left + 46, doc.y, { width: width / 2 });
+    drawCompanyLogo(doc,left,26);
+    doc.fillColor(INK).fontSize(13).text(l.name ?? '', left + 66, 30, { width: width / 2 - 20 });
+    doc.fillColor(MUTED).fontSize(8.5).text(l.address ?? '', left + 66, doc.y + 3, { width: width / 2 - 20, height: 28, ellipsis: true });
     const contact = [l.gstin && `GSTIN ${l.gstin}`, l.phone, l.email].filter(Boolean).join('\n');
     doc.fontSize(8.5).text(contact, right - 200, 34, { width: 200, align: 'right' });
     doc.moveTo(left, 86).lineTo(right, 86).lineWidth(0.8).strokeColor(LINE).stroke();
