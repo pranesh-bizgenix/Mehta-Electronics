@@ -6,6 +6,7 @@ import { ApiError } from '@/lib/api/client';
 import { useApi } from '@/lib/api/provider';
 import { useSession } from '@/lib/session';
 import { Button, Icon, Notice, TextField } from '@/components/ds';
+import {BrandLogo} from '@/components/brand-logo';
 
 type Step = 'password' | 'enrol' | 'verify' | 'codes';
 
@@ -60,7 +61,7 @@ function LoginInner() {
   return (
     <main className="ds-auth" id="main">
       <section className="ds-auth-brand" aria-label="About ControlDesk">
-        <div className="ds-brand" style={{ color: 'inherit' }}><span className="ds-brand-mark" aria-hidden="true">M</span><span className="ds-brand-text"><small style={{ color: 'inherit', opacity: 0.8 }}>Mehta Siemens</small><strong>ControlDesk</strong></span></div>
+        <div className="ds-brand" style={{ color: 'inherit' }}><BrandLogo /><span className="ds-brand-text"><small style={{ color: 'inherit', opacity: 0.8 }}>Mehta Electric Corporation</small><strong>ControlDesk</strong></span></div>
         <div className="stack-lg">
           <h1>Every order, priced right and on time.</h1>
           <p>The control room for Mehta Electric Corporation’s sales, purchasing and dispatch — built on top of Tally.</p>

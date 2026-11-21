@@ -13,6 +13,7 @@ import { CommandPalette } from './command-palette';
 import { NAV, type BadgeKey } from './nav-config';
 import {CompanyFreshness} from '@/features/workflows/tally-freshness';
 import {TallyWriteLiveBanner} from '@/features/tally-write/live-banner';
+import {BrandLogo} from '@/components/brand-logo';
 
 type Badges = Partial<Record<BadgeKey | 'unreadNotifications', number>>;
 interface Notification { id: string; type: string; title: string; message: string; read: boolean; createdAt: string }
@@ -56,7 +57,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       {drawerOpen && <div className="ds-scrim" onClick={() => setDrawerOpen(false)} aria-hidden="true" />}
       <nav className="ds-sidebar" data-open={drawerOpen} id="app-sidebar" aria-label="Main">
         <Link href={state.kind === 'ready' && ['LOGISTICS_LEAD','STORE_STAFF'].includes(state.user.role) ? '/logistics' : '/dashboard'} className="ds-brand">
-          <span className="ds-brand-mark" aria-hidden="true">ME</span>
+          <BrandLogo />
           <span className="ds-brand-text"><strong>ControlDesk</strong><small>Mehta Electronics</small></span>
         </Link>
         <div className="ds-nav">
@@ -77,7 +78,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           })}
         </div>
         <div className="ds-sidebar-footer ds-desktop-only">
-          <div className="ds-workspace-id"><span aria-hidden="true">ME</span><div><strong>Mehta Electronics</strong><small>Business workspace</small></div></div>
+          <div className="ds-workspace-id"><BrandLogo compact /><div><strong>Mehta Electronics</strong><small>Business workspace</small></div></div>
         </div>
       </nav>
 

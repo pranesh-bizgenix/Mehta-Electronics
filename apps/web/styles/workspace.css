@@ -271,3 +271,8 @@ h1,h2,h3,h4 { font-weight: var(--weight-semibold); }
   .quote-create-layout .ds-line-row .ds-float input { padding: var(--space-1); }
   .quote-customer-strip { flex-wrap: wrap; }
 }
+
+/* Same Mehta mark on sign-in, expanded/collapsed navigation and mobile. */
+.ds-brand-logo, .ds-workspace-id > .ds-brand-logo { background: var(--brand-white); padding: var(--space-0-5); overflow: hidden; border-color: var(--color-border); }
+.ds-brand-logo img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.ds-brand-logo--compact { width: var(--avatar-size); height: var(--avatar-size); }

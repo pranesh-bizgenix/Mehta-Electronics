@@ -12,7 +12,7 @@ import { THEME_BOOT_SCRIPT } from '@/lib/preferences';
 
 export const metadata: Metadata = {
   title: { default: 'ControlDesk', template: '%s · ControlDesk' },
-  description: 'Mehta Siemens ControlDesk: CRM and workflow on top of Tally'
+  description: 'Mehta Electric Corporation ControlDesk: CRM and workflow on top of Tally'
 };
 
 export const viewport: Viewport = {
