@@ -915,3 +915,17 @@ RDS acceptance result: PASS for RFQ plus local/interstate PO authenticated workf
 Added a side-by-side comparison to the saved sales-order drawer, with exact quantity/list-rate/discount/GST/net-rate differences, quotation version, total delta and explicit extra/missing rows. Confirmed CRM item links support customer aliases; conflicting IDs and ambiguous duplicate matches are never paired by position. Ambiguity blocks approval; existing source, original-file, credit, stock, exception acknowledgement and independent-review controls remain. Fixed development effect replay leaving deep-linked order drawers loading. No migration, new business policy or Tally connector changes.
 
 Verification: 27 focused comparison/purchasing/quotation tests, TypeScript, syntax lint, production build and actual-browser desktop/mobile checks passed. Authorised RDS rollback/API checks passed for saved-snapshot comparisons, exact deltas, restricted-role denial and sales cost redaction, with the temporary order independently confirmed absent. Browser order reads use fictional intercepted data; RDS checks isolate comparison snapshots and do not certify full order creation/dispatch, production MFA or concurrent load. Guide: docs/customer-po-quotation-comparison.md. Evidence: verification-output/customer-po-comparison/2026-11-19/REPORT.md.
+
+
+### 20 November 2026 - Mehta PDF logo
+
+Added a PNG prepared from the user-supplied logo preview to both quotation PDF renderers through src/document-branding.js. scripts/demo-branded-documents.mjs generates file-only fictional quotation and invoice-layout demos. Invoice layout is a preview only, not an invoice-issuing feature. No database, Tally or commercial policy changes.
+
+Validation: 5 focused branding/quotation-source tests passed; changed JavaScript syntax checks and git diff --check passed. All three demo PDFs were rendered and visually inspected: one page each, embedded logo and INR 236.00 verified. No migrations added. PNG is a recreated asset based on the supplied inline preview, not a lossless conversion of an accessible original file.
+
+
+### 21 November 2026 - Mehta UI branding
+
+Replaced letter placeholders with the existing Mehta logo on sign-in, sidebar and workspace identity. Added PNG browser-tab and Apple touch icons, with optimized web-sized assets derived from the PDF logo. Updated the retained legacy HTML branding too. No permissions, database, Tally or workflow changes.
+
+UI branding validation: TypeScript and design-token checks passed; isolated production build passed (43 generated static pages). Seven real-browser branding checks passed for login, PNG tab icon, sidebar/workspace marks, confirmed collapsed state, dark layout, mobile overflow and absence of runtime errors. Evidence: C:/QA_Testing/Scripts/ui-branding-verification.json and matching screenshots. No migrations added.
