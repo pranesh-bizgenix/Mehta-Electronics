@@ -1,5 +1,6 @@
 import {TallyWriteReview} from './review.js';
 import {category,uuid,fail,mayProduce} from './contracts.js';
+import {readReadiness} from './readiness.js';
 
 const modules=new WeakMap();
 export function tallyWriteActive(db,kind){return modules.get(db)?.master===true;}
@@ -36,6 +37,7 @@ export function createTallyWriteModule({db,connectorStore,route,json,readJson,re
   const connectorPost=(path,fn)=>route('POST',path,null,async ctx=>{const connector=await connectorStore.authenticate(ctx.req.headers);json(ctx.res,200,{data:await fn(connector,object(await readConnectorJson(ctx.req)))});});
   const routes=[
     ownerGet('/api/tally-write/settings',ctx=>service.settings(ctx.user)),
+    ownerGet('/api/tally-write/readiness',ctx=>readReadiness(service,ctx.user,company(ctx.url))),
     staffPost('/api/tally-write/control','tally.write.manage',(ctx,b)=>service.setControl(ctx.user,b),'PUT'),
     staffPost('/api/tally-write/categories/:category','tally.write.manage',(ctx,b)=>service.setCategory(ctx.user,category(ctx.params.category),b),'PUT'),
     staffPost('/api/tally-write/categories/:category/resume','tally.write.manage',(ctx,b)=>service.resume(ctx.user,category(ctx.params.category),b)),

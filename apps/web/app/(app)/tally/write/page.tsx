@@ -7,6 +7,7 @@ import {useSession} from '@/lib/session';
 import {useScope} from '@/lib/scope';
 import type {Category,Settings,WriteCategory,Mapping,Source,Job,Monitor} from '@/features/tally-write/api';
 import {MappingReview} from '@/features/tally-write/mapping-review';
+import {PostingReadiness} from '@/features/tally-write/readiness';
 
 const categoryOptions=[{value:'SALES_ORDER',label:'Sales Orders'},{value:'PURCHASE_ORDER',label:'Purchase Orders'},{value:'PARTY_LEDGER',label:'New party ledgers'}];
 const modes=[{value:'',label:'Not set — blocks writes'},{value:'AUTO_AFTER_BUSINESS_APPROVAL',label:'After independent business approval'},{value:'SEPARATE_PUSH_APPROVAL',label:'Separate push approval'}];
@@ -46,6 +47,7 @@ export default function TallyWritePage(){
  return <div className="stack">
   <header><p><Link href="/tally">Tally</Link> / Write review</p><h1>Tally Write</h1><p>Review new CRM documents before creating them in Tally. Read sync remains separate.</p><p><strong>Selected company:</strong> {companies.find(c=>c.id===companyId)?.name??'Select a company in the header'}</p></header>
   <Notice tone="warning">All categories start OFF and dry-run only. Missing Owner-confirmed values block the workflow. This screen never supplies business defaults.</Notice>
+  <PostingReadiness companyId={companyId}/>
   {error&&<Notice tone="danger">{error}</Notice>}{message&&<Notice tone="info">{message}</Notice>}
   <TextAreaField label="Reason for the next action" required value={reason} onChange={e=>setReason(e.target.value)} hint="Every change and approval is audited."/>
   <section className="ds-card stack"><h2>Master switch</h2><p>Status: <strong>{settings?.control.master_enabled?'ON':'OFF'}</strong>. Turning this OFF holds unsent work and marks potentially sent work UNKNOWN.</p>
