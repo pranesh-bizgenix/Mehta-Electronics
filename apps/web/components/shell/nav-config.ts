@@ -27,6 +27,7 @@ export const NAV: NavGroup[] = [
   ] }] : []),
   { label: 'Overview', items: [
     { href: '/dashboard', label: 'Dashboard', icon: 'dashboard', permission: 'dashboard.read', keywords: 'home owner kpi' },
+    { href: '/reports', label: 'Business report PDFs', icon: 'quote', permission: 'authenticated', keywords: 'export pdf reports' },
     { href: '/work', label: 'My work', icon: 'clock', permission: 'work.read', badge: 'slaBreaches', badgeTone: 'danger', keywords: 'sla due' }
   ] },
   { label: 'Sales', items: [
@@ -35,6 +36,7 @@ export const NAV: NavGroup[] = [
     { href: '/enquiries', label: 'Enquiries', icon: 'inbox', permission: 'enquiries.read', keywords: 'inbox leads' },
     { href: '/quotations', label: 'Quotations', icon: 'quote', permission: 'quotations.read', keywords: 'quotes pdf' },
     { href: '/orders', label: 'Sales orders', icon: 'truck', permission: 'orders.read', keywords: 'dispatch lr delivery po' },
+    { href: '/billing', label: 'Invoice documents', icon: 'ledger', permission: 'collections.read', keywords: 'invoice pdf tally copy billing' },
     { href: '/messages', label: 'Outbound drafts', icon: 'mail', permission: 'outbound.read', badge: 'draftsAwaitingApproval', keywords: 'email approval' }
   ] },
   { label: 'Supply', items: [

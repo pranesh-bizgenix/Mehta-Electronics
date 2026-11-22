@@ -37,6 +37,7 @@ import { quotationPdf } from './quotation-document.js';
 import { salesOrderRoutes } from './sales-order-routes.js';
 import { procurementRoutes } from './procurement-routes.js';
 import { purchaseDocumentRoutes } from './purchase-document-routes.js';
+import {billingRoutes} from './modules/billing/routes.js';
 import { emailAutomationRoutes } from './modules/email-automation/routes.js';
 import { logisticsRoutes } from './logistics-routes.js';
 import { managedOrder,orderDetail,orderAction,saveOrder,orderQuoteSource,legacyOrderDetail } from './sales-orders.js';
@@ -201,6 +202,7 @@ export function createApp({ db, config, fetchImpl = fetch, sendMailImpl = sendQu
     ...salesOrderRoutes({db,config,route,json,readJson}),
     ...procurementRoutes({db,route,json,readJson}),
     ...purchaseDocumentRoutes({db,route,json,readJson}),
+    ...billingRoutes({db,route,json,readJson}),
     ...emailAutomationRoutes({db,config,route,json}),
     ...logisticsRoutes({db,route,json,readJson}),
     ...storedTallyRoutes({db,config,route,json,readJson}),
