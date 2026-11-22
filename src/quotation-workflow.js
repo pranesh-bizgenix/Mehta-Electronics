@@ -9,6 +9,8 @@ import {calculateQuotation,scaled} from '../public/quotation-math.js';
 import {quotationPdf} from './quotation-document.js';
 import {costErrors,policyErrors} from '../public/quotation-setup-validation.js';
 import {validationFailed,conflict} from './core/errors.js';
+import {requestAvailability,requireAvailability,invalidateAvailability} from './modules/sales-intake/availability.js';
+import {salesWork} from './modules/sales-intake/shared.js';
 import {pricingRuleVersions,requirePricingRules} from './modules/rules/workflow-rules.js';
 import {DecisionService,requireSetting} from './modules/decisions/service.js';
 import {createQuotationReview,quotationApprovalFingerprint,validateQuotationReview,requireQuotationReviewer,quotationApprovalCommand,requireQuotationStageCommand,quotationApprovalProjection} from './quotation-approvals.js';
@@ -68,7 +70,7 @@ export async function importQuoteCosts(db,b,user,preview){can(user,'quotations.c
  return {saved:plan.rows.length};
  });
 }
-function visible(row,user){const out={...row.public_snapshot,id:row.quotation_id,status:row.status,version:row.version,created_by:row.created_by,updated_at:row.updated_at,duplicateOf:row.duplicate_of};
+function visible(row,user){const out={...row.public_snapshot,id:row.quotation_id,status:row.status,version:row.version,created_by:row.created_by,updated_at:row.updated_at,duplicateOf:row.duplicate_of,requiresWarehouseReview:row.private_snapshot.availabilityRequired===true};
  if(costAccess(user))out.pricing=row.private_snapshot;return out;
 }
 async function rowFor(db,quoteId){const row=await db.prepare('SELECT * FROM crm_quotation_workflows WHERE quotation_id=?').get(id(quoteId));if(!row)fail(404,'Workflow quotation not found.');return row;}
@@ -101,6 +103,8 @@ export async function quoteList(db,url,user){can(user,'quotations.read');const p
  return {data:data.map(r=>visible(r,user)),legacyCount:legacy.n,pagination:{page,pageSize,total:count.n,pages:Math.ceil(count.n/pageSize)}};
 }
 async function snapshot(db,b,number,enquiryId=null){
+ let companyId=null;
+ if(b.companyId!=null){if(typeof b.companyId!=='string'||!/^[0-9a-f-]{36}$/i.test(b.companyId)||!await db.prepare('SELECT id FROM tally_companies WHERE id=?').get(b.companyId))fail(422,'Select an imported selling company.');companyId=b.companyId;}
  let request;try{request=quotationRequest(b.request);}catch(error){fail(422,error.message);}
  let pricingDate;try{pricingDate=quotationPricingDate(request,today(),process.env.NODE_ENV==='production');}catch(error){fail(422,error.message);}
  const policy=await quotePolicy(db);if(!policy)fail(409,'Quotation creation is blocked: ask the owner to open Quotations → Policy and letterhead and save the margin floor, margin basis, seller state and company name.');
@@ -116,16 +120,22 @@ async function snapshot(db,b,number,enquiryId=null){
  for(const l of b.lines){const item=await db.prepare("SELECT *,pack_size::text AS pack_size FROM items WHERE id=? AND status='ACTIVE'").get(id(l.itemId));if(!item)fail(422,'Every line must reference an active CRM item.');
  const c=await db.prepare('SELECT unit_cost::text AS value FROM crm_quotation_costs WHERE item_id=?').get(item.id);costs[String(item.id)]=c?.value??null;
  lines.push({itemId:item.id,partCode:item.part_code,hsn:item.hsn||'',description:text(l.description??item.description,1000),uom:item.uom,quantity:String(l.quantity),unitPrice:String(l.unitPrice),discountPercent:String(l.discountPercent??'0'),taxPercent:String(l.taxPercent??'0')});
+ if(l.sourceLineId!=null){if(typeof l.sourceLineId!=='string'||!l.sourceLineId.trim()||l.sourceLineId.length>100)fail(422,'Source line references must contain 1 to 100 characters.');lines.at(-1).sourceLineId=l.sourceLineId;}
  try{lines.at(-1).requestDetails=quotationLineRequest(l.requestDetails,today());}catch(error){fail(422,`Line ${lines.length}: ${error.message}`);}
  lines.at(-1).rateContractId=await contractForLine(db,customer.id,lines.at(-1),pricingDate);
  const selection=await bindQuotationLevel(db,lines.at(-1),l.pricingSelection,pricingDate);if(selection)lines.at(-1).pricingSelection=selection;
  }
+ const sourceIds=lines.map(l=>l.sourceLineId).filter(Boolean);if(new Set(sourceIds).size!==sourceIds.length)fail(422,'Source line references must be distinct.');
  let math;try{math=calculateQuotation(lines,policy.seller_state,pos,costs,policy.floor_percent,policy.margin_basis);}catch(e){fail(422,e.message);}
  if(scaled(math.total)>999999999999000000n)fail(422,'Quotation total exceeds the supported limit.');
  const {cost,missingCost,marginPercent,belowFloor,...publicMath}=math;
  const privateLines=math.lines.map(({itemId,unitCost,cost,marginPercent,belowFloor})=>({itemId,unitCost,cost,marginPercent,belowFloor}));
  publicMath.lines=math.lines.map(({unitCost:ignored,cost:ignored2,marginPercent:ignored3,belowFloor:ignored4,...l})=>l);
- return {policy,public:{quotation_number:number,customerId:customer.id,customer_name:customer.name,customerGstin:customer.gstin||'',customerAddress:customer.billing_address||'',enquiryId,request,validUntil:b.validUntil,placeOfSupply:pos,sellerState:policy.seller_state,supplyType:'DOMESTIC_STANDARD',terms:text(b.terms??'',10000),notes:text(b.notes??'',10000),letterhead:policy.letterhead,...publicMath},private:{cost,missingCost,marginPercent,belowFloor,floorPercent:policy.floor_percent,marginBasis:policy.margin_basis,lines:privateLines}};
+ return {policy,public:{...(companyId?{companyId}:{}),quotation_number:number,customerId:customer.id,customer_name:customer.name,customerGstin:customer.gstin||'',customerAddress:customer.billing_address||'',enquiryId,request,validUntil:b.validUntil,placeOfSupply:pos,sellerState:policy.seller_state,supplyType:'DOMESTIC_STANDARD',terms:text(b.terms??'',10000),notes:text(b.notes??'',10000),letterhead:policy.letterhead,...publicMath},private:{cost,missingCost,marginPercent,belowFloor,floorPercent:policy.floor_percent,marginBasis:policy.margin_basis,lines:privateLines}};
+}
+export async function previewQuoteDraft(db,b,user){
+ can(user,'quotations.create');await requireQuotableCustomer(db,b.customerId);await requireCustomerHandler(db,b.customerId,user);
+ return snapshot(db,b,'PREPARATION',b.enquiryId??null);
 }
 async function persistVersion(db,row,user,why){
  await db.prepare('INSERT INTO crm_quotation_versions(quotation_id,version,public_snapshot,private_snapshot,reason,created_by) VALUES(?,?,?::text::jsonb,?::text::jsonb,?,?)').run(row.quotation_id,row.version,JSON.stringify(row.public_snapshot),JSON.stringify(row.private_snapshot),why,user.id);
@@ -139,21 +149,34 @@ export async function saveQuote(db,quoteId,b,user,duplicateOf=null){can(user,quo
  await requireCustomerHandler(db,b.customerId,user);
  return work(db,user,why,async()=>{
  const old=quoteId?await rowFor(db,quoteId):null;
+ const sourceIntake=b.enquiryId?await db.prepare('SELECT id,company_id,quotation_id,status FROM crm_sales_intakes WHERE enquiry_id=? FOR UPDATE').get(id(b.enquiryId)):null;
+ if(sourceIntake?.status==='CANCELLED')fail(409,'The source intake is cancelled. Review it before preparing another quotation.');
+ if(sourceIntake?.quotation_id&&sourceIntake.quotation_id!==old?.quotation_id&&!duplicateOf)throw conflict('This enquiry already has a linked quotation. Open that draft or use its explicit revision/duplicate workflow.','INTAKE_QUOTATION_ALREADY_EXISTS',{quotationId:sourceIntake.quotation_id});
+ if(sourceIntake){if(b.companyId&&b.companyId!==sourceIntake.company_id)fail(409,'Enquiry source and selling company differ.');b={...b,companyId:sourceIntake.company_id};}
+ if(old&&await db.prepare("SELECT h.id FROM crm_quote_reservations h JOIN crm_quotation_availability_lines l ON l.id=h.availability_line_id JOIN crm_quotation_availability r ON r.id=l.request_id WHERE r.quotation_id=? AND h.status='TRANSFERRED' LIMIT 1").get(old.quotation_id))fail(409,'This quotation has an order reservation. Resolve the order before revising it.');
+ const priorAvailability=await db.prepare('SELECT intake_id,company_id FROM crm_quotation_availability WHERE quotation_id=? ORDER BY quotation_version DESC LIMIT 1').get(quoteId??duplicateOf??null);
+ if(old?.public_snapshot.companyId){if(b.companyId&&b.companyId!==old.public_snapshot.companyId)fail(409,'The selling company of a saved quotation cannot change.');b={...b,companyId:old.public_snapshot.companyId};}
+ if(priorAvailability)b={...b,companyId:priorAvailability.company_id};
  if(old&&(!['DRAFT','APPROVED','PENDING_APPROVAL'].includes(old.status)||b.version!==old.version))fail(409,'Quotation changed or cannot be edited. Reload; sent quotations must be duplicated.');
  const number=old?.public_snapshot.quotation_number||`QTN-${new Date().getUTCFullYear()}-${crypto.randomBytes(5).toString('hex').toUpperCase()}`;
  const enquiryId=b.enquiryId?id(b.enquiryId):null,s=await snapshot(db,b,number,enquiryId);
- s.private.businessRuleVersions=await pricingRuleVersions(db);s.private.pricingAuthorRole=user.role;
+ s.private.businessRuleVersions=await pricingRuleVersions(db);s.private.pricingAuthorRole=user.role;s.private.availabilityRequired=true;
  let qid=old?.quotation_id;
  if(!qid)qid=(await db.prepare('INSERT INTO quotations(quotation_number,customer_id,enquiry_id,valid_until,terms,notes,created_by,updated_by) VALUES(?,?,?,?,?,?,?,?)').run(number,s.public.customerId,enquiryId,b.validUntil,s.public.terms,s.public.notes,user.id,user.id)).insertedId;
  else await db.prepare("UPDATE quotations SET customer_id=?,enquiry_id=?,valid_until=?,terms=?,notes=?,status='DRAFT',updated_by=?,updated_at=now() WHERE id=?").run(s.public.customerId,enquiryId,b.validUntil,s.public.terms,s.public.notes,user.id,qid);
+ if(old)await invalidateAvailability(db,qid,user,why);
  await baseLines(db,qid,s.public);
  if(old)await db.prepare("UPDATE crm_quotation_workflows SET version=version+1,status='DRAFT',policy_revision=?,place_of_supply=?,public_snapshot=?::text::jsonb,private_snapshot=?::text::jsonb WHERE quotation_id=?").run(s.policy.revision,s.public.placeOfSupply,JSON.stringify(s.public),JSON.stringify(s.private),qid);
  else await db.prepare('INSERT INTO crm_quotation_workflows(quotation_id,policy_revision,place_of_supply,public_snapshot,private_snapshot,created_by) VALUES(?,?,?,?::text::jsonb,?::text::jsonb,?)').run(qid,s.policy.revision,s.public.placeOfSupply,JSON.stringify(s.public),JSON.stringify(s.private),user.id);
  if(duplicateOf)await db.prepare('UPDATE crm_quotation_workflows SET duplicate_of=? WHERE quotation_id=?').run(duplicateOf,qid);
- const row=await rowFor(db,qid);await persistVersion(db,row,user,why);await event(db,user,row,duplicateOf?'DUPLICATED':old?'REVISED':'CREATED',why,{status:'DRAFT',version:row.version,...(duplicateOf?{sourceId:duplicateOf}:{})});return visible(row,user);
+ const row=await rowFor(db,qid);await persistVersion(db,row,user,why);await event(db,user,row,duplicateOf?'DUPLICATED':old?'REVISED':'CREATED',why,{status:'DRAFT',version:row.version,...(duplicateOf?{sourceId:duplicateOf}:{})});
+ if(sourceIntake&&!sourceIntake.quotation_id)await salesWork(db,user,why,()=>db.prepare("UPDATE crm_sales_intakes SET quotation_id=?,status='PREPARED',updated_by=?,updated_at=now() WHERE id=?").run(qid,user.id,sourceIntake.id));
+ if(row.public_snapshot.companyId)await requestAvailability(db,qid,duplicateOf?null:sourceIntake?.id??priorAvailability?.intake_id??null,user);
+ return visible(row,user);
  });
 }
 async function ensureCurrent(db,row,{complete=false,review=true}={}){const requestBlock=quotationRequestBlock(row.public_snapshot.request,row.public_snapshot.terms);if(requestBlock)fail(422,requestBlock);await requireQuotableCustomer(db,row.public_snapshot.customerId);for(const line of row.public_snapshot.lines){await requireContractBinding(db,row.public_snapshot.customerId,line,today());await bindQuotationLevel(db,line,line.pricingSelection);}const p=await quotePolicy(db);if(!p||p.revision!==row.policy_revision)fail(409,'Policy changed. Revise and resubmit the quotation.');
+ await requireAvailability(db,row);
  const margin=await requireSetting(db,'margin.floor_percent');
  if(row.private_snapshot.missingCost)fail(422,'Submission is blocked: ask the owner to enter costs for every item in Quotations → Item costs, then save the draft again to capture those costs.');
  for(const l of row.private_snapshot.lines){const c=await db.prepare('SELECT unit_cost::text AS value FROM crm_quotation_costs WHERE item_id=?').get(l.itemId);if(c?.value==null||scaled(c.value)!==scaled(l.unitCost??'0'))fail(409,'Item costs changed or are missing. Open Quotations → Item costs, then revise and resubmit the quotation.');}
@@ -191,6 +214,7 @@ export async function quoteAction(db,quoteId,b,user){const why=reason(b),action=
  else if(action==='CANCEL'&&!['WON','LOST','EXPIRED','CANCELLED'].includes(row.status))next='CANCELLED';
  else fail(422,`Cannot ${String(action).toLowerCase()} a ${row.status} quotation.`);
  const base={DRAFT:'DRAFT',PENDING_APPROVAL:'DRAFT',APPROVED:'DRAFT',SENT:'SENT',WON:'ACCEPTED',LOST:'REJECTED',EXPIRED:'EXPIRED',CANCELLED:'CANCELLED'}[next];
+ if(['CANCELLED','EXPIRED','LOST'].includes(next))await invalidateAvailability(db,row.quotation_id,user,why,{cancel:true});
  await db.prepare('UPDATE crm_quotation_workflows SET status=? WHERE quotation_id=?').run(next,row.quotation_id);
  await db.prepare('UPDATE quotations SET status=?,updated_by=?,updated_at=now() WHERE id=?').run(base,user.id,row.quotation_id);
  if(next==='SENT'&&row.public_snapshot.enquiryId)await db.prepare("UPDATE enquiries SET status='QUOTED',updated_by=?,updated_at=now() WHERE id=? AND status IN ('NEW','QUALIFIED')").run(user.id,row.public_snapshot.enquiryId);
@@ -217,7 +241,7 @@ export async function emailWorkflowQuote(db,quoteId,b,user,config,sendMail){
  if(!['APPROVED','SENT'].includes(row.status))fail(409,'Only an approved or sent quotation can be emailed.');
  if(!await db.prepare('SELECT id FROM customer_contacts WHERE customer_id=? AND lower(email)=lower(?) AND NOT is_deleted').get(row.public_snapshot.customerId,b.to))fail(422,'Recipient must be a registered contact email for this customer.');
  if(b.version!=null&&b.version!==row.version)fail(409,'Quotation changed. Reload before sending.');
- if(row.status==='APPROVED')await ensureCurrent(db,row);
+ if(['APPROVED','SENT'].includes(row.status))await ensureCurrent(db,row);
  const quote=visible(row,{role:'EXECUTIVE'}),subject=text(b.subject||`Quotation ${quote.quotation_number}`,300),message=text(b.message||'Please find the approved quotation attached.',10000),pdf=await quotationPdf(quote);
  try{attempted=true;await sendMail(config,{quote,to:b.to,subject,message,pdf});}catch(err){fail(err.code==='SMTP_NOT_CONFIGURED'?503:502,err.code==='SMTP_NOT_CONFIGURED'?'Email delivery is not configured.':'Email delivery failed. Check delivery before retrying.');}
  await bindFirstQuotationOwner(db,row.public_snapshot.customerId,row.created_by,user);

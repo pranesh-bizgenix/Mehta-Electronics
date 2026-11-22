@@ -4,6 +4,7 @@
 
 import { AuditRepository, SecretBox, SystemClock, TransactionRunner } from '../core/runtime.js';
 import { Scheduler } from '../core/scheduler.js';
+import {AvailabilitySendGate} from './sales-intake/availability.js';
 import { IdempotencyRepository } from '../core/http.js';
 import { AccessRepository } from './access/access-repository.js';
 import { AccessService } from './access/access-service.js';
@@ -65,7 +66,7 @@ export function createModules({ db, config, clock = new SystemClock(), outboundM
   const operations = new OperationsService({repository:new OperationsRepository(db),transactions,audit,access,work,rules,clock});
   const contracts = new ContractsService({db,repository:new ContractsRepository(db),transactions,audit,access,clock});
   const outboundRepository = new OutboundRepository(db);
-  const gates = [new VerifiedRecordGate(), new RegisteredEmailGate(), new ManualResponseGate(), new WorkflowSwitchGate({ automation }), new ChecklistGate(), new ApprovalGate()];
+  const gates = [new VerifiedRecordGate(), new RegisteredEmailGate(), new ManualResponseGate(), new WorkflowSwitchGate({ automation }), new ChecklistGate(), new ApprovalGate(),new AvailabilitySendGate(db)];
   const outbound = new OutboundService({ repository: outboundRepository, gates, emailDirectory: new ContactEmailDirectory(db), mailer: outboundMailer, transactions, audit, access });
   const auditQuery = new AuditService({ repository: new AuditQueryRepository(db), access });
   const userAdmin = new UserAdminService({ repository: new UserAdminRepository(db), access, work, tasks, transactions, audit });

@@ -1,5 +1,6 @@
 // Versioned design contract. A route is not operational merely because it is
 // listed here; runtime delivery and mock-client acceptance are tracked separately.
+import {salesIntakeRequestSchema,salesIntakeReceiptSchema} from '../sales-intake/openapi.js';
 export const AUTOMATION_API_VERSION='1.0.0';
 export const AUTOMATION_SCOPES=['automation.read','automation.write.drafts','automation.write.intake'];
 export const AUTOMATION_OPERATIONS=[
@@ -55,6 +56,8 @@ export function automationOpenApi(){
   TaskRequest:object({...base,title:text(500),description:text(10000),customerId:id,orderId:id,ownerId:id,backupOwnerId:id,dueAt:{type:'string',format:'date-time'}},['companyId','reason','title']),
   EnquiryRequest:object({...base,customerId:id,sourceIntakeId:text(),summary:text(2000),attachmentReferences:refs},['companyId','reason','summary','attachmentReferences'])
  };
+ schemas.IntakeRequest=salesIntakeRequestSchema;
+ schemas.SalesIntakeReceipt=salesIntakeReceiptSchema;
  const paths={};
  for(const op of AUTOMATION_OPERATIONS){
   const query=op.method==='GET'?[{name:'companyId',in:'query',required:true,schema:company},{name:'page',in:'query',schema:{type:'integer',minimum:1}},{name:'pageSize',in:'query',schema:{type:'integer',minimum:1,maximum:100}}]:[];
@@ -65,9 +68,15 @@ export function automationOpenApi(){
   const response=object({data:array(ref(op.response)),companyId:company,freshness:array(ref('Freshness'),30),pagination:object({page:{type:'integer',minimum:1},pageSize:{type:'integer',minimum:1,maximum:100},hasMore:{type:'boolean'}})});
   const responses={'200':{description:'Bounded company-scoped result; draft/queue receipt for writes. No approval or send is performed.',headers:{'X-ControlDesk-API-Version':{schema:{type:'string',enum:[AUTOMATION_API_VERSION]}}},content:{'application/json':{schema:response}}}};
   for(const status of ['400','401','403','404','409','413','422','429','503'])responses[status]={description:{401:'Missing, invalid, revoked or expired service token',403:'Wrong scope or company; no fallback to staff access',409:'Replay mismatch or unconfirmed workflow setting',413:'Size limit',429:'Rate limit; Retry-After applies'}[status]??'Request refused; no partial mutation',content:{'application/json':{schema:ref('Error')}}};
-  const operation={operationId:op.id,summary:op.id,security:[{ServiceToken:[]}],'x-required-scope':op.scope,'x-implementation-status':op.id==='readSwitches'?'IMPLEMENTED':'PLANNED',parameters:query,responses};
+  const operation={operationId:op.id,summary:op.id,security:[{ServiceToken:[]}],'x-required-scope':op.scope,'x-implementation-status':['readSwitches','queueIntake'].includes(op.id)?'IMPLEMENTED':'PLANNED',parameters:query,responses};
   if(op.request)operation.requestBody={required:true,content:{'application/json':{schema:ref(op.request)}}};
   if(op.method==='POST'&&op.scope!=='automation.read')operation.parameters.push({name:'Idempotency-Key',in:'header',required:true,schema:{type:'string',minLength:8,maxLength:200}});
+  if(op.id==='queueIntake'){
+   operation.parameters=[{name:'companyId',in:'query',required:true,schema:company},{name:'Idempotency-Key',in:'header',required:false,description:'If provided, must equal eventId/idempotencyKey in the body.',schema:{type:'string',minLength:1,maxLength:200}}];
+   const receipt=object({data:ref('SalesIntakeReceipt')});
+   operation.responses['200'].content['application/json'].schema=receipt;
+   operation.responses['201']={...operation.responses['200'],description:'Persisted structured request; linked draft only when all prerequisites pass.'};
+  }
   paths[op.path]={[op.method.toLowerCase()]:operation};
  }
  return {openapi:'3.0.3',info:{title:'ControlDesk automation interface',version:AUTOMATION_API_VERSION,description:'Design contract. PLANNED endpoints are not implemented or enabled merely by this document. Only this existing app serves the eventual interface; no external server is configured.'},servers:[{url:'/'}],paths,components:{securitySchemes:{ServiceToken:{type:'http',scheme:'bearer',description:'Scoped service credential; never a staff session or connector credential.'}},schemas}};

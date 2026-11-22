@@ -4,9 +4,16 @@
 
 const SOURCES = [
   {
+    entityType:'SALES_INTAKE',department:'SALES',
+    // Assignment service creates this work item at the first real assignment.
+    open:'SELECT NULL::text AS entity_id,NULL::text AS title,NULL::integer AS owner_id,NULL::timestamptz AS created_at WHERE false',
+    closed:`SELECT w.id FROM work_items w JOIN crm_sales_intakes i ON w.entity_type='SALES_INTAKE' AND w.entity_id=i.id::text LEFT JOIN enquiries e ON e.id=i.enquiry_id
+      WHERE w.status IN ('OPEN','IN_PROGRESS','WAITING') AND (i.status='CANCELLED' OR i.first_response_at IS NOT NULL OR e.status IN ('LOST','CANCELLED')) LIMIT 500`
+  },
+  {
     entityType: 'ENQUIRY', department: 'SALES',
     open: `SELECT e.id::text AS entity_id,e.enquiry_number||' · '||e.subject AS title,COALESCE(e.assigned_to,e.created_by) AS owner_id,e.created_at
-      FROM enquiries e WHERE e.status IN ('NEW','QUALIFIED','QUOTED') AND NOT EXISTS (SELECT 1 FROM work_items w WHERE w.entity_type='ENQUIRY' AND w.entity_id=e.id::text) LIMIT 500`,
+      FROM enquiries e WHERE e.status IN ('NEW','QUALIFIED','QUOTED') AND NOT EXISTS (SELECT 1 FROM crm_sales_intakes i WHERE i.enquiry_id=e.id) AND NOT EXISTS (SELECT 1 FROM work_items w WHERE w.entity_type='ENQUIRY' AND w.entity_id=e.id::text) LIMIT 500`,
     closed: `SELECT w.id FROM work_items w JOIN enquiries e ON w.entity_type='ENQUIRY' AND w.entity_id=e.id::text
       WHERE w.status IN ('OPEN','IN_PROGRESS','WAITING') AND e.status IN ('WON','LOST','CANCELLED') LIMIT 500`
   },

@@ -10,6 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { customerView, detectCustomerDuplicates, enquiryRevisions, enquiryView, parseJsonArray, quotationRevisions, quotationView, recordEnquiryRevision, recordQuotationRevision, replaceContacts, salesOrderView, writeAudit } from './db.js';
 import { hasPermission, permissionsFor, roleRequiresMfa } from './rbac.js';
 import { createModules } from './modules/container.js';
+import {createSalesIntake,salesIntakeRoutes} from './modules/sales-intake/routes.js';
 import {isMfaExemptTestAccount} from './modules/mfa/test-account-policy.js';
 import { adaptRoutes } from './core/http.js';
 import {priceImportRoutes} from './modules/pricing/controller.js';
@@ -188,6 +189,8 @@ export function createApp({ db, config, fetchImpl = fetch, sendMailImpl = sendQu
   const connectorStore = providedConnectorStore ?? createConnectorStore(config,{database:db.sql});
   const modules = createModules({ db, config, clock, outboundMailer });
   const automationCredentials=createAutomationCredentials(db,clock);
+  const salesIntake=createSalesIntake({db,work:modules.services.work,clock});
+  modules.scheduler.register({name:'quotation_availability_validation',intervalMs:60_000,run:()=>salesIntake.availability.invalidateStale()});
   const tallyWrite=createTallyWriteModule({db,connectorStore,route,json,readJson,readConnectorJson});
   // Two-factor is off unless MFA_ENABLED=true; then roles flagged requires_mfa and enrolled users must verify.
   const mfaState = (user) => ({ required: config.mfaEnabled && !isMfaExemptTestAccount(config,user) && (roleRequiresMfa(user.role) || Boolean(user.mfa_enabled)), enrolled: Boolean(user.mfa_enabled), verified: Boolean(user.mfa_verified_at) });
@@ -198,6 +201,7 @@ export function createApp({ db, config, fetchImpl = fetch, sendMailImpl = sendQu
     ...priceImportRoutes({db,route,json,readJson}),
     ...stockCheckRoutes({db,route,json,readJson}),
     ...automationCredentialRoutes({service:automationCredentials,route,json,readJson}),
+    ...salesIntakeRoutes({services:salesIntake,route,json,readJson}),
     ...quotationWorkflowRoutes({db,config,route,json,readJson}),
     ...salesOrderRoutes({db,config,route,json,readJson}),
     ...procurementRoutes({db,route,json,readJson}),
@@ -442,6 +446,19 @@ export function createApp({ db, config, fetchImpl = fetch, sendMailImpl = sendQu
       const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`); const ip = req.socket.remoteAddress || '';
       if (!url.pathname.startsWith('/api/') && !url.pathname.startsWith('/tally/')) return serveStatic(req,res,url.pathname);
       res.setHeader('x-content-type-options','nosniff'); res.setHeader('x-frame-options','DENY'); res.setHeader('referrer-policy','no-referrer'); res.setHeader('content-security-policy',"default-src 'self'; style-src 'self'; script-src 'self'; connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'");
+      if(url.pathname==='/api/v1/automation/intake'&&req.method==='POST'){
+        res.setHeader('X-ControlDesk-API-Version','1.0.0');
+        if(url.searchParams.getAll('companyId').length!==1||[...url.searchParams.keys()].some(k=>k!=='companyId'))throw new HttpError(422,'Select exactly one companyId and no other query fields.');
+        // A cold machine request must use the same live permission matrix as
+        // staff requests, rather than the unit-test seed provider.
+        await modules.ready();
+        let principal;
+        try{principal=await automationCredentials.authenticate({authorization:req.headers.authorization,companyId:url.searchParams.get('companyId'),scope:'automation.write.intake',peer:ip});}
+        catch(error){if(error.status===429)res.setHeader('Retry-After','60');throw error;}
+        const body=await readJson(req),key=req.headers['idempotency-key'];
+        if(key!=null&&(typeof key!=='string'||key!==(body?.eventId??body?.idempotencyKey)))throw new HttpError(422,'Idempotency-Key must match the payload eventId.');
+        const data=await salesIntake.intake.receive(principal,body);return json(res,data.duplicate?200:201,{data});
+      }
       // Machine auth is an exact allowlist, before staff/local-review/connector
       // authentication. A service token never becomes a staff session or role.
       if(url.pathname==='/api/v1/automation/switches'&&req.method==='GET'){

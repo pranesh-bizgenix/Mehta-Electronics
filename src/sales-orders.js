@@ -13,6 +13,7 @@ import {logisticsOrderDetail} from './logistics-access.js';
 import {writeAudit} from './db.js';
 import {normalizeKey} from './security.js';
 import {bindOrderStock,orderStockEvidence,publicStockEvidence,checkDispatchStock,retainDispatchConsumption} from './modules/stock/fulfillment.js';
+import {transferAvailability,releaseOrderAvailability,consumeOrderAvailability} from './modules/sales-intake/availability.js';
 
 const fail=(status,message)=>{throw Object.assign(new Error(message),{status});};
 const can=(u,p)=>{if(!hasPermission(u,p))fail(403,'Permission denied.');};
@@ -28,7 +29,7 @@ async function work(db,user,reason,fn){return transaction(db,user,reason,async()
  await db.prepare("SELECT pg_advisory_xact_lock(812731),set_config('mehta.order_write','authorized',true)").get();return fn();
 });}
 async function row(db,orderId){const r=await db.prepare('SELECT * FROM crm_order_workflows WHERE sales_order_id=?').get(id(orderId));if(!r)fail(404,'Workflow sales order not found.');return r;}
-async function canonicalParty(db,customerId,userId){
+export async function canonicalParty(db,customerId,userId){
  const existing=await db.prepare("SELECT p.id FROM party_external_mappings m JOIN parties p ON p.id=m.party_id WHERE m.source_system='CRM' AND m.entity_type='CUSTOMER' AND m.external_id=?").get(String(customerId));
  const customer=await db.prepare('SELECT name,gstin,status FROM customers WHERE id=?').get(customerId);if(!customer)fail(422,'Customer no longer exists.');
  if(existing){
@@ -40,7 +41,7 @@ async function canonicalParty(db,customerId,userId){
  await db.prepare("INSERT INTO party_external_mappings(party_id,source_system,entity_type,external_id,created_by) VALUES(?,'CRM','CUSTOMER',?,?)").run(party,String(customerId),userId);
  return party;
 }
-async function canonicalPart(db,itemId,userId){
+export async function canonicalPart(db,itemId,userId){
  if(!itemId)return null;
  const externalId=String(itemId),existing=await db.prepare("SELECT part_id FROM part_external_mappings WHERE source_system='CRM' AND entity_type='ITEM' AND external_id=? AND company_id IS NULL").get(externalId);
  if(existing)return existing.part_id;
@@ -118,6 +119,7 @@ export async function saveOrder(db,orderId,b,user){can(user,orderId?'orders.upda
  return work(db,user,reason,async()=>{
  if(tallyWriteActive(db,'SALES_ORDER'))await guardTallyWriteMutation(db,'SALES_ORDER',orderId);
  const old=orderId?await row(db,orderId):null;
+ if(old?.public_snapshot.quotationId&&b.quotationId!==old.public_snapshot.quotationId&&await db.prepare("SELECT id FROM crm_quote_reservations WHERE sales_order_id=? AND status='TRANSFERRED' LIMIT 1").get(old.sales_order_id))fail(409,'The stock reservation is bound to the saved quotation. Cancel the order before replacing that quotation.');
  if(old){if(b.version!==old.version)fail(409,'Order changed. Reload before editing.');if(['CANCELLED','DELIVERED'].includes(old.status)||await db.prepare('SELECT id FROM crm_shipments WHERE sales_order_id=?').get(old.sales_order_id))fail(409,'Dispatched or terminal orders cannot be revised.');}
  const s=await snapshot(db,b);await bindOrderStock(db,b,s,old?.public_snapshot??null,old?.sales_order_id??null);if(old&&(s.customerId!==old.customer_id||s.poNumber.toUpperCase()!==old.po_key))fail(422,'Customer and PO identity cannot change. Cancel with a reason and create a new order.');
  if(!old&&await db.prepare('SELECT id FROM crm_order_workflows WHERE customer_id=? AND po_key=?').get(s.customerId,s.poNumber.toUpperCase()))fail(409,'An order already exists for this customer and PO number. Revise that order instead.');
@@ -132,6 +134,7 @@ export async function saveOrder(db,orderId,b,user){can(user,orderId?'orders.upda
  await saveNormalizedCustomerPo(db,s,oid,{...user,reason},savedLines);
  if(old)await db.prepare("UPDATE crm_order_workflows SET version=version+1,status='DRAFT',source_quote_version=?,source_quote_snapshot=?::text::jsonb,public_snapshot=?::text::jsonb,private_snapshot='{}',approval_fingerprint=NULL,approved_by=NULL,approved_version=NULL WHERE sales_order_id=?").run(source?.version??null,json(source),json(s),oid);
  else await db.prepare('INSERT INTO crm_order_workflows(sales_order_id,customer_id,po_key,source_quote_version,source_quote_snapshot,public_snapshot,private_snapshot,created_by) VALUES(?,?,?, ?,?::text::jsonb,?::text::jsonb,?::text::jsonb,?)').run(oid,s.customerId,s.poNumber.toUpperCase(),source?.version??null,json(source),json(s),'{}',user.id);
+ if(s.quotationId)await transferAvailability(db,s.quotationId,oid,user);
  const r=await row(db,oid),verification=await verifyOrder(db,r);
  await db.prepare('INSERT INTO crm_order_versions(sales_order_id,version,public_snapshot,private_snapshot,reason,created_by) VALUES(?,?,?::text::jsonb,?::text::jsonb,?,?)').run(oid,r.version,json(s),json(verification.private),reason,user.id);
  await event(db,r,user,old?'REVISED':'CREATED',reason,{version:r.version,quotationId:s.quotationId,total:s.total});return orderDetail(db,oid,user);
@@ -198,7 +201,7 @@ export async function orderHistory(db,orderId,user){can(user,'orders.read');awai
 }
 export async function orderAction(db,orderId,b,user){const reason=why(b),action=b.action;can(user,action==='APPROVE'?'orders.review':'orders.update');
  return work(db,user,reason,async()=>{if(tallyWriteActive(db,'SALES_ORDER'))await guardTallyWriteMutation(db,'SALES_ORDER',orderId);const r=await row(db,orderId);if(b.version!==r.version)fail(409,'Order changed. Reload.');if(['CANCELLED','DELIVERED','DISPATCHED'].includes(r.status))fail(409,'Terminal or fully dispatched orders cannot be re-verified, approved or cancelled.');
- if(action==='CANCEL'){if(await db.prepare('SELECT id FROM crm_shipments WHERE sales_order_id=?').get(r.sales_order_id))fail(409,'Dispatched orders cannot be cancelled.');await db.prepare("UPDATE crm_order_workflows SET status='CANCELLED' WHERE sales_order_id=?").run(r.sales_order_id);await db.prepare("UPDATE sales_orders SET status='CANCELLED',updated_by=?,updated_at=now() WHERE id=?").run(user.id,r.sales_order_id);}
+ if(action==='CANCEL'){if(await db.prepare('SELECT id FROM crm_shipments WHERE sales_order_id=?').get(r.sales_order_id))fail(409,'Dispatched orders cannot be cancelled.');await releaseOrderAvailability(db,r.sales_order_id,user,reason);await db.prepare("UPDATE crm_order_workflows SET status='CANCELLED' WHERE sales_order_id=?").run(r.sales_order_id);await db.prepare("UPDATE sales_orders SET status='CANCELLED',updated_by=?,updated_at=now() WHERE id=?").run(user.id,r.sales_order_id);}
  else {const v=await verifyOrder(db,r);if(action==='VERIFY'){await db.prepare("UPDATE crm_order_workflows SET status='HELD',approval_fingerprint=NULL,approved_by=NULL,approved_version=NULL WHERE sales_order_id=?").run(r.sales_order_id);}
  else if(action==='APPROVE'){
  if(v.flags.includes('CREDIT_TIERS_NOT_CONFIGURED'))await workflowRule(db,'credit.tiers');
@@ -257,6 +260,7 @@ export async function dispatchOrder(db,orderId,b,user){can(user,isLogisticsRole(
  const shipment=(await db.prepare('INSERT INTO crm_shipments(sales_order_id,vehicle_number,lr_number,transporter,eway_bill_number,notes,created_by) VALUES(?,?,?,?,?,?,?)').run(r.sales_order_id,vehicle,lr,transporter,eway||null,text(b.notes??'',2000),user.id)).insertedId;
  for(const l of picked){await db.prepare('INSERT INTO crm_shipment_items(shipment_id,order_line_id,quantity,created_by) VALUES(?,?,?,?)').run(shipment,l.id,l.quantity,user.id);await db.prepare('UPDATE sales_order_lines SET fulfilled_quantity=? WHERE id=?').run(l.fulfilled,l.id);}
  await retainDispatchConsumption(db,r,shipment,picked,stockEvidence,user,reason);
+ await consumeOrderAvailability(db,r.sales_order_id,user,reason);
  const remaining=await db.prepare('SELECT id FROM sales_order_lines WHERE sales_order_id=? AND NOT is_deleted AND fulfilled_quantity<ordered_quantity LIMIT 1').get(r.sales_order_id);
  const next=remaining?'PARTIALLY_DISPATCHED':'DISPATCHED';await db.prepare('UPDATE crm_order_workflows SET status=? WHERE sales_order_id=?').run(next,r.sales_order_id);await db.prepare('UPDATE sales_orders SET status=?,updated_by=?,updated_at=now() WHERE id=?').run(next,user.id,r.sales_order_id);
  await event(db,r,user,'DISPATCHED',reason,{shipmentId:shipment,lrNumber:lr,requestKey:b.requestKey,requestHash,lines:picked.map(l=>({lineId:l.id,quantity:l.quantity}))});return {shipmentId:shipment,order:await orderDetail(db,orderId,user)};
