@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useApi } from '@/lib/api/provider';
 import { useSession } from '@/lib/session';
 import { TallyLogistics } from '@/features/workflows/tally-logistics';
+import {AvailabilityQueue} from '@/features/incoming-requests/availability';
 import { Button, Card, Checkbox, DataTable, Drawer, ErrorState, PageHeader, SelectField, StatusBadge, TextField, useToast } from '@/components/ds';
 
 type Line = { id?: number; poLineKey?: string; lineKey?: string; partCode?: string; actualPartCode?: string; description?: string; quantity?: string; uom?: string };
@@ -52,6 +53,7 @@ export default function LogisticsPage() {
   return <div className="stack-lg">
     <PageHeader title="Logistics & store" description={can('logistics.orders.read') ? 'Manage receiving and dispatch. Commercial approvals stay with the existing reviewers.' : 'Your assigned orders. Record photos and item-code observations for review.'} />
     {can('logistics.orders.read') && <TallyLogistics />}
+    <AvailabilityQueue />
     {error != null && <ErrorState error={error} onRetry={() => { setError(undefined); setRevision(v => v + 1); }} />}
     <Card title={can('logistics.orders.read') ? 'Orders' : 'Assigned orders'}>
       <DataTable<RecordRow> id="logistics-orders" caption="Operational orders" rows={orders} rowKey={r => r.id} onRowClick={r => void run(() => openOrder(r.id), false)} columns={[

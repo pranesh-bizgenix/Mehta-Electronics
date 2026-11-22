@@ -31,6 +31,7 @@ export const NAV: NavGroup[] = [
     { href: '/work', label: 'My work', icon: 'clock', permission: 'work.read', badge: 'slaBreaches', badgeTone: 'danger', keywords: 'sla due' }
   ] },
   { label: 'Sales', items: [
+    { href: '/incoming-requests', label: 'Incoming requests', icon: 'inbox', permission: 'sales_intake.read', keywords: 'email whatsapp customer po enquiry quotation request inbox' },
     { href: '/customers', label: 'Customers', icon: 'customers', permission: 'customers.read', keywords: 'crm 360 party' },
     { href: '/contracts', label: 'Customer contracts', icon: 'quote', permission: 'customers.read', keywords: 'rate contract fixed price quantity validity' },
     { href: '/enquiries', label: 'Enquiries', icon: 'inbox', permission: 'enquiries.read', keywords: 'inbox leads' },

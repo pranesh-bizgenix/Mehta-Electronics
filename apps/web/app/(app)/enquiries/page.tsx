@@ -129,7 +129,7 @@ function Detail({ enquiry, onBack, onRevise, onTransition }: { enquiry: Enquiry;
       <header className="ds-record" style={{ marginBottom: 0 }}>
         <span className="ds-record-avatar" aria-hidden="true"><Icon name="inbox" /></span>
         <div style={{ minWidth: 0 }}>
-          <div className="cluster"><span className="mono subtle">{enquiry.enquiry_number}</span><StatusBadge status={enquiry.status} />{enquiry.source && <Badge tone="info">{enquiry.source}</Badge>}</div>
+          <div className="cluster"><span className="mono subtle">{enquiry.enquiry_number}</span><StatusBadge status={enquiry.status} />{enquiry.source && <Badge tone="info">{enquiry.source}</Badge>}{enquiry.source?.startsWith('MAKE:')&&can('sales_intake.read')&&<Link href={`/incoming-requests?requestId=${encodeURIComponent(enquiry.source.slice(5))}`}>Source request and response clock</Link>}</div>
           <h2 className="truncate" style={{ fontSize: 'var(--text-xl)' }} title={enquiry.subject}>{enquiry.subject}</h2>
           <div className="ds-record-meta">
             <Link href={`/customers/${enquiry.customer_id}`}><Icon name="customers" />{enquiry.customer_name}</Link>

@@ -15,6 +15,7 @@ import { quotationOrderHref } from '../../../../public/crm-navigation.js';
 import { STATE_NAMES, type QuoteAction, type QuoteStatus } from './api';
 import { marginFlag, useQuoteEditor, type QuoteEditor } from './use-quote-editor';
 import {PolicyDrawer, CostDrawer} from './owner-tools';
+import {QuoteAvailability} from '@/features/incoming-requests/availability';
 
 const FLOW: { status: QuoteStatus; label: string }[] = [{ status: 'DRAFT', label: 'Draft' }, { status: 'PENDING_APPROVAL', label: 'Approval' }, { status: 'APPROVED', label: 'Approved' }, { status: 'SENT', label: 'Sent' }];
 function flowSteps(status: QuoteStatus | undefined): Step[] {
@@ -109,6 +110,7 @@ export function QuoteEditorView({ id, enquiryId, customerId }: { id?: string; en
       {ed.policy?.confirmed===false&&<Notice tone="warning" title="Quotation policy awaits Owner confirmation">The saved policy is retained for review. The Owner must confirm it before this quotation can proceed. {can('rules.manage')&&<Link href="/decisions">Review decisions</Link>}</Notice>}
       {ed.sourceWarning&&<Notice tone="warning" title="Review the source enquiry">{ed.sourceWarning}<Button variant="link" onClick={()=>ed.setSourceWarning(undefined)}>I have reviewed and added the missing items</Button></Notice>}
       <Card><Stepper label={q?'Quotation approval':'Create a quotation'} steps={q?flowSteps(q.status):[{label:'Customer & validity',state:ed.customer&&ed.validUntil&&ed.placeOfSupply?'done':'current'},{label:'Items & pricing',state:ed.lineErrors.every(error=>!error)?'done':'todo'},{label:'Review & save draft',state:ed.problems.length?'todo':'current'}]} /></Card>
+      {q&&<QuoteAvailability quoteId={q.id} version={q.version} required={q.requiresWarehouseReview}/>}
 
       <div className={`grid-main-aside${!q?' quote-create-layout':''}`} style={{ marginTop: 'var(--space-3)' }}>
         <div className="stack-lg">

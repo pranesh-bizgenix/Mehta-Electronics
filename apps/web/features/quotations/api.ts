@@ -5,6 +5,7 @@ export type QuoteStatus = 'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED' | 'SENT' | '
 export type QuoteAction = 'SUBMIT' | 'APPROVE' | 'RETURN' | 'SEND' | 'WON' | 'LOST' | 'EXPIRE' | 'CANCEL';
 
 export interface QuoteLine {
+  sourceLineId?: string;
   pricingSelection?: {level:number;fingerprint:string};
   requestDetails?:QuotationLineRequest;
   itemId: number; partCode: string; hsn: string; description: string; uom: string;
@@ -16,6 +17,7 @@ export interface Pricing {
   lines: { itemId: number; unitCost: string | null; cost?: string; marginPercent: string | null; belowFloor?: boolean }[];
 }
 export interface Quotation {
+  companyId?:string;requiresWarehouseReview?:boolean;
   approval?:{roundId:string;completed:number;total:number;pendingStageId:string|null;canApprove:boolean;canReturn:boolean;ownerSelfApproval?:boolean;blocked?:boolean;note?:string;steps:{id:string;number:number;status:'COMPLETED'|'PENDING'|'WAITING'}[]}|null;
   request?:QuotationRequest;
   id: number; status: QuoteStatus; version: number; created_by: number; updated_at: string; duplicateOf?: number | null;
@@ -31,6 +33,7 @@ export interface Policy { seller_state: string; revision: number; confirmed?: bo
 export interface PricingEvent extends QuoteEvent { private_detail: { before: unknown; after: unknown } }
 export interface CostImportPlan { fingerprint: string; canSave: boolean; rows: { row: number; partCode: string; description: string; currentCost: string | null; unitCost: string; issues: string[] }[] }
 export interface QuoteInput {
+  companyId?:string;
   request?:QuotationRequest;
   customerId: number; enquiryId?: number | null; validUntil: string; placeOfSupply: string; supplyType: 'DOMESTIC_STANDARD'; terms: string; notes: string;
   lines: { pricingSelection?: {level:number;fingerprint:string}; itemId: number; description: string; quantity: string; unitPrice: string; discountPercent: string; taxPercent: string; requestDetails?:QuotationLineRequest }[];
