@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import { AppError, conflict, forbidden, notFound } from '../../core/errors.js';
 import { sha256 } from '../../core/runtime.js';
+import {isMfaExemptTestAccount} from './test-account-policy.js';
 
 const RECOVERY_CODE_COUNT = 10;
 const MAX_FAILED = 5;
@@ -14,14 +15,14 @@ const normalizeRecovery = (code) => String(code || '').toUpperCase().replace(/[^
  * use the rest of the API until their session is verified.
  */
 export class MfaService {
-  constructor({ repository, totp, secretBox, clock, transactions, audit, access, issuer = 'Mehta ControlDesk' }) {
-    Object.assign(this, { repository, totp, secretBox, clock, transactions, audit, access, issuer });
+  constructor({ repository, totp, secretBox, clock, transactions, audit, access, config = {}, issuer = 'Mehta ControlDesk' }) {
+    Object.assign(this, { repository, totp, secretBox, clock, transactions, audit, access, config, issuer });
   }
 
   async status(user) {
     const row = await this.repository.get(user.id);
     return {
-      required: this.access.requiresMfa(user.role),
+      required: !isMfaExemptTestAccount(this.config,user) && this.access.requiresMfa(user.role),
       enrolled: Boolean(row?.enabled_at),
       sessionVerified: Boolean(user.mfa_verified_at),
       recoveryCodesRemaining: row?.enabled_at ? await this.repository.remainingRecoveryCodes(user.id) : 0

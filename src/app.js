@@ -10,6 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { customerView, detectCustomerDuplicates, enquiryRevisions, enquiryView, parseJsonArray, quotationRevisions, quotationView, recordEnquiryRevision, recordQuotationRevision, replaceContacts, salesOrderView, writeAudit } from './db.js';
 import { hasPermission, permissionsFor, roleRequiresMfa } from './rbac.js';
 import { createModules } from './modules/container.js';
+import {isMfaExemptTestAccount} from './modules/mfa/test-account-policy.js';
 import { adaptRoutes } from './core/http.js';
 import {priceImportRoutes} from './modules/pricing/controller.js';
 import {stockCheckRoutes} from './modules/stock/controller.js';
@@ -188,7 +189,7 @@ export function createApp({ db, config, fetchImpl = fetch, sendMailImpl = sendQu
   const automationCredentials=createAutomationCredentials(db,clock);
   const tallyWrite=createTallyWriteModule({db,connectorStore,route,json,readJson,readConnectorJson});
   // Two-factor is off unless MFA_ENABLED=true; then roles flagged requires_mfa and enrolled users must verify.
-  const mfaState = (user) => ({ required: config.mfaEnabled && (roleRequiresMfa(user.role) || Boolean(user.mfa_enabled)), enrolled: Boolean(user.mfa_enabled), verified: Boolean(user.mfa_verified_at) });
+  const mfaState = (user) => ({ required: config.mfaEnabled && !isMfaExemptTestAccount(config,user) && (roleRequiresMfa(user.role) || Boolean(user.mfa_enabled)), enrolled: Boolean(user.mfa_enabled), verified: Boolean(user.mfa_verified_at) });
   const routes = [
     ...tallyWrite.routes,
     ...adaptRoutes(modules.routeDefinitions(), { route, json, readJson, transactions: modules.transactions, idempotency: modules.idempotency }),
@@ -255,10 +256,11 @@ export function createApp({ db, config, fetchImpl = fetch, sendMailImpl = sendQu
       (await db.prepare('UPDATE users SET failed_login_count=0,locked_until=NULL WHERE id=?').run(user.id));
       const token = randomToken(); const csrf = randomToken(24);
       (await db.prepare(`INSERT INTO sessions(user_id,token_hash,csrf_token,ip_address,user_agent,expires_at) VALUES(?,?,?,?,?,(CURRENT_TIMESTAMP + (?::integer * INTERVAL '1 minute')))`).run(user.id, tokenDigest(token), csrf, ip, String(req.headers['user-agent'] || '').slice(0, 500), String(config.sessionTtlMinutes)));
-      (await writeAudit(db, { userId: user.id, entity: 'AUTH', recordId: user.id, action: 'LOGIN', ipAddress: ip }));
+      (await writeAudit(db, { userId: user.id, entity: 'AUTH', recordId: user.id, action: 'LOGIN', ipAddress: ip,
+        ...(isMfaExemptTestAccount(config,user)?{reason:'Explicit operator-configured fictional test-account MFA exception',newValue:{mfaTestException:true}}:{}) }));
       const cookie = `crm_session=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${config.sessionTtlMinutes * 60}${config.isProduction ? '; Secure' : ''}`;
       const enrolled = Boolean((await db.prepare('SELECT enabled_at FROM user_mfa WHERE user_id=?').get(user.id))?.enabled_at);
-      json(res, 200, { user: publicUser(user), permissions: permissionsFor(user.role), csrfToken: csrf, mfa: { required: config.mfaEnabled && (roleRequiresMfa(user.role) || enrolled), enrolled, verified: false } }, { 'set-cookie': cookie });
+      json(res, 200, { user: publicUser(user), permissions: permissionsFor(user.role), csrfToken: csrf, mfa: { required: config.mfaEnabled && !isMfaExemptTestAccount(config,user) && (roleRequiresMfa(user.role) || enrolled), enrolled, verified: false } }, { 'set-cookie': cookie });
     }),
     Object.assign(route('POST', '/api/auth/logout', 'authenticated', async ({ req, res, user, ip }) => {
       const token = parseCookies(req.headers.cookie).crm_session; (await db.prepare('DELETE FROM sessions WHERE token_hash=?').run(tokenDigest(token)));

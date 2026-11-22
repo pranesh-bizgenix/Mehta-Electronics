@@ -52,6 +52,8 @@ export function getConfig(overrides = {}) {
     smtpFrom: process.env.SMTP_FROM || '',
     appEncryptionKey: process.env.APP_ENCRYPTION_KEY || '',
     mfaEnabled: String(process.env.MFA_ENABLED ?? 'false').toLowerCase() === 'true',
+    mfaTestExemptUserId: integer(process.env.MFA_TEST_EXEMPT_USER_ID, 0),
+    mfaTestExemptEmail: String(process.env.MFA_TEST_EXEMPT_EMAIL || '').trim().toLowerCase(),
     schedulerEnabled: String(process.env.SCHEDULER_ENABLED ?? 'true').toLowerCase() !== 'false',
     isProduction: process.env.NODE_ENV === 'production',
     ...overrides,
