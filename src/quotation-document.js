@@ -62,10 +62,10 @@ export function quotationPrintHtml(q) {
   return `<!doctype html><html lang="en-IN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Quotation ${e(q.quotation_number)}</title><link rel="stylesheet" href="/quotation-print.css"></head><body>
 <div class="toolbar"><button id="print" type="button">Print or save as PDF</button></div>
 <article class="sheet${issued ? '' : ' draft'}">
-${issued ? '' : '<p class="watermark" aria-hidden="true">NOT APPROVED FOR ISSUE</p>'}
+
 <header class="letterhead"><div class="brand"><span class="mark">${e((l.name || 'M').trim().charAt(0))}</span><div><h1>${e(l.name)}</h1><p>${e(l.address)}</p></div></div>
 <dl class="contact">${l.gstin ? `<div><dt>GSTIN</dt><dd>${e(l.gstin)}</dd></div>` : ''}${l.phone ? `<div><dt>Phone</dt><dd>${e(l.phone)}</dd></div>` : ''}${l.email ? `<div><dt>Email</dt><dd>${e(l.email)}</dd></div>` : ''}</dl></header>
-<section class="title"><h2>Quotation</h2><p class="status">${issued ? '' : 'Draft — not approved for issue · '}Version ${e(q.version)}</p></section>
+<section class="title"><h2>Quotation</h2><p class="status">${issued ? '' : 'DRAFT — NOT APPROVED FOR ISSUE · '}Version ${e(q.version)}</p></section>
 ${q.request?.referenceOnly?'<p class="block">DEVELOPMENT REFERENCE ONLY - HISTORICAL PRICING - NOT FOR CUSTOMER ISSUE</p>':''}
 <section class="parties"><div><h3>Bill to</h3><p class="strong">${e(q.customer_name)}</p><p class="multiline">${e(q.customerAddress || '')}</p>${q.customerGstin ? `<p>GSTIN ${e(q.customerGstin)}</p>` : ''}</div>
 <dl class="meta"><div><dt>Quotation no.</dt><dd>${e(q.quotation_number)}</dd></div><div><dt>Valid until</dt><dd>${e(dateText(q.validUntil))}</dd></div><div><dt>Place of supply</dt><dd>${e(stateLabel(q.placeOfSupply))}</dd></div></dl></section>
@@ -194,13 +194,13 @@ export function quotationPdf(q) {
     doc.moveTo(right - 160, y + 52).lineTo(right, y + 52).lineWidth(0.6).strokeColor(MUTED).stroke();
     doc.fillColor(MUTED).fontSize(8).text('Authorised signatory', right - 200, y + 56, { width: 200, align: 'right' });
 
-    // Draft watermark and page footers
+    // Page footers; draft status remains in the document header
     const range = doc.bufferedPageRange();
     for (let i = range.start; i < range.start + range.count; i++) {
       doc.switchToPage(i);
       const bottom = doc.page.margins.bottom;
       doc.page.margins.bottom = 0; // footer and watermark sit outside the flow; never trigger a new page
-      if (!issued) { doc.save(); doc.rotate(-30, { origin: [doc.page.width / 2, doc.page.height / 2] }); doc.fillColor('#c0392b').opacity(0.07).fontSize(40).text('NOT APPROVED FOR ISSUE', -100, doc.page.height / 2 - 20, { width: doc.page.width + 200, align: 'center', lineBreak: false }); doc.restore(); doc.opacity(1); }
+
       doc.fillColor(MUTED).fontSize(7.5).text(`${q.quotation_number} · Page ${i + 1} of ${range.count}`, left, doc.page.height - 36, { width, align: 'right', lineBreak: false });
       doc.page.margins.bottom = bottom;
     }

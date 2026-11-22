@@ -21,7 +21,7 @@ export function purchaseDocumentPdf(record,{draft=false,sample=false}={}){
    const y=doc.y;doc.fillColor('#526078').fontSize(8).text(label,left,y,{width:125});doc.fillColor('#17243a').fontSize(8.5).text(content,left+135,y,{width:width-135});doc.y=Math.max(doc.y,y+12)+6;doc.x=left;
   };
   doc.fillColor('#203c6a').fontSize(17).text(record.kind==='RFQ'?'VENDOR REQUEST FOR QUOTATION':'SUPPLIER PURCHASE ORDER');doc.moveDown(.4);
-  block(`${record.kind} NO. / DATE`,`${record.number} | ${p.date}`);block('STATUS',record.status.replaceAll('_',' '));
+  block(`${record.kind} NO. / DATE`,`${record.number} | ${p.date}`);block('STATUS',`${sample?'SAMPLE - NOT FOR ISSUE | ':draft?'DRAFT - NOT FOR ISSUE | ':''}${record.status.replaceAll('_',' ')}`);
   block('SUPPLIER (RECIPIENT)',[p.supplier.name,p.supplier.address,p.supplier.gstin&&`GSTIN: ${p.supplier.gstin}`].filter(Boolean).join('\n'));
   if(record.kind==='RFQ'){block('RESPONSE DEADLINE',p.responseDeadline);block('REQUESTED LEAD TIME',p.requestedLeadTime);}
   else{block('BILL TO',p.billTo);block('SHIP TO',p.shipTo);block('DELIVERY DATE',p.deliveryDate);}
@@ -51,7 +51,7 @@ export function purchaseDocumentPdf(record,{draft=false,sample=false}={}){
   }else for(const [key,label]of [['priceBasis','Requested price basis'],['delivery','Requested delivery'],['payment','Requested payment'],['validity','Requested offer validity']])block(label,p.requestedTerms[key]);
   block('TERMS',p.terms);if(record.kind==='PO')block('SIGNATORY',p.signatory);
   const range=doc.bufferedPageRange();for(let i=0;i<range.count;i++){
-   doc.switchToPage(i);const margin=doc.page.margins.bottom;doc.page.margins.bottom=0;if(draft||sample){doc.save().opacity(.12).fillColor('#bb3020').fontSize(45).rotate(-30,{origin:[297,420]}).text(sample?'SAMPLE - NOT FOR ISSUE':'DRAFT',50,400,{width:500,align:'center',lineBreak:false}).restore();}
+   doc.switchToPage(i);const margin=doc.page.margins.bottom;doc.page.margins.bottom=0;
    doc.fillColor('#526078').fontSize(7).text(`${placeholder(c.footer)} | ${record.number} | Page ${i+1} of ${range.count}`,left,800,{width,align:'center',lineBreak:false});
    doc.page.margins.bottom=margin;
   }doc.end();
