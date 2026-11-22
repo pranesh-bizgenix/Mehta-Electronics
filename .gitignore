@@ -32,3 +32,6 @@ apps/web/.next-*/
 output/tally-sales-review/connector-backup/
 output/tally-sales-review/connector-framework-dependent/
 output/tally-sales-review/connector-release/
+.vercel
+output/billing-pdf-samples/
+output/document-branding/
