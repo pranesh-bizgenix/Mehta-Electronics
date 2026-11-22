@@ -1,0 +1,164 @@
+[
+  {
+    "schemaVersion": "1.0",
+    "eventId": "SAMPLE-event-1",
+    "messageType": "CUSTOMER_PO",
+    "companyId": "00000000-0000-4000-8000-000000000063",
+    "source": {
+      "system": "Make",
+      "mailbox": "sample-inbox@example.test",
+      "messageId": "SAMPLE-message-1",
+      "threadId": "SAMPLE-thread-1",
+      "receivedAt": "2026-11-21T03:00:00.000Z",
+      "originalText": "Fictional reference example; no business message received.",
+      "attachments": []
+    },
+    "provenance": {
+      "extractor": "SAMPLE-extractor",
+      "version": "1",
+      "reference": "SAMPLE-reference-1"
+    },
+    "header": {
+      "buyerName": "SAMPLE Buyer - fictional",
+      "supplierName": "SAMPLE Mehta issuer",
+      "billingAddress": {
+        "text": "SAMPLE billing address"
+      },
+      "deliveryAddress": {
+        "text": "SAMPLE delivery address",
+        "stateCode": "33"
+      },
+      "contactPerson": "SAMPLE Contact",
+      "email": "buyer@example.test",
+      "phone": null,
+      "paymentTerms": null,
+      "otherTerms": null,
+      "poNumber": "SAMPLE-PO-001",
+      "poDate": "2026-11-21",
+      "totalPoValue": "236"
+    },
+    "items": [
+      {
+        "lineId": "1",
+        "description": "SAMPLE Terminal - fictional",
+        "productCode": "SAMPLE-PART-001",
+        "hsn": null,
+        "quantity": "2",
+        "uom": "NOS",
+        "unitPrice": "100",
+        "discount": {
+          "kind": "PERCENT",
+          "value": "0"
+        },
+        "gstRate": "18",
+        "taxableAmount": "200",
+        "deliverySchedules": []
+      }
+    ]
+  },
+  {
+    "schemaVersion": "1.0",
+    "eventId": "SAMPLE-event-2",
+    "messageType": "QUOTATION_REQUEST",
+    "companyId": "00000000-0000-4000-8000-000000000063",
+    "source": {
+      "system": "Make",
+      "mailbox": "sample-inbox@example.test",
+      "messageId": "SAMPLE-message-2",
+      "threadId": "SAMPLE-thread-2",
+      "receivedAt": "2026-11-21T03:00:00.000Z",
+      "originalText": "Fictional reference example; no business message received.",
+      "attachments": []
+    },
+    "provenance": {
+      "extractor": "SAMPLE-extractor",
+      "version": "1",
+      "reference": "SAMPLE-reference-2"
+    },
+    "header": {
+      "buyerName": "SAMPLE Buyer - fictional",
+      "supplierName": "SAMPLE Mehta issuer",
+      "billingAddress": {
+        "text": "SAMPLE billing address"
+      },
+      "deliveryAddress": {
+        "text": "SAMPLE delivery address",
+        "stateCode": "33"
+      },
+      "contactPerson": "SAMPLE Contact",
+      "email": "buyer@example.test",
+      "phone": null,
+      "paymentTerms": null,
+      "otherTerms": null
+    },
+    "items": [
+      {
+        "lineId": "1",
+        "description": "SAMPLE Terminal - fictional",
+        "productCode": "SAMPLE-PART-001",
+        "hsn": null,
+        "quantity": "2",
+        "uom": "NOS",
+        "unitPrice": "100",
+        "discount": {
+          "kind": "PERCENT",
+          "value": "0"
+        },
+        "gstRate": "18",
+        "taxableAmount": "200",
+        "deliverySchedules": []
+      }
+    ]
+  },
+  {
+    "schemaVersion": "1.0",
+    "eventId": "SAMPLE-event-3",
+    "messageType": "LEAD_ENQUIRY",
+    "companyId": "00000000-0000-4000-8000-000000000063",
+    "source": {
+      "system": "Make",
+      "mailbox": "sample-inbox@example.test",
+      "messageId": "SAMPLE-message-3",
+      "threadId": "SAMPLE-thread-3",
+      "receivedAt": "2026-11-21T03:00:00.000Z",
+      "originalText": "Fictional reference example; no business message received.",
+      "attachments": []
+    },
+    "provenance": {
+      "extractor": "SAMPLE-extractor",
+      "version": "1",
+      "reference": "SAMPLE-reference-3"
+    },
+    "header": {
+      "buyerName": "SAMPLE Buyer - fictional",
+      "supplierName": "SAMPLE Mehta issuer",
+      "billingAddress": {
+        "text": "SAMPLE billing address"
+      },
+      "deliveryAddress": {
+        "text": "SAMPLE delivery address",
+        "stateCode": "33"
+      },
+      "contactPerson": "SAMPLE Contact",
+      "email": "buyer@example.test",
+      "phone": null,
+      "paymentTerms": null,
+      "otherTerms": null
+    },
+    "items": [
+      {
+        "lineId": "1",
+        "description": "SAMPLE Terminal - fictional",
+        "productCode": "SAMPLE-PART-001",
+        "hsn": null,
+        "quantity": "2",
+        "uom": "NOS",
+        "unitPrice": null,
+        "discount": null,
+        "gstRate": null,
+        "taxableAmount": null,
+        "deliverySchedules": []
+      }
+    ]
+  }
+]
