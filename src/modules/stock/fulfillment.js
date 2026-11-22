@@ -6,6 +6,7 @@ import {hasPermission} from '../../rbac.js';
 import {workflowRule} from '../rules/workflow-rules.js';
 import {StockCheckRepository} from './repository.js';
 import {evaluateStock} from './availability.js';
+import {orderReservationAdjustment} from '../sales-intake/availability.js';
 import {decimal,add,sub,compare,format} from '../../../public/money.js';
 
 const lineBinding=s.object({basis:s.enum(['FREE_STOCK','RESERVED_STOCK']).nullable(),reservationKey:s.string({min:1,max:250}).nullable(),tallyOrderKey:s.string({min:1,max:300}).nullable()});
@@ -61,6 +62,9 @@ export async function orderStockEvidence(db,order,{picked=null,clock=new SystemC
   const item=await repo.item(group.itemId);if(!item||item.uom!==group.uom){flags.push('UOM_MISMATCH');continue;}
   if(!sources.has(item.id))sources.set(item.id,await repo.source(companyId,item));
   const source=sources.get(item.id),plan=evaluateStock({source,policy,requestedQuantity:group.requestedQuantity,basis:group.basis,reservationKey:group.reservationKey,now:clock.now(),latestAttempt:latest});
+  const quoteHolds=await orderReservationAdjustment(db,companyId,item.id,order.sales_order_id,plan,source);
+  flags.push(...quoteHolds.issues);
+  if(group.basis==='FREE_STOCK'&&plan.freeQuantity!==null){plan.freeQuantity=format(add(decimal(plan.freeQuantity),decimal(quoteHolds.delta)),6);plan.available=plan.status==='VERIFIED'?compare(decimal(plan.freeQuantity),decimal(group.requestedQuantity))>=0:null;plan.previewFingerprint=fingerprint({source:plan.previewFingerprint,quoteHolds:quoteHolds.fingerprint});}
   const pending=await pendingConsumption(db,companyId,item.id),legacyCount=await legacyConsumption(db,companyId,item.id);
   const ownership=group.basis==='FREE_STOCK'||group.reservationKey&&group.tallyOrderKey&&await ownsOrderReservation(db,companyId,order.sales_order_id,await sourceOrder(db,companyId,group.tallyOrderKey),group.reservationKey);
   if(!ownership)flags.push('RESERVATION_OWNERSHIP_UNVERIFIED');

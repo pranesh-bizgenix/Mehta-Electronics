@@ -2,12 +2,21 @@ import {readItemSources,itemLinkMatches} from '../../tally-item-links.js';
 export class StockCheckRepository {
  constructor(db){this.db=db;}
  async item(id){return this.db.prepare("SELECT id,part_code,description,uom FROM items WHERE id=? AND status='ACTIVE' AND NOT is_deleted").get(id);}
- async source(companyId,item){
-  const links=await this.db.prepare("SELECT tally_guid,tally_master_id FROM crm_tally_item_links WHERE company_id=? AND item_id=? AND status='ACTIVE' AND NOT is_deleted AND tally_record_key IS NOT NULL").all(companyId,item.id);
+ async links(companyId){return this.db.prepare("SELECT item_id,tally_guid,tally_master_id FROM crm_tally_item_links WHERE company_id=? AND status='ACTIVE' AND NOT is_deleted AND tally_record_key IS NOT NULL").all(companyId);}
+ async batch(companyId,items){
+  const links=await this.links(companyId),sourceRows=await readItemSources(this.db,companyId),wanted=new Set(items.map(i=>i.id)),relevant=links.filter(l=>wanted.has(l.item_id)),ids=sourceRows.filter(s=>s.stable&&relevant.some(l=>itemLinkMatches(l,s))).map(s=>s.record_id);
+  const rows=ids.length?await this.db.prepare(`SELECT r.id,r.raw_record,s.collection_metadata,d.status,d.quarantined_count FROM tally_visibility_records r
+   LEFT JOIN tally_upload_sessions s ON s.id=r.session_id LEFT JOIN tally_run_datasets d ON d.session_id=s.id AND d.company_id=r.company_id AND d.dataset='stockXml'
+   WHERE r.id=ANY(?::text[]) AND r.company_id=? AND r.entity='items'`).all(ids,companyId):[];
+  const receipts=new Map(rows.map(r=>[r.id,r]));return new Map(await Promise.all(items.map(async item=>[item.id,await this.source(companyId,item,{links,sourceRows,receipts})])));
+ }
+ async source(companyId,item,options={}){
+  const allLinks=options.links??await this.links(companyId),links=allLinks.filter(l=>l.item_id===item.id);
   const empty={stable:false,company_id:companyId,item_id:item.id,uom:item.uom};if(!links.length)return empty;
-  const matches=(await readItemSources(this.db,companyId)).filter(source=>source.stable&&links.some(link=>itemLinkMatches(link,source)));if(matches.length!==1)return empty;
+  const matches=(options.sourceRows??await readItemSources(this.db,companyId)).filter(source=>source.stable&&links.some(link=>itemLinkMatches(link,source)));if(matches.length!==1)return empty;
   const source=matches[0];if(source.uom?.normalize('NFKC').trim().toUpperCase()!==item.uom?.normalize('NFKC').trim().toUpperCase())return empty;
-  const receipt=await this.db.prepare(`SELECT r.raw_record,s.collection_metadata,d.status,d.quarantined_count FROM tally_visibility_records r
+  if(allLinks.some(l=>l.item_id!==item.id&&itemLinkMatches(l,source)))return {...empty,identityIssue:'Multiple CRM products share this retained stock identity. Resolve the mapping before allocation.'};
+  const receipt=options.receipts?options.receipts.get(source.record_id):await this.db.prepare(`SELECT r.raw_record,s.collection_metadata,d.status,d.quarantined_count FROM tally_visibility_records r
    LEFT JOIN tally_upload_sessions s ON s.id=r.session_id LEFT JOIN tally_run_datasets d ON d.session_id=s.id AND d.company_id=r.company_id AND d.dataset='stockXml'
    WHERE r.id=? AND r.company_id=? AND r.entity='items'`).get(source.record_id,companyId);
   const usable=receipt&&['imported','received_empty','retained'].includes(receipt.status)&&receipt.quarantined_count===0;
