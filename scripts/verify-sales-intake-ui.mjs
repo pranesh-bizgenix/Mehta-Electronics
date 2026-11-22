@@ -1,0 +1,72 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import {chromium} from 'playwright';
+import {createControlDeskServer} from '../src/controldesk-server.js';
+
+// Presentation verification only. All API fixtures are intercepted in the
+// browser; the listener refuses API calls. This cannot mutate a database or
+// certify persisted business workflows (see verify-sales-intake.mjs).
+const output=path.resolve('verification-output/sales-intake/ui');
+fs.mkdirSync(output,{recursive:true});
+const report={startedAt:new Date().toISOString(),mode:'Browser with fictional read-only API fixtures',checks:[],unexpectedApi:[],rejectedConnectorRequests:0,errors:[],cleanup:'NO_DATABASE_CONNECTION'};
+const company='00000000-0000-4000-8000-000000000063';
+const now=new Date().toISOString();
+const linkIds=['00000000-0000-4000-8000-000000000901','00000000-0000-4000-8000-000000000902'];
+const linkedSample=id=>({id,company_id:company,sample:true,message_type:'LEAD_ENQUIRY',source_received_at:now,received_at:now,status:'NEEDS_REVIEW',classification:'NEW',relationship:'NEW',tier:{tier:null,state:'TIER_POLICY_REQUIRED',count:null},blockers:['SAMPLE: Read-only deep-link verification'],assigned_to:null,assigned_name:null,first_assigned_at:null,first_response_at:null,enquiry_id:null,quotation_id:null,sales_order_id:null,customer_id:null,customer_po_id:null,version:1,buyer_name:id===linkIds[0]?'Sample deep-link A':'Sample deep-link B',po_number:null,mailbox:'sample@example.test',message_id:id,source_system:'Fictional fixture',original_payload:{sample:true},normalized:{header:{buyerName:id===linkIds[0]?'Sample deep-link A':'Sample deep-link B'},items:[],source:{originalText:'Fictional source; never persisted.'},provenance:{extractor:'Read-only test fixture',version:'1',reference:id}},resolutions:{},events:[],documents:[],timing:{elapsedSeconds:null,firstAssignedAt:null,firstResponseAt:null,sla:'NOT_CONFIGURED',kpi:'NOT_CONFIGURED',timezone:'Asia/Kolkata'}});
+const line=(n,short=false)=>({id:`00000000-0000-4000-8000-${String(n).padStart(12,'0')}`,sourceLineId:String(n),partCode:'SAMPLE-STOCK-'+n,description:'Fictional warehouse item '+n,quantity:short?'20':'2',uom:'NOS',warehouse:'Sample warehouse',warehouses:[{key:'Sample warehouse',onHand:'10',reserved:'0',free:'10'}],onHand:'10',sourceReserved:'0',localReserved:'0',availableQuantity:'10',shortageQuantity:short?'10':'0',checkedQuantity:'10',checkedBy:203,checkedAt:now,evidence:'SAMPLE-REFERENCE-'+n,sourceTimestamp:now,sourceStatus:'VERIFIED',issues:short?['STOCK_SHORT']:[],ready:!short});
+const requests=Array.from({length:10},(_,i)=>({id:`00000000-0000-4000-8000-${String(i+100).padStart(12,'0')}`,quotation_id:i+1,quotation_version:1,status:i%2?'PARTIALLY_AVAILABLE':'READY_FOR_REVIEW',assigned_store_id:203,assigned_name:'Sample store user',created_at:now,version:1}));
+let app,browser;
+const check=async(id,description,fn)=>{try{await fn();report.checks.push({id,description,status:'PASS'});console.log('PASS',id,description);}catch(e){report.checks.push({id,description,status:'FAIL',error:e.message});throw e;}};
+try{
+ app=await createControlDeskServer({port:3000,api:(req,res)=>{if(new URL(req.url,'http://localhost').pathname==='/api/connectors/refresh')report.rejectedConnectorRequests++;else report.unexpectedApi.push(req.url);res.writeHead(503,{'content-type':'application/json'});res.end(JSON.stringify({error:'UI verification does not connect to APIs.'}));}});
+ await new Promise((resolve,reject)=>{app.server.once('error',reject);app.server.listen(3000,'127.0.0.1',resolve);});
+ browser=await chromium.launch({channel:'chrome',headless:true});
+ const context=await browser.newContext({baseURL:'http://127.0.0.1:3000',viewport:{width:1440,height:1000},reducedMotion:'reduce'});
+ let role='OWNER',grants=['*'],failure=false;
+ await context.route('**/api/**',async route=>{
+  const req=route.request(),u=new URL(req.url()),p=u.pathname;
+  const respond=(body,status=200)=>route.fulfill({status,json:body});
+  if(req.method()!=='GET'){report.unexpectedApi.push(req.method()+' '+p);return respond({error:'Read-only verification'},405);}
+  if(p==='/api/auth/me')return respond({user:{id:role==='STORE_STAFF'?203:201,name:'Sample verification user',email:'sample@example.test',role,status:'ACTIVE',mustChangePassword:false},permissions:grants,csrfToken:'SAMPLE-NOT-A-REAL-TOKEN',mfa:{required:false,verified:true,enrolled:false}});
+  if(p==='/api/v1/me/preferences')return respond({data:{theme:'light',density:'comfortable',sidebarCollapsed:false,savedFilters:{}}});
+  if(p==='/api/v1/me/badges')return respond({data:{}});
+  if(p==='/api/v1/notifications')return respond({data:linkIds.map((id,i)=>({id:i+1,read:true,title:'Sample request '+(i+1),type:'NEW_SALES_REQUEST',entityType:'SALES_INTAKE',entityId:id,createdAt:now}))});
+  if(p==='/api/tally/read-companies')return respond({data:[{id:company,name:'Sample company',display_name:'Sample company'}]});
+  if(p==='/api/tally-write/banner')return respond({data:{live:false}});
+  if(p==='/api/v1/tally/visibility/freshness')return respond({data:[]});
+  if(p==='/api/crm/sales-intake/metrics')return respond({data:{state:'NOT_CONFIGURED',score:null}});
+  if(p==='/api/crm/sales-intake')return failure?respond({error:'Sample transient failure',code:'UNAVAILABLE'},503):respond({data:[],pagination:{page:1,pageSize:25,total:0,pages:0},ingestionEnabled:false});
+  if(linkIds.some(id=>p==='/api/crm/sales-intake/'+id))return respond({data:linkedSample(p.split('/').at(-1))});
+  if(p==='/api/crm/logistics/availability/companies')return respond({data:[{id:company,name:'Sample company'}]});
+  if(p==='/api/crm/logistics/availability')return respond({data:requests});
+  if(p.startsWith('/api/crm/logistics/availability/')){const r=requests.find(r=>p.endsWith(r.id));return respond({data:{id:r.id,quotationId:r.quotation_id,quotationVersion:1,status:r.status,version:1,assignedStoreId:203,reviewedBy:null,reviewedAt:null,ready:r.status==='READY_FOR_REVIEW',lines:[line(1),line(2,r.status!=='READY_FOR_REVIEW')],events:[]}});}
+  if(p==='/api/crm/logistics/store-staff')return respond({data:[{id:203,name:'Sample store user'}]});
+  if(p==='/api/crm/logistics/orders')return respond({data:[],pagination:{page:1,pages:0,total:0,pageSize:25}});
+  if(p==='/api/crm/logistics/pos')return respond({data:[]});
+  if(p==='/api/crm/logistics/tally')return respond({company:{id:company,display_name:'Sample company'},data:[],freshness:[],pagination:{page:1,pages:0,total:0,pageSize:25}});
+  return respond({error:'Outside focused UI verification'},404);
+ });
+ const page=await context.newPage();page.setDefaultTimeout(15000);page.on('pageerror',e=>report.errors.push(e.message));
+ await page.goto('/incoming-requests');await page.getByRole('heading',{name:'Incoming requests',exact:true}).waitFor();
+ const table=page.getByRole('table',{name:'Fictional incoming-request examples'});
+ await check('SAMPLE-LABEL','Fictional fixtures and unconnected channels are explicit',async()=>{await page.getByText('Sample data', {exact:false}).first().waitFor();assert.equal(await page.getByText('Not connected',{exact:true}).count(),2);assert.equal(await table.locator('tbody tr').count(),10);});
+ for(let i=0;i<10;i++)await check(`SAMPLE-${i+1}`,'Open and close each distinct fictional request without writes',async()=>{await table.locator('tbody tr').nth(i).getByRole('button').first().click();const d=page.getByRole('dialog');await d.getByRole('heading',{name:'Request details',exact:true}).waitFor();await d.getByRole('heading',{name:'Source and attachments',exact:true}).waitFor();assert.equal(await d.getByRole('button',{name:'Save review and prepare eligible draft'}).count(),0);await d.getByRole('button',{name:'Close',exact:true}).click();});
+ for(const [buyer,tier,count]of [['Sample Orion Panels','EARLY BIRD',3],['Sample Summit Services','ELITE',5]])await check('VISIBLE-TIER-'+count,'Sample count '+count+' displays its confirmed tier and count',async()=>{await table.locator('tbody tr').filter({hasText:buyer}).getByRole('button').first().click();const d=page.getByRole('dialog');await d.getByText(tier,{exact:true}).waitFor();await d.getByText(`Count used for this tier: ${count} qualifying records.`,{exact:true}).waitFor();await d.getByRole('button',{name:'Close',exact:true}).click();});
+ await check('FILTERS','Category, search and reset select the expected sample rows',async()=>{await page.getByRole('tab',{name:'Customer PO',exact:true}).click();assert.equal(await table.locator('tbody tr').count(),4);await page.getByLabel('Search customer or PO number',{exact:true}).fill('Orion');assert.equal(await table.locator('tbody tr').count(),1);await page.getByRole('button',{name:'Clear filters',exact:true}).click();assert.equal(await table.locator('tbody tr').count(),10);});
+ await page.screenshot({path:path.join(output,'incoming-desktop.png'),fullPage:true});
+ await check('MOBILE','Incoming list and detail fit a 390px viewport',async()=>{await page.setViewportSize({width:390,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await table.locator('tbody tr').first().getByRole('button').first().click();assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await page.screenshot({path:path.join(output,'incoming-mobile.png'),fullPage:true});await page.getByRole('dialog').getByRole('button',{name:'Close',exact:true}).click();await page.setViewportSize({width:1440,height:1000});});
+ await check('LIVE-EMPTY','Saved request view shows an empty queue and missing KPI policy',async()=>{await page.getByLabel('Data source',{exact:true}).selectOption('LIVE');await page.getByRole('heading',{name:'No matching requests',exact:true}).waitFor();await page.getByRole('heading',{name:'First-response report',exact:true}).waitFor();});
+ await check('LIVE-ERROR','Transient API failure produces a visible error and retry',async()=>{failure=true;await page.getByLabel('Data source',{exact:true}).selectOption('SAMPLE');await page.getByLabel('Data source',{exact:true}).selectOption('LIVE');await page.getByText('Sample transient failure',{exact:true}).waitFor();failure=false;await page.getByRole('button',{name:'Try again',exact:true}).click();await page.getByRole('heading',{name:'No matching requests',exact:true}).waitFor();});
+  await check('DEEP-LINKS','Notification navigation between two requests updates the drawer without a reload',async()=>{
+   await page.goto('/incoming-requests?requestId='+linkIds[0]);let d=page.getByRole('dialog');await d.getByText('Sample deep-link A',{exact:true}).waitFor();await d.getByRole('button',{name:'Close',exact:true}).click();await page.getByRole('button',{name:/^Notifications/}).click();await page.getByRole('menu').getByRole('button').filter({hasText:'Sample request 2'}).click();d=page.getByRole('dialog');await d.getByText('Sample deep-link B',{exact:true}).waitFor();await d.getByRole('button',{name:'Close',exact:true}).click();
+   const refreshed=page.waitForResponse(r=>new URL(r.url()).pathname==='/api/auth/me');await page.evaluate(()=>window.dispatchEvent(new Event('focus')));await refreshed;await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));assert.equal(await page.getByRole('dialog').count(),0);
+  });
+ await page.goto('/logistics');await page.getByRole('heading',{name:'Pre-order warehouse availability',exact:true}).waitFor();
+ for(let i=0;i<10;i++)await check(`WAREHOUSE-${i+1}`,'Full multi-line warehouse request exposes readiness and shortages',async()=>{await page.getByRole('button',{name:new RegExp(`^Quotation #${i+1} · v1$`)}).click();const d=page.getByRole('dialog');await d.getByText('SAMPLE-STOCK-1',{exact:false}).first().waitFor();assert.equal(await d.getByText('SAMPLE-STOCK-2',{exact:false}).count(),1);if(i%2)assert.equal(await d.getByRole('button',{name:'Approve availability and reserve stock',exact:true}).isDisabled(),true);await d.getByRole('button',{name:'Close',exact:true}).click();});
+ await page.screenshot({path:path.join(output,'warehouse-desktop.png'),fullPage:true});
+ await check('STORE-BOUNDARY','Store UI shows assigned operational checks without commercial actions',async()=>{role='STORE_STAFF';grants=['logistics.read','logistics.evidence.write'];await page.reload();await page.getByRole('button',{name:/^Quotation #1 · v1$/}).click();const d=page.getByRole('dialog');await d.getByRole('heading',{name:'Record checks for every line',exact:true}).waitFor();assert.equal(await d.getByRole('button',{name:'Approve availability and reserve stock',exact:true}).count(),0);assert.equal(await d.getByRole('link',{name:'Open the linked quotation',exact:true}).count(),0);await d.getByRole('button',{name:'Close',exact:true}).click();});
+ await check('PERMISSION','Direct incoming-request route requires its permission',async()=>{await page.goto('/incoming-requests');await page.getByRole('heading',{name:'Access restricted',exact:true}).waitFor();});
+ assert.deepEqual(report.errors,[]);assert.deepEqual(report.unexpectedApi,[]);report.status='PASS';
+}catch(e){report.status='FAIL';report.error=e.message;console.error(e.message);process.exitCode=1;}
+finally{await browser?.close();await app?.close();report.finishedAt=new Date().toISOString();fs.writeFileSync(path.join(output,'report.json'),JSON.stringify(report,null,2));console.log('Evidence:',path.join(output,'report.json'));}

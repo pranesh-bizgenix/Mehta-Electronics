@@ -13,7 +13,7 @@ function testDatabaseUrl() {
 }
 
 const quote = name => `"${name.replaceAll('"', '""')}"`;
-const sessionKeys = ['mehta.actor_id','mehta.audit_reason','mehta.quotation_write','mehta.order_write','mehta.procurement_write','mehta.purchase_document_write','mehta.automation_credential_id'];
+const sessionKeys = ['mehta.actor_id','mehta.audit_reason','mehta.quotation_write','mehta.order_write','mehta.procurement_write','mehta.purchase_document_write','mehta.automation_credential_id','mehta.sales_intake_write'];
 function managed(statement) {
   const text = statement.replace(/'(?:''|[^'])*'/g, '').replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/--[^\r\n]*/g, ' ');
   if (/\b(?:BEGIN|COMMIT|ROLLBACK|SAVEPOINT|RELEASE|CREATE|ALTER|DROP|TRUNCATE|COPY|VACUUM|GRANT|REVOKE|RESET)\b|^\s*(?:END|SET|DO)\b/i.test(text) || text.includes(';')) {
@@ -45,15 +45,16 @@ export async function withTestTransaction(run) {
 /** Explicit operational verification only; ordinary test suites remain local-only.
  * User authorized this exact RDS target on 17 Nov. All changes must roll back.
  */
-export async function withAuthorizedRdsRollbackVerification(run) {
+export async function withAuthorizedRdsRollbackVerification(run, { productionTransactions = false } = {}) {
+  if(typeof productionTransactions!=='boolean')throw new Error('Verification transaction mode must be boolean.');
   if(process.env.VERIFY_AUTHORIZED_RDS_ROLLBACK !== 'true')throw new Error('Explicit RDS rollback verification opt-in is required.');
   const url=getConfig().databaseUrl,target=new URL(url);
   if(target.hostname!=='mehta-controldesk-db01.chs2eymsy2ec.ap-southeast-2.rds.amazonaws.com'||decodeURIComponent(target.pathname.slice(1))!=='postgres'||target.searchParams.get('sslmode')!=='require')throw new Error('RDS rollback verification refused an unexpected target.');
-  return withRollbackTransaction(url,run);
+  return withRollbackTransaction(url,run,{productionTransactions});
 }
 
-async function withRollbackTransaction(databaseUrl,run) {
-  const pool = connectPostgres(databaseUrl);
+async function withRollbackTransaction(databaseUrl,run,{productionTransactions=false}={}) {
+  const pool = connectPostgres(databaseUrl,productionTransactions?{postgresOptions:{prepare:true}}:{});
   let connection;
   try {
     connection = await pool.reserve();
@@ -72,6 +73,13 @@ async function withRollbackTransaction(databaseUrl,run) {
     const workflow = task => context.getStore() ? task() : serialize(() => context.run({ stack: [] }, task));
     const query = operation => workflow(() => serialize(async () => {
       if (closed) throw new Error('Test transaction is closed.');
+      // Optional operational verification mode: use the enclosing workflow
+      // savepoint, like production's transaction, rather than silently healing
+      // SQL errors inside that workflow. Unexpected SQL errors must abort the
+      // whole workflow. Root inspection statements retain their own savepoint.
+      // Target checks, SQL restrictions and the uncommittable outer rollback
+      // remain identical. Ordinary local tests keep their existing behavior.
+      if(productionTransactions&&context.getStore().stack.length)return operation();
       const name = `verify_statement_${++counter}`;
       await connection.unsafe(`SAVEPOINT ${name}`);
       try { const result = await operation(); await connection.unsafe(`RELEASE SAVEPOINT ${name}`); return result; }
