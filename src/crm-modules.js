@@ -6,6 +6,7 @@ import {requireCustomerHandler} from './modules/operations/customer-gates.js';
 import {stableCustomerLinkExists,stableCustomerLinks} from './tally-customer-links.js';
 import {stableItemLinkExists,stableItemLinks} from './tally-item-links.js';
 import {commercialRecordHref} from '../public/crm-navigation.js';
+import {TransactionRunner} from './core/runtime.js';
 
 const error=(status,message)=>Object.assign(new Error(message),{status});
 export const id=value=>{if(!['string','number'].includes(typeof value)||typeof value==='string'&&!/^\d+$/.test(value))throw error(422,'Invalid record identifier.');const n=Number(value);if(!Number.isSafeInteger(n)||n<1)throw error(422,'Invalid record identifier.');return n;};
@@ -38,13 +39,8 @@ async function active(db,table,value,label) {
   const n=id(value);if(!await db.prepare(`SELECT id FROM ${table} WHERE id=? AND status='ACTIVE'`).get(n))throw error(422,`Select an active ${label}.`);return n;
 }
 export async function transaction(db,user,reason,callback) {
-  return db.withConnection(async()=>{
-    await db.exec('BEGIN');
-    try{
-      await db.prepare("SELECT set_config('mehta.actor_id',?,true),set_config('mehta.audit_reason',?,true)").get(String(user.id),reason);
-      const result=await callback();await db.exec('COMMIT');return result;
-    }catch(e){await db.exec('ROLLBACK');if(e.code==='23505')throw error(409,'A name, customer code, GSTIN, part number or price tier already exists.');throw e;}
-  });
+  try{return await new TransactionRunner(db).run(user,reason,callback);}
+  catch(e){if(e.code==='23505')throw error(409,'A name, customer code, GSTIN, part number or price tier already exists.');throw e;}
 }
 const editReason=(body,editing)=>editing?required(body.reason,'Edit reason',1000):text(body.reason,1000)||'CRM record created';
 async function audit(db,user,entity,recordId,oldValue,newValue,reason,action) {await writeAudit(db,{userId:user.id,entity,recordId,action:action||(oldValue?'UPDATE':'CREATE'),oldValue,newValue,reason});}
