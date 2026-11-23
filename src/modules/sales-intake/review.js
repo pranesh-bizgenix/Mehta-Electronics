@@ -12,13 +12,14 @@ export function validateReviewCommand(body){
 // review must retain fields corrected during the first review.
 export function mergeReviewResolutions(row,patch={}){
  if(!object(patch))throw validationFailed('Provide review corrections as an object.');
- for(const key of Object.keys(patch))if(!['customerId','assignedTo','header','items'].includes(key))throw validationFailed('Unknown resolution field: '+key);
+ for(const key of Object.keys(patch))if(!['customerId','assignedTo','header','items','reviewedSourceIssues'].includes(key))throw validationFailed('Unknown resolution field: '+key);
+ if(Object.hasOwn(patch,'reviewedSourceIssues')&&(!Array.isArray(patch.reviewedSourceIssues)||new Set(patch.reviewedSourceIssues).size!==patch.reviewedSourceIssues.length||patch.reviewedSourceIssues.some(i=>!Number.isSafeInteger(i)||i<0||i>=(row.normalized.reviewIssues??[]).length)))throw validationFailed('Select only current source-review issue indexes.');
  for(const key of ['customerId','assignedTo'])if(Object.hasOwn(patch,key)&&(!Number.isSafeInteger(patch[key])||patch[key]<1))throw validationFailed('Use a positive CRM ID for '+key+'.');
  if(Object.hasOwn(patch,'header')&&!object(patch.header))throw validationFailed('Provide reviewed header fields as an object.');
  if(Object.hasOwn(patch,'items')&&!Array.isArray(patch.items))throw validationFailed('Provide reviewed items as a list.');
  const previous=row.resolutions??{};
  const resolutions={...previous,...patch,...(patch.header?{header:{...previous.header,...patch.header}}:{})};
  const n=row.normalized;
- normalizeIntake({schemaVersion:n.schemaVersion,eventId:n.eventId,companyId:n.companyId,messageType:n.messageType,source:n.source,provenance:n.provenance,header:{...n.header,...resolutions.header},items:resolutions.items??n.items});
+ normalizeIntake({schemaVersion:n.schemaVersion,eventId:n.eventId,companyId:n.companyId,messageType:n.messageType,source:n.source,provenance:n.provenance,header:{...n.header,...resolutions.header},items:resolutions.items??n.items,reviewIssues:n.reviewIssues});
  return resolutions;
 }

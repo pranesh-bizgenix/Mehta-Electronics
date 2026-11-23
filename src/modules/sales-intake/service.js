@@ -17,7 +17,7 @@ import {validateReviewCommand,mergeReviewResolutions} from './review.js';
 const json=JSON.stringify;
 const preparedData=row=>{
  const n=row.normalized,r=row.resolutions;
- return normalizeIntake({schemaVersion:n.schemaVersion,eventId:n.eventId,companyId:n.companyId,messageType:n.messageType,source:n.source,provenance:n.provenance,header:{...n.header,...r.header},items:r.items??n.items});
+ return normalizeIntake({schemaVersion:n.schemaVersion,eventId:n.eventId,companyId:n.companyId,messageType:n.messageType,source:n.source,provenance:n.provenance,header:{...n.header,...r.header},items:r.items??n.items,reviewIssues:n.reviewIssues});
 };
 export class SalesIntakeService{
  constructor({db,work,clock}){this.db=db;this.work=work;this.clock=clock??{now:()=>new Date()};}
@@ -43,7 +43,7 @@ export class SalesIntakeService{
    if(!await this.one("SELECT id FROM users WHERE id=? AND role='OWNER' AND status='ACTIVE'",user.id))throw forbidden();
    if(!await this.one('SELECT id FROM tally_companies WHERE id=?',companyId))throw validationFailed('Select an imported selling company.');
    const old=await this.policy(companyId);if(b.version!==old.version)throw conflict('Policy changed. Reload.');
-   if(value.assignment?.userId&&!await this.one("SELECT id FROM users WHERE id=? AND status='ACTIVE'",value.assignment.userId))throw validationFailed('Choose an active salesperson.');
+   for(const id of [value.assignment?.userId,value.assignment?.fallbackUserId].filter(Boolean))if(!await this.one("SELECT id FROM users WHERE id=? AND status='ACTIVE'",id))throw validationFailed('Choose an active salesperson.');
    await this.one('INSERT INTO crm_sales_intake_policies(company_id,value,updated_by) VALUES(?,?::text::jsonb,?) ON CONFLICT(company_id) DO UPDATE SET value=EXCLUDED.value,version=crm_sales_intake_policies.version+1,updated_by=EXCLUDED.updated_by,updated_at=now() RETURNING company_id',companyId,json(value),user.id);
    await this.one('INSERT INTO crm_sales_intake_policy_versions(company_id,version,value,created_by,reason) VALUES(?,?,?::text::jsonb,?,?) RETURNING version',companyId,old.version+1,json(value),user.id,reason);
    await intakeEvent(this.db,{company_id:companyId},user,'POLICY_CHANGED',reason,{version:old.version+1});return this.policy(companyId);
@@ -136,6 +136,7 @@ export class SalesIntakeService{
  }
  async prepare(row,actor,policy){
   const n=preparedData(row),blockers=missingBusinessFields(n).map(path=>'MISSING:'+path);
+  for(const [index]of (n.reviewIssues??[]).entries())if(!row.resolutions.reviewedSourceIssues?.includes(index))blockers.push('SOURCE_REVIEW:'+index);
   const {customer,blocker}=await this.customer(row,n);if(blocker)blockers.push(blocker);
   let handlerAllowed=true;
   if(customer)try{await requireCustomerHandler(this.db,customer.id,actor);}catch(error){if(error.status!==403)throw error;handlerAllowed=false;blockers.push('CUSTOMER_HANDLER_REVIEW_REQUIRED');}
@@ -145,7 +146,7 @@ export class SalesIntakeService{
   const onboarding=customer?await this.one('SELECT status FROM crm_customer_onboarding WHERE customer_id=?',customer.id):null;if(customer&&onboarding?.status!=='APPROVED')blockers.push('CUSTOMER_APPROVAL_REQUIRED');
   let assigned=row.resolutions.assignedTo??row.assigned_to;
   if(!assigned&&policy.value.assignment?.mode==='FIXED')assigned=policy.value.assignment.userId;
-  if(!assigned&&policy.value.assignment?.mode==='CUSTOMER_OWNER')assigned=customer?.owner_id;
+  if(!assigned&&policy.value.assignment?.mode==='CUSTOMER_OWNER')assigned=customer?.owner_id??policy.value.assignment.fallbackUserId;
   if(assigned){const u=await this.one("SELECT id,role FROM users WHERE id=? AND status='ACTIVE'",assigned);if(!u||!hasPermission(u,'enquiries.read')||!hasPermission(u,'sales_intake.read')){assigned=null;blockers.push('SALESPERSON_REVIEW_REQUIRED');}}
   const lines=[];
   for(const line of n.items){

@@ -8,7 +8,7 @@ const tier=s.object({basis:s.enum(['PO','ENQUIRY']),statuses:s.array(s.string({m
 const pointer=s.string({min:1,max:200,pattern:/^\/(?:[A-Za-z0-9_.~-]+\/?)+$/});
 export const salesIntakePolicySchema=s.object({
  ingestionEnabled:s.bool().optional(),mailboxes:s.array(s.string({min:3,max:254}),{max:20}).optional(),
- assignment:s.object({mode:s.enum(['CUSTOMER_OWNER','FIXED','UNASSIGNED']),userId:s.id().optional()}).optional(),
+ assignment:s.object({mode:s.enum(['CUSTOMER_OWNER','FIXED','UNASSIGNED']),userId:s.id().optional(),fallbackUserId:s.id().optional()}).optional(),
  tiers:s.object({po:tier.optional(),enquiry:tier.optional()}).optional(),
  quotationValidityDays:s.int({min:1,max:366}).optional(),
  taxTreatment:s.enum(['DOMESTIC_STANDARD']).optional(),sellerState:s.string({pattern:/^(0[1-9]|[12][0-9]|3[0-8])$/}).optional(),
@@ -19,6 +19,7 @@ export const salesIntakePolicySchema=s.object({
 export function validateSalesIntakePolicy(value){
  const out=validate(salesIntakePolicySchema,value);
  if(out.assignment?.mode==='FIXED'&&!out.assignment.userId)throw validationFailed('FIXED assignment requires a salesperson ID.');
+ if(out.assignment?.fallbackUserId&&out.assignment.mode!=='CUSTOMER_OWNER')throw validationFailed('A fallback salesperson is only used with CUSTOMER_OWNER assignment.');
  if(out.kpi&&out.kpi.periodTo<out.kpi.periodFrom)throw validationFailed('KPI reporting period must be in date order.');
  if(out.kpi&&out.response&&out.kpi.excludeCancelled!==out.response.excludeCancelled)throw validationFailed('Response and KPI cancellation exclusions must agree.');
  if(out.tiers?.po&&out.tiers.po.basis!=='PO')throw validationFailed('PO tier counting must use distinct customer POs.');

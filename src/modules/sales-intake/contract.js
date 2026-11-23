@@ -38,7 +38,7 @@ function address(value,path){
 function date(v,path){if(!validDate(v))fail(path,'Use a valid YYYY-MM-DD date.');return v;}
 function timestamp(v,path){if(typeof v!=='string'||!/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{1,6})?(?:Z|[+-]\d\d:\d\d)$/.test(v)||!validDate(v.slice(0,10))||!Number.isFinite(Date.parse(v)))fail(path,'Use a valid ISO timestamp with a timezone.');return new Date(v).toISOString();}
 export function normalizeIntake(input){
- keys(input,['schemaVersion','eventId','idempotencyKey','messageType','companyId','source','provenance','header','items'],'payload');
+ keys(input,['schemaVersion','eventId','idempotencyKey','messageType','companyId','source','provenance','header','items','reviewIssues'],'payload');
  if(input.schemaVersion!==INTAKE_VERSION)fail('schemaVersion','Supported schemaVersion is '+INTAKE_VERSION+'.');
  if(!INTAKE_TYPES.includes(input.messageType))fail('messageType','Choose CUSTOMER_PO, QUOTATION_REQUEST or LEAD_ENQUIRY.');
  if(input.eventId&&input.idempotencyKey&&input.eventId!==input.idempotencyKey)fail('eventId','Conflicting delivery identities.');
@@ -80,7 +80,9 @@ export function normalizeIntake(input){
   return out;
  });
  if(new Set(items.map(line=>line.lineId)).size!==items.length)fail('items','Every line needs a distinct stable lineId.');
- const normalized={messageType:input.messageType,header,items};
+ if(input.reviewIssues!=null&&(!Array.isArray(input.reviewIssues)||input.reviewIssues.length>100))fail('reviewIssues','Use at most 100 source-review issues.');
+ const reviewIssues=[...new Set((input.reviewIssues??[]).map((v,i)=>required(v,'reviewIssues.'+i,1000)))];
+ const normalized={messageType:input.messageType,header,items,...(reviewIssues.length?{reviewIssues}:{})};
  return {schemaVersion:INTAKE_VERSION,eventId,companyId,source,provenance:extraction,...normalized,businessHash:fingerprint(normalized)};
 }
 
