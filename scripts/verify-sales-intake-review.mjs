@@ -48,6 +48,19 @@ try{
    const audits=await db.prepare("SELECT new_value FROM audit_logs WHERE entity='SALES_INTAKE' AND record_id=? AND action='REVIEWED'").all(detail.id);
    assert.ok(audits.length>=4);assert.equal(JSON.stringify(audits).includes('ZZTEST confirmed contact'),false);
   });
+  await check('Source extraction warnings block a draft until an authorised evidenced review',async()=>{
+   const payload=f.payload('source-warning');payload.reviewIssues=['ZZTEST verify unclear source discount'];
+   const receipt=await service.receive(f.principal,payload);let record=await service.detail(owner,receipt.id,f.company);
+   assert.equal(record.quotation_id,null);assert.ok(record.blockers.includes('SOURCE_REVIEW:0'));
+   record=await service.resolve(owner,record.id,f.company,{version:record.version,reason:f.tag+' verify source and reviewed discount',resolutions:{reviewedSourceIssues:[0]}});
+   assert.ok(record.quotation_id,JSON.stringify(record.blockers));assert.equal(record.normalized.reviewIssues[0],payload.reviewIssues[0]);
+  });
+  await check('Unmatched customer requests go to the explicitly configured fallback salesperson',async()=>{
+   const old=await service.settings(owner,f.company);await service.savePolicy(owner,f.company,{version:old.version,value:{...old.value,assignment:{mode:'CUSTOMER_OWNER',fallbackUserId:f.users.sales.id}},reason:f.tag+' explicit fallback test'});
+   const payload=f.payload('fallback');delete payload.header.customerId;delete payload.header.gstin;
+   const receipt=await service.receive(f.principal,payload),record=await service.detail(owner,receipt.id,f.company);
+   assert.equal(record.assigned_to,f.users.sales.id);assert.equal(record.status,'NEEDS_REVIEW');assert.equal(record.quotation_id,null);
+  });
  },{productionTransactions:true});
  report.cleanup='OUTER_TRANSACTION_ROLLED_BACK';
 }catch(error){report.error=error.message;report.status='FAIL';report.cleanup='OUTER_TRANSACTION_ROLLED_BACK';console.error(error.message);process.exitCode=1;}
