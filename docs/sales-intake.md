@@ -148,6 +148,39 @@ Pending dispatch reconciliation blocks unsafe availability. Allocation uses the
 same transaction advisory lock as existing order operations (812731), so competing
 requests cannot reserve independently. No writes are sent to Tally.
 
+## Existing MEHETA Sales delivery adapter
+
+The existing Make scenario 8390064 has three Sales handoffs: supported attachments,
+unreadable attachments and body enquiries. Each waits for complete extraction,
+maps each logical document separately and calls the existing authenticated
+`POST /api/v1/automation/intake` endpoint. A stable event key protects retries.
+The HTTP connection stores the bearer secret; no secret belongs in a module mapper.
+The receipt stage records only request IDs after a successful CRM acknowledgement.
+Operations, Accounts and Tally configuration are outside this handoff.
+
+`src/modules/sales-intake/make-adapter.js` is the dependency-free mapper used by
+the Make Code modules. It preserves the 23 business fields, exact decimals,
+original extraction, source identity and S3 attachment references. Ambiguous dates,
+discounts, currency, identifiers and extraction warnings remain explicit review
+issues. Excessive payloads fail rather than silently discarding lines.
+
+Optional `reviewIssues` are immutable source checks, included in the payload hash.
+They block preparation until an authorised reviewer resolves the underlying data
+and acknowledges the corresponding indexes through `reviewedSourceIssues`.
+Audit metadata contains field names/indexes, not extraction contents.
+
+Company policy may use `assignment: {mode: "CUSTOMER_OWNER", fallbackUserId: 49}`.
+Existing owners take priority. The fallback must be an active staff account with
+the existing intake and enquiry permissions. This does not grant quotation approval.
+The selected deployment configuration uses TEST_EXECUTIVE as this explicit fallback.
+Commercial policies, tier counting statuses, response deadlines and KPI definitions
+are separate decisions; receiving a request does not bypass them.
+
+Saving the scenario is not proof of a live Make delivery. Activation, trigger cursor,
+saved connection authentication and an observed execution receipt must all be
+verified separately. Replaying the whole scenario may invoke its pre-existing
+Operations/Accounts email replies; obtain explicit authority before doing so.
+
 ## Retry and review operations
 
 - Retry the identical event after a timeout: it returns the existing logical result.
