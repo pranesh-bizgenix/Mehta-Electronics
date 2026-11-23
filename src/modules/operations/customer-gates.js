@@ -2,6 +2,7 @@ import {OperationsRepository} from './operations-repository.js';
 import {conflict,forbidden,validationFailed} from '../../core/errors.js';
 import {compareDecimal} from '../../core/schema.js';
 import {writeAudit} from '../../db.js';
+import {requireUnmergedCustomer} from '../customers/identity.js';
 export async function bindFirstQuotationOwner(db,customerId,creatorId,actor){
  const customer=await db.prepare('SELECT owner_id FROM customers WHERE id=? FOR UPDATE').get(customerId);
  const salesperson=await db.prepare("SELECT id FROM users WHERE id=? AND role='EXECUTIVE' AND status='ACTIVE'").get(creatorId);
@@ -10,11 +11,12 @@ export async function bindFirstQuotationOwner(db,customerId,creatorId,actor){
  await writeAudit(db,{userId:actor.id,entity:'CUSTOMER',recordId:customerId,action:'FIRST_QUOTATION_OWNER_BOUND',oldValue:{ownerId:null},newValue:{ownerId:creatorId},reason:'First approved quotation sent; salesperson binding'});
 }
 export async function requireQuotableCustomer(db,customerId){
+ await requireUnmergedCustomer(db,customerId);
  const control=await new OperationsRepository(db).controls(customerId);
  if(control?.classification==='DO_NOT_QUOTE')throw Object.assign(conflict('This customer is marked Do Not Quote. A different Owner must review and clear the restriction in the customer controls before preparing or sending a quotation.','DO_NOT_QUOTE'),{details:{review:{href:`/customers/${customerId}`,label:'Open customer controls for Owner review'}}});
 }
-export async function requireCustomerHandler(db,customerId,user){
- const customer=await db.prepare('SELECT owner_id FROM customers WHERE id=?').get(customerId);
+export async function requireCustomerHandler(db,customerId,user,knownCustomer){
+ const customer=knownCustomer??await db.prepare('SELECT owner_id FROM customers WHERE id=?').get(customerId);
  if(user?.role==='EXECUTIVE'&&customer?.owner_id&&customer.owner_id!==user.id)throw forbidden('This customer belongs to another salesperson. Ask the Owner to review reassignment.','CUSTOMER_ASSIGNED_ELSEWHERE');
 }
 export async function contractForLine(db,customerId,line,at){

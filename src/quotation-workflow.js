@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import {sumMoney} from '../public/money.js';
 import {bindQuotationLevel} from './modules/pricing/quotation-source.js';
+import {bindCustomerPricing} from './modules/customers/commercial.js';
 import {transaction,id,validDate,validateTax} from './crm-modules.js';
 import {quotationRequest,quotationLineRequest,quotationRequestBlock,quotationPricingDate} from '../public/quotation-request.js';
 import {writeAudit,recordQuotationRevision,quotationView} from './db.js';
@@ -124,6 +125,7 @@ async function snapshot(db,b,number,enquiryId=null){
  try{lines.at(-1).requestDetails=quotationLineRequest(l.requestDetails,today());}catch(error){fail(422,`Line ${lines.length}: ${error.message}`);}
  lines.at(-1).rateContractId=await contractForLine(db,customer.id,lines.at(-1),pricingDate);
  const selection=await bindQuotationLevel(db,lines.at(-1),l.pricingSelection,pricingDate);if(selection)lines.at(-1).pricingSelection=selection;
+ const customerPricing=await bindCustomerPricing(db,customer.id,companyId,{...lines.at(-1),customerPricing:l.customerPricing},pricingDate);if(customerPricing)lines.at(-1).customerPricing=customerPricing;
  }
  const sourceIds=lines.map(l=>l.sourceLineId).filter(Boolean);if(new Set(sourceIds).size!==sourceIds.length)fail(422,'Source line references must be distinct.');
  let math;try{math=calculateQuotation(lines,policy.seller_state,pos,costs,policy.floor_percent,policy.margin_basis);}catch(e){fail(422,e.message);}
@@ -160,7 +162,7 @@ export async function saveQuote(db,quoteId,b,user,duplicateOf=null){can(user,quo
  if(old&&(!['DRAFT','APPROVED','PENDING_APPROVAL'].includes(old.status)||b.version!==old.version))fail(409,'Quotation changed or cannot be edited. Reload; sent quotations must be duplicated.');
  const number=old?.public_snapshot.quotation_number||`QTN-${new Date().getUTCFullYear()}-${crypto.randomBytes(5).toString('hex').toUpperCase()}`;
  const enquiryId=b.enquiryId?id(b.enquiryId):null,s=await snapshot(db,b,number,enquiryId);
- s.private.businessRuleVersions=await pricingRuleVersions(db);s.private.pricingAuthorRole=user.role;s.private.availabilityRequired=true;
+ s.private.businessRuleVersions=await pricingRuleVersions(db);s.private.pricingAuthorRole=user.role;s.private.availabilityRequired=true;s.private.customerPricingRequired=true;
  let qid=old?.quotation_id;
  if(!qid)qid=(await db.prepare('INSERT INTO quotations(quotation_number,customer_id,enquiry_id,valid_until,terms,notes,created_by,updated_by) VALUES(?,?,?,?,?,?,?,?)').run(number,s.public.customerId,enquiryId,b.validUntil,s.public.terms,s.public.notes,user.id,user.id)).insertedId;
  else await db.prepare("UPDATE quotations SET customer_id=?,enquiry_id=?,valid_until=?,terms=?,notes=?,status='DRAFT',updated_by=?,updated_at=now() WHERE id=?").run(s.public.customerId,enquiryId,b.validUntil,s.public.terms,s.public.notes,user.id,qid);
@@ -177,6 +179,7 @@ export async function saveQuote(db,quoteId,b,user,duplicateOf=null){can(user,quo
 }
 async function ensureCurrent(db,row,{complete=false,review=true}={}){const requestBlock=quotationRequestBlock(row.public_snapshot.request,row.public_snapshot.terms);if(requestBlock)fail(422,requestBlock);await requireQuotableCustomer(db,row.public_snapshot.customerId);for(const line of row.public_snapshot.lines){await requireContractBinding(db,row.public_snapshot.customerId,line,today());await bindQuotationLevel(db,line,line.pricingSelection);}const p=await quotePolicy(db);if(!p||p.revision!==row.policy_revision)fail(409,'Policy changed. Revise and resubmit the quotation.');
  await requireAvailability(db,row);
+ if(row.private_snapshot.customerPricingRequired)for(const line of row.public_snapshot.lines)await bindCustomerPricing(db,row.public_snapshot.customerId,row.public_snapshot.companyId,line);
  const margin=await requireSetting(db,'margin.floor_percent');
  if(row.private_snapshot.missingCost)fail(422,'Submission is blocked: ask the owner to enter costs for every item in Quotations → Item costs, then save the draft again to capture those costs.');
  for(const l of row.private_snapshot.lines){const c=await db.prepare('SELECT unit_cost::text AS value FROM crm_quotation_costs WHERE item_id=?').get(l.itemId);if(c?.value==null||scaled(c.value)!==scaled(l.unitCost??'0'))fail(409,'Item costs changed or are missing. Open Quotations → Item costs, then revise and resubmit the quotation.');}

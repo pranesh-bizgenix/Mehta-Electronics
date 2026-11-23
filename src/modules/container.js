@@ -5,6 +5,8 @@
 import { AuditRepository, SecretBox, SystemClock, TransactionRunner } from '../core/runtime.js';
 import { Scheduler } from '../core/scheduler.js';
 import {AvailabilitySendGate} from './sales-intake/availability.js';
+import {CustomerManagementService} from './customers/service.js';
+import {CustomerManagementController} from './customers/controller.js';
 import { IdempotencyRepository } from '../core/http.js';
 import { AccessRepository } from './access/access-repository.js';
 import { AccessService } from './access/access-service.js';
@@ -64,6 +66,7 @@ export function createModules({ db, config, clock = new SystemClock(), outboundM
   exceptions.registerHandler('BACKDATE', { onApproved: (actor, c) => work.applyBackdate(actor, c) });
   const tasks = new TaskService({ repository: new TaskRepository(db), work, rules, automation, notifications, transactions, audit, access, clock });
   const operations = new OperationsService({repository:new OperationsRepository(db),transactions,audit,access,work,rules,clock});
+  const customerManagement=new CustomerManagementService({db,clock,controlsService:operations});
   const contracts = new ContractsService({db,repository:new ContractsRepository(db),transactions,audit,access,clock});
   const outboundRepository = new OutboundRepository(db);
   const gates = [new VerifiedRecordGate(), new RegisteredEmailGate(), new ManualResponseGate(), new WorkflowSwitchGate({ automation }), new ChecklistGate(), new ApprovalGate(),new AvailabilitySendGate(db)];
@@ -72,6 +75,7 @@ export function createModules({ db, config, clock = new SystemClock(), outboundM
   const userAdmin = new UserAdminService({ repository: new UserAdminRepository(db), access, work, tasks, transactions, audit });
 
   const controllers = [
+    new CustomerManagementController(customerManagement),
     new DecisionController({decisions}),
     new ItemWizardController({wizard:new ItemWizardService({repository:new ItemWizardRepository(db),access,transactions,audit})}),
     new CustomerWizardController({wizard:new CustomerWizardService({repository:new CustomerWizardRepository(db),access,transactions,audit})}),
@@ -92,7 +96,7 @@ export function createModules({ db, config, clock = new SystemClock(), outboundM
 
   let loading = null;
   return {
-    services: { access, rules, decisions, automation, notifications, mfa, work, exceptions, tasks, outbound, auditQuery, userAdmin, operations, contracts },
+    services: { access, rules, decisions, automation, notifications, mfa, work, exceptions, tasks, outbound, auditQuery, userAdmin, operations, contracts, customerManagement },
     transactions, audit, scheduler, clock,
     idempotency: new IdempotencyRepository(db),
     routeDefinitions: () => controllers.flatMap((c) => c.routes()),

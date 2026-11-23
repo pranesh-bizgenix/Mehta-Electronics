@@ -7,6 +7,7 @@ import {stableCustomerLinkExists,stableCustomerLinks} from './tally-customer-lin
 import {stableItemLinkExists,stableItemLinks} from './tally-item-links.js';
 import {commercialRecordHref} from '../public/crm-navigation.js';
 import {TransactionRunner} from './core/runtime.js';
+import {requireUnmergedCustomer,customerIdentity} from './modules/customers/identity.js';
 
 const error=(status,message)=>Object.assign(new Error(message),{status});
 export const id=value=>{if(!['string','number'].includes(typeof value)||typeof value==='string'&&!/^\d+$/.test(value))throw error(422,'Invalid record identifier.');const n=Number(value);if(!Number.isSafeInteger(n)||n<1)throw error(422,'Invalid record identifier.');return n;};
@@ -86,6 +87,7 @@ export async function customerDetail(db,customerId,{financial=false}={}) {
   const row=await db.prepare('SELECT c.*,c.credit_limit::text AS credit_limit,u.name AS owner_name FROM customers c LEFT JOIN users u ON u.id=c.owner_id WHERE c.id=?').get(id(customerId));if(!row)throw error(404,'Customer not found.');
   const p=await db.prepare('SELECT * FROM crm_customer_profiles WHERE customer_id=?').get(row.id);
   row.profile=p||{};
+  row.identity=await customerIdentity(db,row.id);
   row.onboarding=await customerOnboarding(db,row.id);
   if(!p){const links=await db.prepare("SELECT company_id,name FROM crm_parties WHERE customer_id=? AND status='ACTIVE' AND NOT is_deleted").all(row.id);if(links.length===1)row.profile={company_id:links[0].company_id,tally_ledger_name:links[0].name};}
   if(row.profile.backup_owner_id)row.profile.backup_owner_name=(await db.prepare("SELECT name FROM users WHERE id=?").get(row.profile.backup_owner_id))?.name??null;
@@ -110,6 +112,7 @@ export async function saveCustomer(db,customerId,body,user) {
   return transaction(db,user,reason,async()=>{
     const old=customerId?await db.prepare('SELECT *,credit_limit::text AS credit_limit FROM customers WHERE id=? FOR UPDATE').get(id(customerId)):null;
     if(customerId&&!old)throw error(404,'Customer not found.');
+    if(old)await requireUnmergedCustomer(db,old.id);
     let oldProfile=old?await db.prepare('SELECT * FROM crm_customer_profiles WHERE customer_id=?').get(old.id):null;
     if(old&&!oldProfile){const links=await db.prepare("SELECT company_id,name AS tally_ledger_name FROM crm_parties WHERE customer_id=? AND status='ACTIVE' AND NOT is_deleted").all(old.id);if(links.length===1)oldProfile=links[0];}
     const tax=validateTax(body.gstin??old?.gstin,body.stateCode??oldProfile?.state_code);
@@ -182,6 +185,7 @@ export async function decideCustomerOnboarding(db,customerId,body,user){
 }
 
 export async function requireCustomerBillingApproval(db,customerId){
+  await requireUnmergedCustomer(db,id(customerId));
   const review=await db.prepare('SELECT status FROM crm_customer_onboarding WHERE customer_id=?').get(id(customerId));
   if(review&&review.status!=='APPROVED')throw error(409,'Customer onboarding must be approved by a different eligible reviewer before creating a sales order.');
   return review;
@@ -210,6 +214,7 @@ async function saveContacts(db,customerId,contacts,user,reason) {
 export async function savePartMapping(db,customerId,mappingId,body,user) {
   const reason=editReason(body,!!mappingId);
   return transaction(db,user,reason,async()=>{
+    await db.prepare('SELECT pg_advisory_xact_lock(812731)').get();await requireUnmergedCustomer(db,id(customerId));
     const selectedStatus=status(body.status||'ACTIVE',['ACTIVE','INACTIVE','ARCHIVED']);
     if(selectedStatus==='ARCHIVED'){
       if(!await db.prepare('SELECT id FROM customers WHERE id=?').get(id(customerId))||!await db.prepare('SELECT id FROM items WHERE id=?').get(id(body.itemId)))throw error(422,'Select an existing customer and item.');

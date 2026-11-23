@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import {requireUnmergedCustomer} from '../customers/identity.js';
 import {OPERATION_DESCRIPTORS,CLOSED_OPERATION_STATUSES} from '../../../public/operation-descriptors.js';
 import {forbidden,conflict,notFound,validationFailed} from '../../core/errors.js';
 import {validDate,decimal} from '../../crm-modules.js';
@@ -131,8 +132,9 @@ export class OperationsService {
  });}
  async controls(user,customerId,body){this.access.require(user,'customers.controls');const cid=Number(customerId);if(!Number.isSafeInteger(cid)||cid<1||!await this.repository.customer(cid))throw notFound('Customer not found.');
   if(!body)return await this.repository.controls(cid)||{customer_id:cid,classification:null,credit_exempt:false,version:0};
+  await requireUnmergedCustomer(this.repository.db,cid);
   if(!['NEW','EXISTING','POTENTIAL','DO_NOT_QUOTE'].includes(body.classification)||typeof body.creditExempt!=='boolean')throw validationFailed('Choose a customer classification and credit-exempt flag.');
-  const reason=text(body.reason,'Reason');return this.transactions.run(user,reason,async()=>{await this.repository.lockKey(`customer-controls:${cid}`);const old=await this.repository.controls(cid);
+  const reason=text(body.reason,'Reason');return this.transactions.run(user,reason,async()=>{await this.repository.db.prepare('SELECT pg_advisory_xact_lock(812731)').get();await requireUnmergedCustomer(this.repository.db,cid);await this.repository.lockKey(`customer-controls:${cid}`);const old=await this.repository.controls(cid);
    if(body.version!==(old?.version||0))throw conflict('Customer controls changed. Reload.');
    if(old?.classification==='DO_NOT_QUOTE'&&body.classification!=='DO_NOT_QUOTE'){
     if(user.role!=='OWNER')throw forbidden('Only an Owner can clear Do Not Quote after review.');

@@ -1,4 +1,7 @@
 import {compareCustomerPo} from './customer-po-comparison.js';
+import {bindCustomerPricing} from './modules/customers/commercial.js';
+import {contractForLine,requireContractBinding} from './modules/operations/customer-gates.js';
+import {pricingToday} from './modules/pricing/quotation-source.js';
 import {orderSyncStates} from './tally-order-sync-state.js';
 import {tallyWriteActive,guardTallyWriteMutation,notifyTallyWrite,requireTallyWriteConfirmation} from './modules/tally-write/module.js';
 import {workflowRule} from './modules/rules/workflow-rules.js';
@@ -121,7 +124,7 @@ export async function saveOrder(db,orderId,b,user){can(user,orderId?'orders.upda
  const old=orderId?await row(db,orderId):null;
  if(old?.public_snapshot.quotationId&&b.quotationId!==old.public_snapshot.quotationId&&await db.prepare("SELECT id FROM crm_quote_reservations WHERE sales_order_id=? AND status='TRANSFERRED' LIMIT 1").get(old.sales_order_id))fail(409,'The stock reservation is bound to the saved quotation. Cancel the order before replacing that quotation.');
  if(old){if(b.version!==old.version)fail(409,'Order changed. Reload before editing.');if(['CANCELLED','DELIVERED'].includes(old.status)||await db.prepare('SELECT id FROM crm_shipments WHERE sales_order_id=?').get(old.sales_order_id))fail(409,'Dispatched or terminal orders cannot be revised.');}
- const s=await snapshot(db,b);await bindOrderStock(db,b,s,old?.public_snapshot??null,old?.sales_order_id??null);if(old&&(s.customerId!==old.customer_id||s.poNumber.toUpperCase()!==old.po_key))fail(422,'Customer and PO identity cannot change. Cancel with a reason and create a new order.');
+ const s=await snapshot(db,b);s.customerPricingRequired=true;await bindOrderStock(db,b,s,old?.public_snapshot??null,old?.sales_order_id??null);for(const [index,line]of s.lines.entries()){line.rateContractId=await contractForLine(db,s.customerId,line,pricingToday());const binding=await bindCustomerPricing(db,s.customerId,s.companyId,{...line,customerPricing:b.lines[index].customerPricing});if(binding)line.customerPricing=binding;}if(old&&(s.customerId!==old.customer_id||s.poNumber.toUpperCase()!==old.po_key))fail(422,'Customer and PO identity cannot change. Cancel with a reason and create a new order.');
  if(!old&&await db.prepare('SELECT id FROM crm_order_workflows WHERE customer_id=? AND po_key=?').get(s.customerId,s.poNumber.toUpperCase()))fail(409,'An order already exists for this customer and PO number. Revise that order instead.');
  if(s.quotationId&&await db.prepare('SELECT id FROM sales_orders WHERE quotation_id=? AND id<>?').get(s.quotationId,old?.sales_order_id??0))fail(409,'This quotation already has an order.');
  let source=null;if(s.quotationId){source=await orderQuoteSource(db,s.quotationId,user);if(source.customerId!==s.customerId)fail(422,'Quotation and order customer must match.');}
@@ -142,6 +145,7 @@ export async function saveOrder(db,orderId,b,user){can(user,orderId?'orders.upda
 }
 const quantity=n=>`${n<0n?'-':''}${(n<0n?-n:n)/1000000n}.${String((n<0n?-n:n)%1000000n).padStart(6,'0')}`;
 export async function verifyOrder(db,r){const s=r.public_snapshot,flags=[],costs={},costInputs={};
+ if(s.customerPricingRequired||s.lines.some(l=>l.customerPricing))try{for(const line of s.lines){await requireContractBinding(db,s.customerId,line,pricingToday());await bindCustomerPricing(db,s.customerId,s.companyId,line);}}catch(e){if([409,422].includes(e.status))flags.push('CUSTOMER_PRICING_CHANGED');else throw e;}
  const policy=await quotePolicy(db);if(!policy||!await usableSetting(db,'margin.floor_percent'))flags.push('MISSING_POLICY');if(policy&&policy.seller_state!==s.sellerState)flags.push('SELLER_STATE_CHANGED');
  for(const l of s.lines){
  const item=l.itemId?await db.prepare("SELECT id,part_code,uom,status FROM items WHERE id=?").get(l.itemId):null;
@@ -204,6 +208,7 @@ export async function orderAction(db,orderId,b,user){const reason=why(b),action=
  if(action==='CANCEL'){if(await db.prepare('SELECT id FROM crm_shipments WHERE sales_order_id=?').get(r.sales_order_id))fail(409,'Dispatched orders cannot be cancelled.');await releaseOrderAvailability(db,r.sales_order_id,user,reason);await db.prepare("UPDATE crm_order_workflows SET status='CANCELLED' WHERE sales_order_id=?").run(r.sales_order_id);await db.prepare("UPDATE sales_orders SET status='CANCELLED',updated_by=?,updated_at=now() WHERE id=?").run(user.id,r.sales_order_id);}
  else {const v=await verifyOrder(db,r);if(action==='VERIFY'){await db.prepare("UPDATE crm_order_workflows SET status='HELD',approval_fingerprint=NULL,approved_by=NULL,approved_version=NULL WHERE sales_order_id=?").run(r.sales_order_id);}
  else if(action==='APPROVE'){
+ if(v.flags.includes('CUSTOMER_PRICING_CHANGED'))fail(409,'Customer pricing class or its approved source changed. Revise the PO and quotation before approval.');
  if(v.flags.includes('CREDIT_TIERS_NOT_CONFIGURED'))await workflowRule(db,'credit.tiers');
  if(v.flags.includes('CREDIT_GRACE_NOT_CONFIGURED'))await workflowRule(db,'credit.grace_days');
  if(v.flags.includes('CUSTOMER_ADMIN_REVIEW'))fail(409,'Customer is Do Not Quote. Admin must resolve this restriction before order approval.');
