@@ -12,6 +12,7 @@ import {requestAvailability} from './availability.js';
 import {quotationDiscount} from './discount.js';
 import {requireCustomerHandler} from '../operations/customer-gates.js';
 import {changeEnquiryStatus} from '../../crm-modules.js';
+import {validateReviewCommand,mergeReviewResolutions} from './review.js';
 
 const json=JSON.stringify;
 const preparedData=row=>{
@@ -111,17 +112,16 @@ export class SalesIntakeService{
   await intakeEvent(this.db,row,actor,'DELIVERY_RETAINED','Source delivery references retained',{deliveryId:delivery.id},p.credentialId);
  }
  async resolve(user,id,companyId,b){
-  permission(user,'sales_intake.review');why(b.reason);
+  permission(user,'sales_intake.review');validateReviewCommand(b);why(b.reason);
   return salesWork(this.db,user,b.reason,async()=>{
    const row=await this.one('SELECT * FROM crm_sales_intakes WHERE id=? AND company_id=? FOR UPDATE',uuid(id),uuid(companyId));if(!row)throw notFound();await this.userAccess(user,row);
    if(row.version!==b.version||row.status==='CANCELLED')throw conflict('Intake changed or is cancelled. Reload.');
-   const allowed=['customerId','assignedTo','header','items'];for(const k of Object.keys(b.resolutions??{}))if(!allowed.includes(k))throw validationFailed('Unknown resolution field: '+k);
-   for(const key of ['customerId','assignedTo'])if(b.resolutions?.[key]!=null&&(!Number.isSafeInteger(b.resolutions[key])||b.resolutions[key]<1))throw validationFailed('Use a positive CRM ID for '+key+'.');
+   const resolutions=mergeReviewResolutions(row,b.resolutions);
    if(b.resolutions?.assignedTo!=null&&b.resolutions.assignedTo!==row.assigned_to)permission(user,'work.reassign');
    if(row.quotation_id&&(b.resolutions?.header||b.resolutions?.items||b.resolutions?.customerId))throw conflict('This request already has a quotation. Revise it in Quotations; the original extraction remains linked.','USE_QUOTATION_REVISION');
-   row.resolutions={...row.resolutions,...b.resolutions};preparedData(row);
+   row.resolutions=resolutions;
    await this.one('UPDATE crm_sales_intakes SET resolutions=?::text::jsonb,version=version+1,updated_by=?,updated_at=now() WHERE id=? RETURNING id',json(row.resolutions),user.id,row.id);
-   await intakeEvent(this.db,row,user,'REVIEWED',b.reason,{version:row.version+1});await this.prepare({...row,version:row.version+1},user,await this.policy(companyId));return this.detail(user,id,companyId);
+   await intakeEvent(this.db,row,user,'REVIEWED',b.reason,{version:row.version+1,correctedFields:Object.keys(b.resolutions??{})});await this.prepare({...row,version:row.version+1},user,await this.policy(companyId));return this.detail(user,id,companyId);
   });
  }
  async customer(row,n){
