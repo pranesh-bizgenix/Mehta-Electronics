@@ -1,4 +1,4 @@
-# Role-based access decisions and verification
+every feature # Role-based access decisions and verification
 
 16 November 2026. User requested completing role-based access and explicitly permitted assumptions rather than waiting for client approval. These are provisional engineering decisions, not statements that Prem approved them.
 

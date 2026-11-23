@@ -8,6 +8,10 @@ Production authentication requires the existing staff password and, for roles re
 
 `.vercelignore` excludes secrets, backups, generated output, reference documents, QA files and connector code. `.dockerignore` separately limits the image context. Only the existing PDF helper is included from root scripts. No migration, business rule or connector implementation is changed.
 
+## Coordinate schema and application releases
+
+Prepare the protected replacement deployment with the complete migration set before advancing the shared RDS schema. The existing integrity check refuses cold starts when the database contains a migration missing from an older application artifact. Keep the verified backup, migration and immediate health-checked promotion together as one release; do not leave the public deployment behind the applied migration ledger. Ship already-applied SQL byte-for-byte unchanged. An older artifact that lacks an applied migration is not a usable rollback target.
+
 ## Deployment commands
 
 Run `npx vercel@66.6.0 deploy --dry --format=json` to review every uploaded source path. Run `npx vercel@66.6.0 deploy --yes --target preview` for a protected preview. For release, use `npx vercel@66.6.0 deploy --yes --prod --skip-domain`, verify it, then `npx vercel@66.6.0 promote <deployment-url> --yes`.

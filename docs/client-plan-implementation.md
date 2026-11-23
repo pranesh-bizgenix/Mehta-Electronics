@@ -1013,3 +1013,91 @@ Operations production release: d858cdb and 9ab751c were pushed to main and deplo
 - Quotation 31 created warehouse availability request 2d2d2d07-b309-4f95-ab9a-6117f3d8b503. Stock remains unverified: no fake quantities, stock mapping, policy changes, approval, sending or Tally posting. User will perform subsequent approvals when prerequisites are met.
 - Order verification also reports missing original PO file and unconfigured credit evidence/policy. These records do not demonstrate successful dispatch or an operational automation connection. No code or migration change.
 - User subsequently requested cancellation of this demo. Deployed CRM confirmed order 3, quotation 31 and associated warehouse request CANCELLED; both action histories contain the cancellation reason. Existing records and business policies were left unchanged.
+
+
+### 23 November 2026 - Customer management additions
+
+Added customer address books (separate billing/delivery locations, per-type defaults, versioned updates and archive), calls/visits/meetings/notes with responsible staff and follow-up dates, and sales opportunities with stages and exact expected values. Won requires an approved order for the same customer; a stage change does not award KPI credit. Existing profile addresses and document snapshots are retained.
+
+Added independent duplicate-merge request, preview, approval and rejection. Original customer IDs, linked records and audit history remain intact; the surviving customer exposes combined history. Unresolved live work, pending onboarding, mismatched tax identities, ownership, credit terms, restrictions and ledger links block review. The maker cannot approve. A changed preview must be rejected and requested again. Merged sources cannot receive new commercial work or be reactivated. Financial balances and limits are never summed.
+
+Customer pricing classes reuse crm_customer_controls as their authority and the existing approved rate-contract/price-level services. Company settings select the strategy explicitly, with no invented discounts. New/revised quotation and order snapshots bind their class/source and recheck before approval; customer controls share the existing transaction lock. Enquiry, quotation and order screens display commercial context. Customer history supports enquiries, quotations, received POs not yet ordered, sales orders, linked supplier purchases, invoice documents/references, collections, receipts, payments, support, warranty and returns/replacements, with existing module/financial permissions. Source links open the original screens.
+
+History classification uses configurable company scope, basis (PO/order/issued invoice), eligible statuses, lookback and thresholds. Missing rules stay unset. Cancelled PO sources and records belonging to another company do not qualify; unknown company scope requires review. Equivalent PO keys across merged aliases count once. Existing customers with fewer than five qualifying POs are Early Bird; five and above are Elite. Reviewers explicitly apply the evaluated classification through existing customer controls; this never clears Do Not Quote or changes pricing/credit exemptions.
+
+Migration: 0065_customer_management.sql creates six customer tables, two merge permission definitions and identity/history guards. Applied to the authorized development RDS after the verified 197,674,924-byte backup postgres-2026-11-23T07-00-54-887Z-b1a92b03.dump. Existing migrations and the ten-minute backup guard are unchanged. No role grants, commercial settings, addresses or test fixtures were seeded permanently. No Tally connector, live Tally write, email/WhatsApp intake or automation setting was changed.
+
+Manual path: Customers -> open a customer -> Address book / Calls & visits / Opportunities / Business history / Pricing & classification / Duplicate review. Under Pricing & classification, choose the company, enter confirmed class strategies and history rules with a reason, then save. Apply the evaluated classification separately. Apply customer pricing in quotation/order line details. For a duplicate, open the source customer, enter the surviving ID, preview and resolve blockers, then request review; a different eligible person approves or rejects.
+
+Permissions: normal customer/enquiry read/write permissions are reused. Customer controls require customers.controls; company policy changes require rules.manage. Under Users -> Role permissions, an authorised administrator may grant customers.merge.request and customers.merge.approve to the agreed roles, retaining customers.read. Existing Owner wildcard access remains; independent review still applies. Existing non-Owner roles receive neither new key automatically.
+
+Validation: production build, design-token checks and TypeScript passed; syntax lint passed; 52 selected domain, pricing, merge, permission, PO and UI-contract checks passed. Nine intercepted-browser checks passed on desktop/mobile with no unexpected API calls or page errors. These UI fixtures are fictional and do not connect to RDS. Actual RDS service/HTTP checks ran inside uncommittable outer rollback transactions: 18 address/activity/opportunity/pricing/classification checks, seven history/merge checks, and fourteen company-scope/HTTP checks passed. An initial synthetic invoice fixture lacked the existing mandatory backup owner; that fixture was corrected and history/merge verification rerun successfully. The RDS before/after counts for all six new tables matched at zero after the merge run.
+
+The ordinary npm.cmd test command and the database-backed case in the mixed navigation command were refused by the unchanged local-only test guard; they are not recorded as passes. New local-suite tests are included, and RDS verification used the existing explicit operational rollback helper. Independent-connection race/load tests and production deployment were not performed for this task. The existing dev listener was left running; restart it to load the new backend routes. No commit or push was made. Confirm commercial strategy mappings, history counting rules and merge-reviewer assignments before using those configured paths for live work.
+
+Files added or modified for this task (excluding the pre-existing user edit to role-access-decisions.md):
+- apps/web/app/(app)/billing/page.tsx
+- apps/web/app/(app)/customers/[id]/page.tsx
+- apps/web/app/(app)/enquiries/page.tsx
+- apps/web/app/(app)/orders/page.tsx
+- apps/web/app/(app)/purchasing/page.tsx
+- apps/web/features/customers/api.ts
+- apps/web/features/customers/commercial-context.tsx
+- apps/web/features/customers/management-api.ts
+- apps/web/features/customers/management.tsx
+- apps/web/features/quotations/api.ts
+- apps/web/features/quotations/quote-editor.tsx
+- apps/web/features/quotations/use-quote-editor.ts
+- apps/web/features/workflows/line-editor.tsx
+- database/postgres/migrations/0065_customer_management.sql
+- docs/client-plan-implementation.md
+- scripts/verify-customer-management-ui.mjs
+- src/crm-modules.js
+- src/modules/container.js
+- src/modules/customers/commercial.js
+- src/modules/customers/controller.js
+- src/modules/customers/domain.js
+- src/modules/customers/identity.js
+- src/modules/customers/merge.js
+- src/modules/customers/repository.js
+- src/modules/customers/service.js
+- src/modules/operations/customer-gates.js
+- src/modules/operations/operations-service.js
+- src/quotation-workflow.js
+- src/sales-orders.js
+- test-support/customer-management-checks.js
+- test-support/customer-management-http-checks.js
+- test-support/transaction.js
+- test/customer-commercial.test.js
+- test/customer-management-domain.test.js
+- test/customer-management.test.js
+- test/customer-merge-preview.test.js
+
+Final customer-management verification: the final production build passed after the UI and service changes. The read-only RDS follow-up confirmed that migration 0065 matches its recorded SHA-256 checksum, all six new tables contain zero retained test rows, and the final identity/history service queries execute successfully. Test reports/screenshots and backup archives remain outside Git.
+
+### 23 November 2026 - Production startup recovery
+
+The customer migration had been applied to the shared development RDS while the public deployment still contained only migrations 0001-0064. On cold start the existing unknown-migration integrity check refused to boot, producing Vercel FUNCTION_INVOCATION_FAILED. Runtime logs confirmed the database-startup exit; a read-only comparison confirmed 65 applied migrations versus 64 in the prior release source. The earlier migration/deployment ordering caused this outage. No database credentials, backup freshness checks, integrity guards or existing migrations were changed or bypassed.
+
+Reviewed the 479-file deployment manifest: customer code and migration 0065 included; secrets, backups, QA tooling, documentation, generated artifacts and connector code excluded. Deployed the tested matching working copy as dpl_CHYVL6WmU7MQ7zfmNTPzgALdpXWx (mehta-controldesk-ghjb2z5ey-umang-ratanis-projects.vercel.app) without automatic aliasing. Its authenticated protected health check returned HTTP 200 before promotion. Promoted it to https://mehta-controldesk.vercel.app. Two migration-protocol regression checks passed; full post-promotion checks are recorded separately below. No Git commit/push was requested or made in this recovery task.
+
+Recovery verification: 25 actual post-promotion checks passed, including public health/login, anonymous data denial, Owner dashboard, eight customer APIs, all six customer tabs, five existing CRM registers, quotation 11 PDF and mobile width. Zero browser runtime errors or HTTP 5xx responses were observed. The checks used saved records and real deployed APIs; no business records or commercial policies were created or changed. Evidence and screenshots are under ignored .vercel/release/customer-recovery-*.
+
+
+## 2026-11-23 - Incoming requests: missing-information review
+
+- Extended the existing Sales > Incoming requests screen with a Needs review shortcut for saved company-scoped requests, actionable blockers and a comparison with the immutable extraction.
+- Authorised reviewers can correct customer identity/contact fields, structured addresses, customer PO details, tax treatment, validity, delivery date, customer-supplied terms and item lines/schedules. Missing lines can be added; reviewed lines and schedules can be removed without changing the original source.
+- Existing sales_intake.read/review, assignment, CSRF, version, customer-policy, warehouse and commercial-approval gates remain authoritative. No new permission grants, schema migrations, business-policy defaults or Make scenario changes were introduced.
+- Server validation rejects malformed review commands and preserves earlier header corrections during partial follow-up reviews. Review audit metadata records corrected field names, rather than source contents. Existing quotation refreshes do not submit customer/header rewrites.
+- Verification commands: node --test test/sales-intake-review.test.js test/sales-intake-contract.test.js test/sales-intake-policy.test.js test/sales-intake-dates.test.js; npm.cmd --prefix apps/web run build; npm.cmd run lint; node scripts/verify-sales-intake-review-ui.mjs --existing-server; node scripts/verify-sales-intake-ui.mjs --existing-server.
+- RDS verification: explicitly opt in with VERIFY_AUTHORIZED_RDS_ROLLBACK=true, then node scripts/verify-sales-intake-review.mjs. The existing guarded outer transaction rolls every fixture back and checks for retained test users, company and intakes. Evidence is written under ignored verification-output/sales-intake/review/.
+- Manual path: Sales > Incoming requests > Needs review > open request > compare source and blockers > correct fields/items > enter Review reason > Save review and prepare eligible draft. Remaining requirements stay visible; prepared quotations continue through existing warehouse and approval workflows.
+- This change does not connect Make to the CRM or enable ingestion. Production deployment and a real Make delivery are separate from the local/intercepted and rollback verification described above.
+
+Verification outcome: all 124 focused checks passed; production Next.js build and type checking passed; syntax lint and scoped git diff checks passed. Seven focused browser checks and 35 existing Incoming Requests/warehouse/navigation checks passed with intercepted APIs. Nine actual RDS review checks passed, including correction-to-draft preparation, warehouse-request creation, stale/unauthorised refusal, quotation refresh and audit privacy. Outer rollback and zero retained fixture users/company/intakes were verified. No production deployment or Make execution was performed.
+
+
+## 2026-11-23 - Source-control hygiene
+
+Audited the CRM Git index and working tree: 46 genuine modified/new source paths before this hygiene change; 26,525 dependency/generated paths already ignored; no tracked paths matched existing ignore rules. A separate Git directory exists at C:/Users/aahan/.git above the IDE workspace. Added portable repository VS Code settings to refuse parent repositories and detect subfolders, plus a local parent-workspace setting excluding that home repository. Extended .gitignore for environment variants (retaining templates), Python environments/caches, alternate Next builds and OS cache files. Lockfiles, migrations, application source and tests remain visible. Twenty ignore/source-retention probes, JSON parsing, tracked-ignore checks and scoped git diff checks passed. No files were deleted or removed from the index, no migration was added, and no runtime/connector code was changed. Reload the VS Code window to refresh an already-open parent repository.
