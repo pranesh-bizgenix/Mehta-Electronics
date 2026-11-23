@@ -1,4 +1,5 @@
 'use client';
+import {CustomerCommercialSummary,CustomerPricingLine} from '@/features/customers/commercial-context';
 import {LevelPrice} from './level-price';
 
 import Link from 'next/link';
@@ -114,6 +115,7 @@ export function QuoteEditorView({ id, enquiryId, customerId }: { id?: string; en
 
       <div className={`grid-main-aside${!q?' quote-create-layout':''}`} style={{ marginTop: 'var(--space-3)' }}>
         <div className="stack-lg">
+          {ed.customer&&<CustomerCommercialSummary customerId={Number(ed.customer.value)} companyId={ed.quote?.companyId}/>}
           <Card title="Customer and terms">
             <div className="stack">
               {ed.editable?<Combobox label="Customer" required value={ed.customer} error={ed.customerError} hint={ed.customerLoading?'Loading customer details…':'Search active CRM customers by name or GSTIN.'} onChange={(o) => void ed.pickCustomer(o)} search={async (t) => (await ed.api.customers(t)).data.map((c) => ({ value: String(c.id), label: c.name, hint: c.gstin ?? undefined }))}/>:<p>{ed.customer?.label}</p>}
@@ -252,7 +254,7 @@ function LineGrid({ ed, floor }: { ed: QuoteEditor; floor?: string }) {
             </div>
             <div role="cell"><IconButton icon="x" label={`Remove line ${i + 1}`} disabled={ed.lines.length === 1} onClick={() => ed.removeLine(l.key)} /></div>
           </div>
-          <div className="quote-line-detail" role="row"><div role="cell" aria-colspan={8}><LevelPrice referenceDate={ed.request.referenceOnly?ed.request.referenceDate:undefined} customerId={ed.customer?.value} itemId={l.item?.value} quantity={l.quantity} selection={l.pricingSelection} onApply={(price,pricingSelection)=>ed.updateLine(l.key,{pricingSelection,...(price!==null?{unitPrice:price,discountPercent:'0'}:{})})}/><details>
+          <div className="quote-line-detail" role="row"><div role="cell" aria-colspan={8}><CustomerPricingLine customerId={ed.customer?.value} companyId={ed.quote?.companyId} itemId={l.item?.value} quantity={l.quantity} onApply={patch=>ed.updateLine(l.key,patch)}/><LevelPrice referenceDate={ed.request.referenceOnly?ed.request.referenceDate:undefined} customerId={ed.customer?.value} itemId={l.item?.value} quantity={l.quantity} selection={l.pricingSelection} onApply={(price,pricingSelection)=>ed.updateLine(l.key,{pricingSelection,...(price!==null?{unitPrice:price,discountPercent:'0'}:{})})}/><details>
             <summary>Line {i+1}: customer references, specifications & delivery{l.requestDetails.tag?` · ${l.requestDetails.tag}`:''}</summary>
             <div className="stack">
               <div className="ds-form-grid">

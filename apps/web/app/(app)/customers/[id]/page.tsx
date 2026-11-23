@@ -13,9 +13,10 @@ import { customerEnquiryHref,commercialRecordHref } from '../../../../../../publ
 import { useCustomer } from '@/features/customers/hooks';
 import { CustomerForm } from '@/features/customers/customer-form';
 import { CustomerOperations } from '@/features/workflows/customer-operations';
+import {CustomerManagement} from '@/features/customers/management';
 import type { Customer, HistoryRow, PartMapping } from '@/features/customers/api';
 
-type Tab = 'overview' | 'contacts' | 'parts' | 'enquiries' | 'quotes' | 'orders' | 'invoices' | 'dues' | 'activity' | 'operations';
+type Tab = 'overview' | 'contacts' | 'parts' | 'enquiries' | 'quotes' | 'orders' | 'invoices' | 'dues' | 'activity' | 'operations' | 'addresses' | 'sales-activity' | 'opportunities' | 'history' | 'commercial' | 'merges';
 
 export default function Customer360({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -34,6 +35,12 @@ export default function Customer360({ params }: { params: Promise<{ id: string }
   const tabs = [
     { id: 'overview', label: 'Overview', icon: 'dashboard' as const },
     { id: 'contacts', label: 'Contacts', count: customer.contacts.length },
+    { id: 'addresses', label: 'Address book' },
+    { id: 'sales-activity', label: 'Calls & visits' },
+    ...(can('enquiries.read')?[{id:'opportunities',label:'Opportunities'}]:[]),
+    {id:'history',label:'Business history'},
+    {id:'commercial',label:'Pricing & classification'},
+    ...(can('customers.merge.request')||can('customers.merge.approve')?[{id:'merges',label:'Duplicate review'}]:[]),
     { id: 'parts', label: 'Part numbers', count: customer.partMappings.filter((m) => m.status !== 'ARCHIVED').length },
     ...(can('enquiries.read') ? [{ id: 'enquiries', label: 'Enquiries' }] : []),
     ...(can('quotations.read') ? [{ id: 'quotes', label: 'Quotations' }] : []),
@@ -60,11 +67,12 @@ export default function Customer360({ params }: { params: Promise<{ id: string }
           </div>
         </div>
         <div className="ds-record-actions">
-          {can('enquiries.create') && <Link className="ds-button" data-variant="secondary" href={customerEnquiryHref(customer.id)}><Icon name="inbox" /><span>New enquiry</span></Link>}
-          {can('customers.update') && <Button icon="settings" onClick={() => setEditing(true)}>Edit</Button>}
+          {!customer.identity?.merged&&can('enquiries.create') && <Link className="ds-button" data-variant="secondary" href={customerEnquiryHref(customer.id)}><Icon name="inbox" /><span>New enquiry</span></Link>}
+          {!customer.identity?.merged&&can('customers.update') && <Button icon="settings" onClick={() => setEditing(true)}>Edit</Button>}
         </div>
       </header>
 
+      {customer.identity?.merged&&<Notice tone="warning" title="Merged customer"><Link href={`/customers/${customer.identity.canonicalId}`}>Open the surviving customer #{customer.identity.canonicalId}</Link>. This original profile and its business records are retained for history.</Notice>}
       <section aria-label="Commercial terms" className="grid-kpis" style={{ marginBottom: 'var(--space-3)' }}>
         <StatCard label="Credit limit" value={formatMoney(customer.credit_limit, { places: 0 })} footnote={`${customer.credit_days} credit days`} />
         <StatCard label="Payment terms" value={<span style={{ fontSize: 'var(--text-lg)' }}>{customer.profile.payment_terms ?? 'Not set'}</span>} footnote={customer.profile.state_code ? `Place of supply state ${customer.profile.state_code}` : undefined} />
@@ -78,12 +86,13 @@ export default function Customer360({ params }: { params: Promise<{ id: string }
 
       <Tabs label="Customer sections" value={tab} onChange={(t) => setTab(t as Tab)} items={tabs} />
       <TabPanel id={tab}>
+        {['addresses','sales-activity','opportunities','history','commercial','merges'].includes(tab)&&<CustomerManagement customerId={customer.id} section={tab as 'addresses'|'sales-activity'|'opportunities'|'history'|'commercial'|'merges'} financial={customer.dues.financialAccess} onIdentityChanged={reload}/>}
         {tab === 'operations' && <CustomerOperations customerId={id} financial={customer.dues.financialAccess} />}
         {tab === 'overview' && <OverviewTab customer={customer} />}
         {tab === 'contacts' && <ContactsTab customer={customer} />}
         {tab === 'parts' && <PartsTab customer={customer} onChanged={reload} />}
         {(tab === 'enquiries' || tab === 'quotes' || tab === 'orders') && <HistoryTab customerId={customer.id} tab={tab} />}
-        {tab === 'invoices' && <Card title="Invoices"><EmptyState title="Invoice history isn’t available yet" illustration="empty">Tally imports don’t yet include bill-wise invoices. Nothing is estimated from balances.</EmptyState></Card>}
+        {tab === 'invoices' && (customer.dues.financialAccess?<CustomerManagement customerId={customer.id} section="history" financial initialKind="INVOICE_DOCUMENT"/>:<Notice tone="info">Invoice history is available to authorised Accounts and Owner users.</Notice>)}
         {tab === 'dues' && <Card title="Dues"><Notice tone="info" title={customer.dues.available ? balanceText(customer, 2) : 'Balance unavailable'}>{customer.dues.note}</Notice></Card>}
         {tab === 'activity' && <ActivityTab customerId={customer.id} />}
       </TabPanel>

@@ -5,6 +5,7 @@ export interface CustomerRow { id: number; name: string; customer_code: string |
 export interface Contact { id?: number; name: string; designation?: string | null; phone?: string | null; email?: string | null; is_primary?: number | boolean; isPrimary?: boolean }
 export interface PartMapping { id: number; item_id: number; part_code: string; customer_part_number: string; status: 'ACTIVE' | 'INACTIVE' | 'ARCHIVED' }
 export interface Customer extends CustomerRow {
+  identity?: {canonicalId:number;merged:boolean;customerIds:number[]};
   pan: string | null; billing_address: string | null; shipping_address: string | null; city: string | null; state: string | null; pincode: string | null; notes: string | null;
   owner_id: number | null; owner_name: string | null; created_at: string;
   profile: { state_code?: string | null; payment_terms?: string | null; company_id?: string | null; tally_ledger_name?: string | null; backup_owner_id?: number | null; backup_owner_name?: string | null; territory?: string | null; dealership?: string | null; brand_relationships?: string[] | null };

@@ -7,11 +7,13 @@ export {marginFlag,type MarginFlag} from '@shared/quotation-margin.js';
 import { useApi } from '@/lib/api/provider';
 import { useSession } from '@/lib/session';
 import {useScope} from '@/lib/scope';
+import type {PricingBinding} from '@/features/customers/management-api';
 import type { Option } from '@/components/ds';
 import { EDITABLE, quotationsApi, type Policy, type Quotation, type QuoteInput } from './api';
 import {quotationRequest,quotationLineRequest,quotationRequestBlock,quotationPricingDate,type QuotationLineRequest,type QuotationRequest} from '../../../../public/quotation-request.js';
 
 export interface LineDraft {
+  customerPricing?:PricingBinding;
   sourceLineId?: string;
   pricingSelection?: {level:number;fingerprint:string};
   requestDetails:QuotationLineRequest;
@@ -60,7 +62,7 @@ export function useQuoteEditor({ id, enquiryId, customerId }: { id?: string; enq
     setCustomer({ value: String(q.customerId), label: q.customer_name, hint: q.customerGstin || undefined });
     setPlaceOfSupply(q.placeOfSupply); setValidUntil(q.validUntil); setTerms(q.terms); setNotes(q.notes); setLinkedEnquiry(q.enquiryId);
     setRequest(quotationRequest(q.request));
-    setLines(q.lines.map((l, i) => ({ key: `l${i}-${l.itemId}`, item: { value: String(l.itemId), label: l.partCode, hint: l.description }, sourceLineId:l.sourceLineId, partCode: l.partCode, uom: l.uom, hsn: l.hsn, description: l.description, quantity: trim(l.quantity), unitPrice: trim(l.unitPrice), discountPercent: trim(l.discountPercent), taxPercent: trim(l.taxPercent),pricingSelection:l.pricingSelection,requestDetails:{...quotationLineRequest(undefined,''),...l.requestDetails} })));
+    setLines(q.lines.map((l, i) => ({ key: `l${i}-${l.itemId}`, item: { value: String(l.itemId), label: l.partCode, hint: l.description }, sourceLineId:l.sourceLineId, partCode: l.partCode, uom: l.uom, hsn: l.hsn, description: l.description, quantity: trim(l.quantity), unitPrice: trim(l.unitPrice), discountPercent: trim(l.discountPercent), taxPercent: trim(l.taxPercent),customerPricing:l.customerPricing,pricingSelection:l.pricingSelection,requestDetails:{...quotationLineRequest(undefined,''),...l.requestDetails} })));
     setCosts({}); // Load current costs separately from the retained approval snapshot.
     setDirty(false);
   }, []);
@@ -140,7 +142,7 @@ export function useQuoteEditor({ id, enquiryId, customerId }: { id?: string; enq
     companyId:quote?.companyId??companyId??undefined,
     request,
     customerId: Number(customer?.value), enquiryId: linkedEnquiry, validUntil, placeOfSupply, supplyType: 'DOMESTIC_STANDARD', terms, notes, reason,
-    lines: lines.map((l) => ({ sourceLineId:l.sourceLineId, itemId: Number(l.item!.value), description: l.description, quantity: l.quantity, unitPrice: l.unitPrice, discountPercent: l.discountPercent, taxPercent: l.taxPercent,pricingSelection:l.pricingSelection,requestDetails:l.requestDetails })),
+    lines: lines.map((l) => ({ sourceLineId:l.sourceLineId, itemId: Number(l.item!.value), description: l.description, quantity: l.quantity, unitPrice: l.unitPrice, discountPercent: l.discountPercent, taxPercent: l.taxPercent,customerPricing:l.customerPricing,pricingSelection:l.pricingSelection,requestDetails:l.requestDetails })),
     ...(quote ? { version: quote.version } : {})
   });
   const problems = [

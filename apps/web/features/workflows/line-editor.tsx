@@ -2,7 +2,8 @@
 import {useEffect,useState} from 'react';
 import {useApi} from '@/lib/api/provider';
 import {Button,SelectField,TextField} from '@/components/ds';
-export interface CommercialLine {id?:number;itemId?:number;partCode:string;description:string;uom:string;quantity:string;unitPrice:string;discountPercent:string;taxPercent:string;lineKey?:string;fulfilledQuantity?:string}
+import type {PricingBinding} from '@/features/customers/management-api';
+export interface CommercialLine {id?:number;itemId?:number;partCode:string;description:string;uom:string;quantity:string;unitPrice:string;discountPercent:string;taxPercent:string;lineKey?:string;fulfilledQuantity?:string;customerPricing?:PricingBinding}
 export const emptyLine=():CommercialLine=>({partCode:'',description:'',uom:'',quantity:'1',unitPrice:'0',discountPercent:'0',taxPercent:'0'});
 interface Item {id:number;part_code:string;description:string;uom:string}
 export function LineEditor({lines,onChange}: {lines:CommercialLine[];onChange:(lines:CommercialLine[])=>void}){

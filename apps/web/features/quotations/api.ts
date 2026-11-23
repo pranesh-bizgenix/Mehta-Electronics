@@ -1,10 +1,12 @@
 import type { ApiClient, Paginated } from '@/lib/api/client';
 import type {QuotationRequest,QuotationLineRequest} from '../../../../public/quotation-request.js';
+import type {PricingBinding} from '@/features/customers/management-api';
 
 export type QuoteStatus = 'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED' | 'SENT' | 'WON' | 'LOST' | 'EXPIRED' | 'CANCELLED';
 export type QuoteAction = 'SUBMIT' | 'APPROVE' | 'RETURN' | 'SEND' | 'WON' | 'LOST' | 'EXPIRE' | 'CANCEL';
 
 export interface QuoteLine {
+  customerPricing?:PricingBinding;
   sourceLineId?: string;
   pricingSelection?: {level:number;fingerprint:string};
   requestDetails?:QuotationLineRequest;
@@ -36,7 +38,7 @@ export interface QuoteInput {
   companyId?:string;
   request?:QuotationRequest;
   customerId: number; enquiryId?: number | null; validUntil: string; placeOfSupply: string; supplyType: 'DOMESTIC_STANDARD'; terms: string; notes: string;
-  lines: { pricingSelection?: {level:number;fingerprint:string}; itemId: number; description: string; quantity: string; unitPrice: string; discountPercent: string; taxPercent: string; requestDetails?:QuotationLineRequest }[];
+  lines: { customerPricing?:PricingBinding; pricingSelection?: {level:number;fingerprint:string}; itemId: number; description: string; quantity: string; unitPrice: string; discountPercent: string; taxPercent: string; requestDetails?:QuotationLineRequest }[];
   reason: string; version?: number;
 }
 export interface EnquirySource { id: number; customer_id: number; notes: string | null; lines: { item_id: number | null; description: string; quantity: string; target_price: string | null; part_code: string | null; uom: string | null }[] }

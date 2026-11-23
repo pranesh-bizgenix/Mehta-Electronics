@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import {CustomerCommercialSummary} from '@/features/customers/commercial-context';
 import {RecordWorkspace} from '@/features/workflows/tally-imports';
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -132,7 +133,7 @@ function Detail({ enquiry, onBack, onRevise, onTransition }: { enquiry: Enquiry;
           <div className="cluster"><span className="mono subtle">{enquiry.enquiry_number}</span><StatusBadge status={enquiry.status} />{enquiry.source && <Badge tone="info">{enquiry.source}</Badge>}{enquiry.source?.startsWith('MAKE:')&&can('sales_intake.read')&&<Link href={`/incoming-requests?requestId=${encodeURIComponent(enquiry.source.slice(5))}`}>Source request and response clock</Link>}</div>
           <h2 className="truncate" style={{ fontSize: 'var(--text-xl)' }} title={enquiry.subject}>{enquiry.subject}</h2>
           <div className="ds-record-meta">
-            <Link href={`/customers/${enquiry.customer_id}`}><Icon name="customers" />{enquiry.customer_name}</Link>
+            <CustomerCommercialSummary customerId={enquiry.customer_id}/><Link href={`/customers/${enquiry.customer_id}`}><Icon name="customers" />{enquiry.customer_name}</Link>
             <span><Icon name="user" />{enquiry.assigned_name ?? 'Unassigned'}</span>
             {enquiry.expected_by && <span><Icon name="calendar" />Expected {formatDate(enquiry.expected_by)}</span>}
           </div>
