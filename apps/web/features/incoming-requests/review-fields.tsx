@@ -3,6 +3,7 @@ import {Button,Card,Notice,SelectField,TextAreaField,TextField} from '@/componen
 import type {IntakeDetail,IntakeHeader,IntakeLine,MessageType} from './api';
 
 const instructions:Record<string,string>={
+ SOURCE_REVIEW:'Verify the warning in Source extraction checks, correct the request and explicitly mark the warning resolved.',
  CUSTOMER_ONBOARDING_REQUIRED:'Select a verified customer, or open Customer onboarding to create one.',
  CUSTOMER_MATCH_AMBIGUOUS:'Several customers match. Confirm the correct existing customer.',
  CUSTOMER_IDENTIFIER_CONFLICT:'The supplied GSTIN differs from the selected customer. Check the original document before correcting it.',
