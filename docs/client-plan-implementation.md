@@ -1004,3 +1004,12 @@ Verification: production build/type validation and syntax lint passed. Five sele
 Operations browser result: all 35 checks passed, including the five new Operations checks; zero page runtime errors and no business-record mutations. Desktop and mobile screenshots were retained outside Git.
 
 Operations production release: d858cdb and 9ab751c were pushed to main and deployed as dpl_A1LwWgmHbmgpY98XqJPqBizFHfaL. Protected health returned HTTP 200 before promotion to https://mehta-controldesk.vercel.app. Seven actual deployed checks passed: health, one Operations section, all three existing workflow links with one active entry, mobile drawer/Stock navigation, and existing order/procurement register responses. No API fixtures or business-record mutations were used in these deployed checks. The existing local dev server was left running. Manual path: sign in with appropriate existing permissions, open Operations, then Order status, Stock or Procurement. Access still requires orders.read, items.read or purchasing.read respectively; no roles were granted additional access.
+
+
+## 23 November 2026 - User-requested saved dummy PO walkthrough
+
+- Created requested persistent TEST records through deployed authenticated CRM APIs: customer PO ZZTEST_DEMO_PO_20261123_01 (draft order 3) and draft quotation 31 for existing TEST customer 20/item 15; matching reference and total INR 212.40.
+- This is manual recording, not a Make delivery. Intake policy remains empty/off. PO quotation link is intentionally unset until the quotation has passed warehouse and commercial approval; the related draft is named in the PO notes.
+- Quotation 31 created warehouse availability request 2d2d2d07-b309-4f95-ab9a-6117f3d8b503. Stock remains unverified: no fake quantities, stock mapping, policy changes, approval, sending or Tally posting. User will perform subsequent approvals when prerequisites are met.
+- Order verification also reports missing original PO file and unconfigured credit evidence/policy. These records do not demonstrate successful dispatch or an operational automation connection. No code or migration change.
+- User subsequently requested cancellation of this demo. Deployed CRM confirmed order 3, quotation 31 and associated warehouse request CANCELLED; both action histories contain the cancellation reason. Existing records and business policies were left unchanged.
