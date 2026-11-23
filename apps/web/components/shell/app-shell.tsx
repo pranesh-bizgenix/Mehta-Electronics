@@ -69,7 +69,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 {group.label==='Admin'||group.collapsible?<button type="button" className="ds-nav-group ds-nav-group-toggle" aria-expanded={Boolean(openGroups[group.label])||collapsed} onClick={()=>setOpenGroups(value=>({...value,[group.label]:!value[group.label]}))}>{group.label==='Admin'?'Administration':group.label}<Icon name={openGroups[group.label]?'chevronDown':'chevronRight'}/></button>:<p className="ds-nav-group">{group.label}</p>}
                 {(!(group.label==='Admin'||group.collapsible)||openGroups[group.label]||collapsed)&&items.map((item) => {
                   const count = item.badge ? counts[item.badge] : undefined;
-                  const current = pathname === item.href || (item.href !== '/tally' && item.href !== '/purchasing' && pathname.startsWith(`${item.href}/`));
+                  const current = protectedScreen?.href === item.href && (pathname === item.href || (item.href !== '/tally' && item.href !== '/purchasing' && pathname.startsWith(`${item.href}/`)));
                   const content = <><Icon name={item.icon} /><span className="ds-nav-label">{item.label}</span>{!!count && <span className="ds-nav-badge" data-tone={item.badgeTone} aria-label={`${count} pending`}>{count > 99 ? '99+' : count}</span>}</>;
                   return <Link key={item.href} className="ds-nav-link" href={item.href} aria-current={current ? 'page' : undefined} title={collapsed ? item.label : undefined}>{content}</Link>;
                 })}

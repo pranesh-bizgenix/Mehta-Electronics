@@ -36,14 +36,17 @@ export const NAV: NavGroup[] = [
     { href: '/contracts', label: 'Customer contracts', icon: 'quote', permission: 'customers.read', keywords: 'rate contract fixed price quantity validity' },
     { href: '/enquiries', label: 'Enquiries', icon: 'inbox', permission: 'enquiries.read', keywords: 'inbox leads' },
     { href: '/quotations', label: 'Quotations', icon: 'quote', permission: 'quotations.read', keywords: 'quotes pdf' },
-    { href: '/orders', label: 'Sales orders', icon: 'truck', permission: 'orders.read', keywords: 'dispatch lr delivery po' },
     { href: '/billing', label: 'Invoice documents', icon: 'ledger', permission: 'collections.read', keywords: 'invoice pdf tally copy billing' },
     { href: '/messages', label: 'Outbound drafts', icon: 'mail', permission: 'outbound.read', badge: 'draftsAwaitingApproval', keywords: 'email approval' }
+  ] },
+  { label: 'Operations', items: [
+    { href: '/orders', label: 'Order status', icon: 'truck', permission: 'orders.read', keywords: 'sales orders supplied pending partial dispatch lr delivery customer po' },
+    { href: '/items/stock-checks', label: 'Stock', icon: 'items', permission: 'items.read', keywords: 'inventory availability warehouse free reserved stock checks daily analysis' },
+    { href: '/purchasing', label: 'Procurement', icon: 'cart', permission: 'purchasing.read', keywords: 'purchasing supplier comparison rfq purchase request po grn goods receipt' }
   ] },
   { label: 'Supply', items: [
     { href: '/logistics', label: 'Logistics & store', icon: 'truck', permission: 'logistics.read', keywords: 'grn dispatch photos assigned orders store' },
     { href: '/items', label: 'Items & price lists', icon: 'items', permission: 'items.read', keywords: 'sku products stock' },
-    { href: '/purchasing', label: 'Purchasing', icon: 'cart', permission: 'purchasing.read', keywords: 'rfq supplier po grn vendor' },
     { href: '/purchasing/rfqs', label: 'Vendor RFQ documents', icon: 'quote', permission: 'purchasing.read' },
     { href: '/purchasing/purchase-orders', label: 'Supplier PO documents', icon: 'quote', permission: 'purchasing.read' }
   ] },
