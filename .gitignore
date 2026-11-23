@@ -8,8 +8,28 @@ node_modules/
 .next/
 .env
 .env.local
+# Environment variants may contain credentials; keep documented templates.
+.env.*
+!.env.example
+!.env.sample
+!.env.template
+.envrc
 *.log
 *.tsbuildinfo
+# Python tooling and temporary caches, never application source or lockfiles.
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.next-*/
+.turbo/
+.cache/
+.DS_Store
+Thumbs.db
+Desktop.ini
 coverage/
 # Local verification evidence, credentials, generated PDFs and diagnostic helpers.
 verification-output/
