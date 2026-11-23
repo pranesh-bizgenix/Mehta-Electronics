@@ -993,3 +993,12 @@ Confirmed-boundary follow-up: syntax lint and the production build passed; all 3
 Created and pushed thirteen scoped feature commits through e491ce3, then deployed and promoted dpl_3GftBBKavxpL82xfrLeTqpF2vM2u to https://mehta-controldesk.vercel.app. Production build/lint, 176 focused checks, 30 fictional-API UI checks and 21 actual deployed UI/API smoke checks passed. The production alias was verified against that deployment. Credentials, QA tools, generated documents and verification output were excluded; the unrelated existing role-access-decisions.md draft edit remains untouched.
 
 The long RDS rollback verifier was intentionally interrupted after 37 passing scenarios to release database locks required by the new instance startup. Its first protected health request failed while those locks were held; after rollback verified zero retained fixture users/companies/intakes, health returned HTTP 200 before promotion. Full remaining persisted/business/browser scenarios are still pending and are not certified by the deployment smoke test. Intake and provider integration remain disabled/unconfigured. See docs/production-release-2026-11-23.md for exact scope and limits.
+
+
+### 23 November 2026 - Operations navigation
+
+Added one Operations sidebar group with Order status (/orders), Stock (/items/stock-checks) and Procurement (/purchasing). Moved the existing order and purchasing entries into that group, preserved their routes and permission keys, and reused the current screens. Updated screen titles/breadcrumbs to match the navigation and made the most-specific matching sidebar route the only active entry, avoiding a second Items highlight on Stock. No backend, database, business rule, permission grant or Tally connector change; no migration required.
+
+Verification: production build/type validation and syntax lint passed. Five selected pure navigation/link checks passed. The mixed navigation command also attempted a database-backed test and was refused by its unchanged local-only guard; it is not recorded as passed. Browser verification reuses the already running local dev server on port 3000, with fictional read-only API fixtures and no test database writes. Added checks for all three routes, a single active link, mobile drawer closing and Stock-only navigation/direct-route restrictions.
+
+Operations browser result: all 35 checks passed, including the five new Operations checks; zero page runtime errors and no business-record mutations. Desktop and mobile screenshots were retained outside Git.
