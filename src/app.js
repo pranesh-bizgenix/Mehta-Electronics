@@ -11,6 +11,7 @@ import { customerView, detectCustomerDuplicates, enquiryRevisions, enquiryView, 
 import { hasPermission, permissionsFor, roleRequiresMfa } from './rbac.js';
 import { createModules } from './modules/container.js';
 import {createSalesIntake,salesIntakeRoutes} from './modules/sales-intake/routes.js';
+import {createOperationsIntake,operationsIntakeRoutes} from './modules/operations-intake/routes.js';
 import {isMfaExemptTestAccount} from './modules/mfa/test-account-policy.js';
 import { adaptRoutes } from './core/http.js';
 import {priceImportRoutes} from './modules/pricing/controller.js';
@@ -190,6 +191,7 @@ export function createApp({ db, config, fetchImpl = fetch, sendMailImpl = sendQu
   const modules = createModules({ db, config, clock, outboundMailer });
   const automationCredentials=createAutomationCredentials(db,clock);
   const salesIntake=createSalesIntake({db,work:modules.services.work,clock});
+  const operationsIntake=createOperationsIntake({db,clock});
   modules.scheduler.register({name:'quotation_availability_validation',intervalMs:60_000,run:()=>salesIntake.availability.invalidateStale()});
   const tallyWrite=createTallyWriteModule({db,connectorStore,route,json,readJson,readConnectorJson});
   // Two-factor is off unless MFA_ENABLED=true; then roles flagged requires_mfa and enrolled users must verify.
@@ -202,6 +204,7 @@ export function createApp({ db, config, fetchImpl = fetch, sendMailImpl = sendQu
     ...stockCheckRoutes({db,route,json,readJson}),
     ...automationCredentialRoutes({service:automationCredentials,route,json,readJson}),
     ...salesIntakeRoutes({services:salesIntake,route,json,readJson}),
+    ...operationsIntakeRoutes({service:operationsIntake,route,json,readJson}),
     ...quotationWorkflowRoutes({db,config,route,json,readJson}),
     ...salesOrderRoutes({db,config,route,json,readJson}),
     ...procurementRoutes({db,route,json,readJson}),
@@ -446,6 +449,23 @@ export function createApp({ db, config, fetchImpl = fetch, sendMailImpl = sendQu
       const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`); const ip = req.socket.remoteAddress || '';
       if (!url.pathname.startsWith('/api/') && !url.pathname.startsWith('/tally/')) return serveStatic(req,res,url.pathname);
       res.setHeader('x-content-type-options','nosniff'); res.setHeader('x-frame-options','DENY'); res.setHeader('referrer-policy','no-referrer'); res.setHeader('content-security-policy',"default-src 'self'; style-src 'self'; script-src 'self'; connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'");
+      const operationsFactsMatch=/^\/api\/v1\/automation\/operations-intake\/([0-9a-f-]{36})\/facts$/i.exec(url.pathname);
+      if(operationsFactsMatch&&req.method==='GET'){
+        res.setHeader('X-ControlDesk-API-Version','1.0.0');
+        if(url.searchParams.getAll('companyId').length!==1||[...url.searchParams.keys()].some(k=>k!=='companyId'))throw new HttpError(422,'Select exactly one companyId and no other query fields.');
+        await modules.ready();let principal;
+        try{principal=await automationCredentials.authenticate({authorization:req.headers.authorization,companyId:url.searchParams.get('companyId'),scope:'automation.read',peer:ip});}
+        catch(error){if(error.status===429)res.setHeader('Retry-After','60');throw error;}
+        return json(res,200,{data:await operationsIntake.facts(principal,operationsFactsMatch[1])});
+      }
+      if(url.pathname==='/api/v1/automation/operations-intake'&&req.method==='POST'){
+        res.setHeader('X-ControlDesk-API-Version','1.0.0');
+        if(url.searchParams.getAll('companyId').length!==1||[...url.searchParams.keys()].some(k=>k!=='companyId'))throw new HttpError(422,'Select exactly one companyId and no other query fields.');
+        await modules.ready();let principal;
+        try{principal=await automationCredentials.authenticate({authorization:req.headers.authorization,companyId:url.searchParams.get('companyId'),scope:'automation.write.intake',peer:ip});}
+        catch(error){if(error.status===429)res.setHeader('Retry-After','60');throw error;}
+        const data=await operationsIntake.receive(principal,await readJson(req),req.headers['idempotency-key']);return json(res,data.duplicate?200:201,{data});
+      }
       if(url.pathname==='/api/v1/automation/intake'&&req.method==='POST'){
         res.setHeader('X-ControlDesk-API-Version','1.0.0');
         if(url.searchParams.getAll('companyId').length!==1||[...url.searchParams.keys()].some(k=>k!=='companyId'))throw new HttpError(422,'Select exactly one companyId and no other query fields.');

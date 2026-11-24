@@ -2330,15 +2330,25 @@
           }
         ],
         "x-required-scope": "automation.write.intake",
-        "x-implementation-status": "PLANNED",
+        "x-implementation-status": "IMPLEMENTED",
         "parameters": [
           {
-            "name": "Idempotency-Key",
-            "in": "header",
+            "name": "companyId",
+            "in": "query",
             "required": true,
             "schema": {
               "type": "string",
-              "minLength": 8,
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "description": "If provided, must equal eventId/idempotencyKey in the body.",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
               "maxLength": 200
             }
           }
@@ -2362,52 +2372,40 @@
                   "type": "object",
                   "properties": {
                     "data": {
-                      "type": "array",
-                      "items": {
-                        "$ref": "#/components/schemas/QueueReceipt"
-                      },
-                      "maxItems": 100
-                    },
-                    "companyId": {
-                      "type": "string",
-                      "format": "uuid"
-                    },
-                    "freshness": {
-                      "type": "array",
-                      "items": {
-                        "$ref": "#/components/schemas/Freshness"
-                      },
-                      "maxItems": 30
-                    },
-                    "pagination": {
-                      "type": "object",
-                      "properties": {
-                        "page": {
-                          "type": "integer",
-                          "minimum": 1
-                        },
-                        "pageSize": {
-                          "type": "integer",
-                          "minimum": 1,
-                          "maximum": 100
-                        },
-                        "hasMore": {
-                          "type": "boolean"
-                        }
-                      },
-                      "required": [
-                        "page",
-                        "pageSize",
-                        "hasMore"
-                      ],
-                      "additionalProperties": false
+                      "$ref": "#/components/schemas/SalesIntakeReceipt"
                     }
                   },
                   "required": [
-                    "data",
-                    "companyId",
-                    "freshness",
-                    "pagination"
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Persisted structured request; linked draft only when all prerequisites pass.",
+            "headers": {
+              "X-ControlDesk-API-Version": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "1.0.0"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/SalesIntakeReceipt"
+                    }
+                  },
+                  "required": [
+                    "data"
                   ],
                   "additionalProperties": false
                 }
@@ -2511,6 +2509,354 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/IntakeRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/automation/operations-intake": {
+      "post": {
+        "operationId": "queueOperationsIntake",
+        "summary": "queueOperationsIntake",
+        "security": [
+          {
+            "ServiceToken": []
+          }
+        ],
+        "x-required-scope": "automation.write.intake",
+        "x-implementation-status": "IMPLEMENTED",
+        "parameters": [
+          {
+            "name": "companyId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^ops:[0-9a-fA-F-]{36}$"
+            },
+            "description": "ops: followed by the email_message_id. Retrying unchanged data returns the same request ID."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Bounded company-scoped result; draft/queue receipt for writes. No approval or send is performed.",
+            "headers": {
+              "X-ControlDesk-API-Version": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "1.0.0"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/OperationsReceipt"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "New Operations request persisted for staff review; no order, stock or supplier PO is changed.",
+            "headers": {
+              "X-ControlDesk-API-Version": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "1.0.0"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/OperationsReceipt"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Request refused; no partial mutation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, revoked or expired service token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong scope or company; no fallback to staff access",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Request refused; no partial mutation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Replay mismatch or unconfirmed workflow setting",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Size limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request refused; no partial mutation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit; Retry-After applies",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Request refused; no partial mutation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OperationsRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/automation/operations-intake/{id}/facts": {
+      "get": {
+        "operationId": "operationsFacts",
+        "summary": "operationsFacts",
+        "security": [
+          {
+            "ServiceToken": []
+          }
+        ],
+        "x-required-scope": "automation.read",
+        "x-implementation-status": "IMPLEMENTED",
+        "parameters": [
+          {
+            "name": "companyId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Allowlisted current operational facts for this credential's own reviewed request. Unknown, stale or unreviewed data returns requiresReview with an empty facts array.",
+            "headers": {
+              "X-ControlDesk-API-Version": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "1.0.0"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/OperationsFacts"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Request refused; no partial mutation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, revoked or expired service token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong scope or company; no fallback to staff access",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Request refused; no partial mutation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Replay mismatch or unconfirmed workflow setting",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Size limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request refused; no partial mutation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit; Retry-After applies",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Request refused; no partial mutation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
               }
             }
           }
@@ -3952,99 +4298,756 @@
       "IntakeRequest": {
         "type": "object",
         "properties": {
+          "reviewIssues": {
+            "type": "array",
+            "maxItems": 100,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1000
+            }
+          },
+          "schemaVersion": {
+            "type": "string",
+            "enum": [
+              "1.0"
+            ]
+          },
+          "eventId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "idempotencyKey": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "messageType": {
+            "type": "string",
+            "enum": [
+              "CUSTOMER_PO",
+              "QUOTATION_REQUEST",
+              "LEAD_ENQUIRY"
+            ]
+          },
           "companyId": {
             "type": "string",
             "format": "uuid"
           },
-          "reason": {
-            "type": "string",
-            "minLength": 3,
-            "maxLength": 1000
-          },
-          "provider": {
-            "type": "string",
-            "maxLength": 80
-          },
-          "providerMessageId": {
-            "type": "string",
-            "maxLength": 250
-          },
-          "threadId": {
-            "type": "string",
-            "maxLength": 250
-          },
-          "sender": {
-            "type": "string",
-            "format": "email",
-            "maxLength": 254
-          },
-          "intent": {
-            "type": "string",
-            "maxLength": 80
-          },
-          "secondaryIntents": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "maxLength": 80
+          "source": {
+            "type": "object",
+            "properties": {
+              "system": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              },
+              "mailbox": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 254
+              },
+              "messageId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 500
+              },
+              "threadId": {
+                "type": "string",
+                "maxLength": 2000,
+                "nullable": true
+              },
+              "receivedAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "originalText": {
+                "type": "string",
+                "maxLength": 250000,
+                "nullable": true
+              },
+              "attachments": {
+                "type": "array",
+                "maxItems": 20,
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "maxLength": 2000,
+                      "nullable": true
+                    },
+                    "name": {
+                      "type": "string",
+                      "maxLength": 2000,
+                      "nullable": true
+                    },
+                    "mimeType": {
+                      "type": "string",
+                      "maxLength": 2000,
+                      "nullable": true
+                    },
+                    "bytes": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 104857600
+                    },
+                    "sha256": {
+                      "type": "string",
+                      "pattern": "^[a-f0-9]{64}$"
+                    },
+                    "storageReference": {
+                      "type": "string",
+                      "pattern": "^s3://[^/]+/.+"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "mimeType",
+                    "bytes",
+                    "sha256",
+                    "storageReference"
+                  ],
+                  "additionalProperties": false
+                }
+              }
             },
-            "maxItems": 20
+            "required": [
+              "system",
+              "mailbox",
+              "messageId",
+              "receivedAt"
+            ],
+            "additionalProperties": false
           },
-          "confidence": {
-            "type": "string",
-            "pattern": "^(?:0(?:\\.\\d{1,6})?|1(?:\\.0{1,6})?)$",
-            "nullable": true
+          "provenance": {
+            "type": "object",
+            "properties": {
+              "extractor": {
+                "type": "string",
+                "maxLength": 2000,
+                "nullable": true
+              },
+              "version": {
+                "type": "string",
+                "maxLength": 2000,
+                "nullable": true
+              },
+              "reference": {
+                "type": "string",
+                "maxLength": 2000,
+                "nullable": true
+              }
+            },
+            "required": [
+              "extractor",
+              "version",
+              "reference"
+            ],
+            "additionalProperties": false
           },
-          "subject": {
-            "type": "string",
-            "maxLength": 500
+          "header": {
+            "type": "object",
+            "properties": {
+              "poNumber": {
+                "type": "string",
+                "maxLength": 2000,
+                "nullable": true
+              },
+              "poDate": {
+                "type": "string",
+                "format": "date",
+                "nullable": true
+              },
+              "buyerName": {
+                "type": "string",
+                "maxLength": 2000,
+                "nullable": true
+              },
+              "supplierName": {
+                "type": "string",
+                "maxLength": 2000,
+                "nullable": true
+              },
+              "billingAddress": {
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "maxLength": 2000
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "text": {
+                        "type": "string",
+                        "maxLength": 2000,
+                        "nullable": true
+                      },
+                      "line1": {
+                        "type": "string",
+                        "maxLength": 2000,
+                        "nullable": true
+                      },
+                      "line2": {
+                        "type": "string",
+                        "maxLength": 2000,
+                        "nullable": true
+                      },
+                      "city": {
+                        "type": "string",
+                        "maxLength": 2000,
+                        "nullable": true
+                      },
+                      "stateCode": {
+                        "type": "string",
+                        "maxLength": 2000,
+                        "nullable": true
+                      },
+                      "pincode": {
+                        "type": "string",
+                        "maxLength": 2000,
+                        "nullable": true
+                      },
+                      "country": {
+                        "type": "string",
+                        "maxLength": 2000,
+                        "nullable": true
+                      }
+                    },
+                    "required": [],
+                    "additionalProperties": false
+                  }
+                ],
+                "nullable": true
+              },
+              "deliveryAddress": {
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "maxLength": 2000
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "text": {
+                        "type": "string",
+                        "maxLength": 2000,
+                        "nullable": true
+                      },
+                      "line1": {
+                        "type": "string",
+                        "maxLength": 2000,
+                        "nullable": true
+                      },
+                      "line2": {
+                        "type": "string",
+                        "maxLength": 2000,
+                        "nullable": true
+                      },
+                      "city": {
+                        "type": "string",
+                        "maxLength": 2000,
+                        "nullable": true
+                      },
+                      "stateCode": {
+                        "type": "string",
+                        "maxLength": 2000,
+                        "nullable": true
+                      },
+                      "pincode": {
+                        "type": "string",
+                        "maxLength": 2000,
+                        "nullable": true
+                      },
+                      "country": {
+                        "type": "string",
+                        "maxLength": 2000,
+                        "nullable": true
+                      }
+                    },
+                    "required": [],
+                    "additionalProperties": false
+                  }
+                ],
+                "nullable": true
+              },
+              "gstin": {
+                "type": "string",
+                "maxLength": 2000,
+                "nullable": true
+              },
+              "contactPerson": {
+                "type": "string",
+                "maxLength": 2000,
+                "nullable": true
+              },
+              "email": {
+                "type": "string",
+                "maxLength": 2000,
+                "nullable": true
+              },
+              "phone": {
+                "type": "string",
+                "maxLength": 2000,
+                "nullable": true
+              },
+              "totalPoValue": {
+                "type": "string",
+                "pattern": "^\\d{1,14}(?:\\.\\d{1,6})?$",
+                "nullable": true
+              },
+              "deliveryDate": {
+                "type": "string",
+                "format": "date",
+                "nullable": true
+              },
+              "paymentTerms": {
+                "type": "string",
+                "maxLength": 10000,
+                "nullable": true
+              },
+              "otherTerms": {
+                "type": "string",
+                "maxLength": 10000,
+                "nullable": true
+              },
+              "placeOfSupply": {
+                "type": "string",
+                "maxLength": 2000,
+                "nullable": true
+              },
+              "validUntil": {
+                "type": "string",
+                "format": "date",
+                "nullable": true
+              },
+              "customerId": {
+                "type": "integer",
+                "minimum": 1,
+                "nullable": true
+              },
+              "quotationId": {
+                "type": "integer",
+                "minimum": 1,
+                "nullable": true
+              },
+              "supplyType": {
+                "type": "string",
+                "enum": [
+                  "DOMESTIC_STANDARD",
+                  "SEZ",
+                  "EXPORT",
+                  "SPECIAL"
+                ],
+                "nullable": true
+              },
+              "PO Number": {
+                "type": "string",
+                "maxLength": 2000,
+                "nullable": true
+              },
+              "PO Date": {
+                "type": "string",
+                "format": "date",
+                "nullable": true
+              },
+              "Buyer / Company Name": {
+                "type": "string",
+                "maxLength": 2000,
+                "nullable": true
+              },
+              "Supplier / Vendor Name": {
+                "type": "string",
+                "maxLength": 2000,
+                "nullable": true
+              },
+              "Billing Address": {
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "maxLength": 2000
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "text": {
+                        "type": "string",
+                        "maxLength": 2000,
+                        "nullable": true
+                      },
+                      "line1": {
+                        "type": "string",
+                        "maxLength": 2000,
+                        "nullable": true
+                      },
+                      "line2": {
+                        "type": "string",
+                        "maxLength": 2000,
+                        "nullable": true
+                      },
+                      "city": {
+                        "type": "string",
+                        "maxLength": 2000,
+                        "nullable": true
+                      },
+                      "stateCode": {
+                        "type": "string",
+                        "maxLength": 2000,
+                        "nullable": true
+                      },
+                      "pincode": {
+                        "type": "string",
+                        "maxLength": 2000,
+                        "nullable": true
+                      },
+                      "country": {
+                        "type": "string",
+                        "maxLength": 2000,
+                        "nullable": true
+                      }
+                    },
+                    "required": [],
+                    "additionalProperties": false
+                  }
+                ],
+                "nullable": true
+              },
+              "Delivery Address": {
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "maxLength": 2000
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "text": {
+                        "type": "string",
+                        "maxLength": 2000,
+                        "nullable": true
+                      },
+                      "line1": {
+                        "type": "string",
+                        "maxLength": 2000,
+                        "nullable": true
+                      },
+                      "line2": {
+                        "type": "string",
+                        "maxLength": 2000,
+                        "nullable": true
+                      },
+                      "city": {
+                        "type": "string",
+                        "maxLength": 2000,
+                        "nullable": true
+                      },
+                      "stateCode": {
+                        "type": "string",
+                        "maxLength": 2000,
+                        "nullable": true
+                      },
+                      "pincode": {
+                        "type": "string",
+                        "maxLength": 2000,
+                        "nullable": true
+                      },
+                      "country": {
+                        "type": "string",
+                        "maxLength": 2000,
+                        "nullable": true
+                      }
+                    },
+                    "required": [],
+                    "additionalProperties": false
+                  }
+                ],
+                "nullable": true
+              },
+              "GST Number": {
+                "type": "string",
+                "maxLength": 2000,
+                "nullable": true
+              },
+              "Contact Person": {
+                "type": "string",
+                "maxLength": 2000,
+                "nullable": true
+              },
+              "Email": {
+                "type": "string",
+                "maxLength": 2000,
+                "nullable": true
+              },
+              "Phone Number": {
+                "type": "string",
+                "maxLength": 2000,
+                "nullable": true
+              },
+              "Total PO Value": {
+                "type": "string",
+                "pattern": "^\\d{1,14}(?:\\.\\d{1,6})?$",
+                "nullable": true
+              },
+              "Delivery Date": {
+                "type": "string",
+                "format": "date",
+                "nullable": true
+              },
+              "Payment Terms": {
+                "type": "string",
+                "maxLength": 10000,
+                "nullable": true
+              },
+              "Other Terms & Conditions": {
+                "type": "string",
+                "maxLength": 10000,
+                "nullable": true
+              }
+            },
+            "required": [],
+            "additionalProperties": false
           },
-          "bodyText": {
-            "type": "string",
-            "maxLength": 20000
-          },
-          "extractedIds": {
+          "items": {
             "type": "array",
+            "maxItems": 100,
             "items": {
               "type": "object",
               "properties": {
-                "kind": {
+                "lineId": {
                   "type": "string",
-                  "maxLength": 80
+                  "minLength": 1,
+                  "maxLength": 100
                 },
-                "value": {
+                "itemId": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "nullable": true
+                },
+                "description": {
                   "type": "string",
-                  "maxLength": 250
+                  "maxLength": 2000,
+                  "nullable": true
+                },
+                "productCode": {
+                  "type": "string",
+                  "maxLength": 2000,
+                  "nullable": true
+                },
+                "hsn": {
+                  "type": "string",
+                  "maxLength": 2000,
+                  "nullable": true
+                },
+                "quantity": {
+                  "type": "string",
+                  "pattern": "^\\d{1,14}(?:\\.\\d{1,6})?$",
+                  "nullable": true
+                },
+                "uom": {
+                  "type": "string",
+                  "maxLength": 40,
+                  "nullable": true
+                },
+                "unitPrice": {
+                  "type": "string",
+                  "pattern": "^\\d{1,14}(?:\\.\\d{1,6})?$",
+                  "nullable": true
+                },
+                "gstRate": {
+                  "type": "string",
+                  "pattern": "^\\d{1,14}(?:\\.\\d{1,6})?$",
+                  "nullable": true
+                },
+                "taxableAmount": {
+                  "type": "string",
+                  "pattern": "^\\d{1,14}(?:\\.\\d{1,6})?$",
+                  "nullable": true
+                },
+                "terms": {
+                  "type": "string",
+                  "maxLength": 10000,
+                  "nullable": true
+                },
+                "discount": {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "PERCENT",
+                        "AMOUNT"
+                      ]
+                    },
+                    "value": {
+                      "type": "string",
+                      "pattern": "^\\d{1,14}(?:\\.\\d{1,6})?$",
+                      "nullable": true
+                    },
+                    "scope": {
+                      "type": "string",
+                      "enum": [
+                        "LINE"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "value"
+                  ],
+                  "additionalProperties": false,
+                  "nullable": true,
+                  "description": "AMOUNT requires explicit LINE scope. Conflicting aliases reject. Missing is never zero."
+                },
+                "deliverySchedules": {
+                  "type": "array",
+                  "maxItems": 100,
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "date": {
+                        "type": "string",
+                        "format": "date",
+                        "nullable": true
+                      },
+                      "quantity": {
+                        "type": "string",
+                        "pattern": "^\\d{1,14}(?:\\.\\d{1,6})?$",
+                        "nullable": true
+                      },
+                      "terms": {
+                        "type": "string",
+                        "maxLength": 2000,
+                        "nullable": true
+                      }
+                    },
+                    "required": [
+                      "date",
+                      "quantity"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "pricingSelection": {
+                  "type": "object",
+                  "properties": {
+                    "level": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 4
+                    },
+                    "fingerprint": {
+                      "type": "string",
+                      "pattern": "^[a-f0-9]{64}$"
+                    }
+                  },
+                  "required": [
+                    "level",
+                    "fingerprint"
+                  ],
+                  "additionalProperties": false
+                },
+                "Item Description": {
+                  "type": "string",
+                  "maxLength": 2000,
+                  "nullable": true
+                },
+                "Product / Material Code": {
+                  "type": "string",
+                  "maxLength": 2000,
+                  "nullable": true
+                },
+                "HSN / SAC Code": {
+                  "type": "string",
+                  "maxLength": 2000,
+                  "nullable": true
+                },
+                "Quantity": {
+                  "type": "string",
+                  "pattern": "^\\d{1,14}(?:\\.\\d{1,6})?$",
+                  "nullable": true
+                },
+                "Unit of Measurement": {
+                  "type": "string",
+                  "maxLength": 40,
+                  "nullable": true
+                },
+                "Unit Price": {
+                  "type": "string",
+                  "pattern": "^\\d{1,14}(?:\\.\\d{1,6})?$",
+                  "nullable": true
+                },
+                "Discount": {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "PERCENT",
+                        "AMOUNT"
+                      ]
+                    },
+                    "value": {
+                      "type": "string",
+                      "pattern": "^\\d{1,14}(?:\\.\\d{1,6})?$",
+                      "nullable": true
+                    },
+                    "scope": {
+                      "type": "string",
+                      "enum": [
+                        "LINE"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "value"
+                  ],
+                  "additionalProperties": false,
+                  "nullable": true,
+                  "description": "AMOUNT requires explicit LINE scope. Conflicting aliases reject. Missing is never zero."
+                },
+                "GST Rate": {
+                  "type": "string",
+                  "pattern": "^\\d{1,14}(?:\\.\\d{1,6})?$",
+                  "nullable": true
+                },
+                "Taxable Amount": {
+                  "type": "string",
+                  "pattern": "^\\d{1,14}(?:\\.\\d{1,6})?$",
+                  "nullable": true
                 }
               },
               "required": [
-                "kind",
-                "value"
+                "lineId"
               ],
               "additionalProperties": false
-            },
-            "maxItems": 100
-          },
-          "attachmentReferences": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "maxLength": 250
-            },
-            "maxItems": 20
+            }
           }
         },
         "required": [
+          "schemaVersion",
+          "messageType",
           "companyId",
-          "reason",
-          "provider",
-          "providerMessageId",
-          "sender",
-          "intent",
-          "confidence",
-          "attachmentReferences"
+          "source",
+          "provenance",
+          "items"
         ],
-        "additionalProperties": false
+        "additionalProperties": false,
+        "anyOf": [
+          {
+            "required": [
+              "eventId"
+            ]
+          },
+          {
+            "required": [
+              "idempotencyKey"
+            ]
+          }
+        ],
+        "description": "Business-incomplete data is retained in NEEDS_REVIEW when the company policy enables intake. Source fields are not trusted instructions. No approval, issue or send is performed."
       },
       "DraftRequest": {
         "type": "object",
@@ -4243,6 +5246,372 @@
           "reason",
           "summary",
           "attachmentReferences"
+        ],
+        "additionalProperties": false
+      },
+      "SalesIntakeReceipt": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "NEEDS_REVIEW",
+              "PREPARED",
+              "CANCELLED"
+            ]
+          },
+          "duplicate": {
+            "type": "boolean"
+          },
+          "blockers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "enquiry_id": {
+            "type": "integer",
+            "minimum": 1,
+            "nullable": true
+          },
+          "quotation_id": {
+            "type": "integer",
+            "minimum": 1,
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "duplicate"
+        ],
+        "additionalProperties": false
+      },
+      "OperationsRequest": {
+        "type": "object",
+        "properties": {
+          "schema_version": {
+            "type": "string",
+            "enum": [
+              "meheta-operations-v1"
+            ]
+          },
+          "email_message_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "provider_message_id": {
+            "type": "string",
+            "maxLength": 250,
+            "minLength": 1
+          },
+          "department": {
+            "type": "string",
+            "enum": [
+              "OPERATIONS"
+            ]
+          },
+          "operations_type": {
+            "type": "string",
+            "enum": [
+              "ORDER_STATUS",
+              "STOCK_PROCUREMENT",
+              "STOCK",
+              "PROCUREMENT",
+              "OTHER"
+            ]
+          },
+          "order_action": {
+            "type": "string",
+            "enum": [
+              "ENQUIRY",
+              "UPDATE_REQUEST",
+              "CANCEL_REQUEST",
+              "NOT_APPLICABLE"
+            ]
+          },
+          "original_email": {
+            "type": "object",
+            "properties": {
+              "sender": {
+                "type": "string",
+                "format": "email",
+                "maxLength": 254
+              },
+              "subject": {
+                "type": "string",
+                "maxLength": 500
+              },
+              "body": {
+                "type": "string",
+                "maxLength": 20000
+              }
+            },
+            "required": [
+              "sender"
+            ],
+            "additionalProperties": true
+          },
+          "request": {
+            "type": "object",
+            "properties": {
+              "operations_type": {
+                "type": "string",
+                "maxLength": 30
+              },
+              "order_action": {
+                "type": "string",
+                "maxLength": 30
+              },
+              "po_numbers": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "maxLength": 120
+                },
+                "maxItems": 20
+              },
+              "stock_items": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "product_code": {
+                      "type": "string",
+                      "maxLength": 200,
+                      "nullable": true
+                    },
+                    "product_name": {
+                      "type": "string",
+                      "maxLength": 1000,
+                      "nullable": true
+                    },
+                    "requested_quantity": {
+                      "nullable": true,
+                      "oneOf": [
+                        {
+                          "type": "number",
+                          "exclusiveMinimum": true,
+                          "minimum": 0
+                        },
+                        {
+                          "type": "string",
+                          "pattern": "^\\d{1,18}(?:\\.\\d{1,6})?$"
+                        }
+                      ]
+                    },
+                    "unit": {
+                      "type": "string",
+                      "maxLength": 40,
+                      "nullable": true
+                    }
+                  },
+                  "required": [],
+                  "additionalProperties": true
+                },
+                "maxItems": 10
+              },
+              "requested_changes": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "field": {
+                      "type": "string",
+                      "maxLength": 100
+                    },
+                    "requested_value": {
+                      "type": "string",
+                      "maxLength": 2000
+                    },
+                    "source_quote": {
+                      "type": "string",
+                      "maxLength": 2000
+                    }
+                  },
+                  "required": [
+                    "field",
+                    "requested_value",
+                    "source_quote"
+                  ],
+                  "additionalProperties": true
+                },
+                "maxItems": 100
+              },
+              "question_summary": {
+                "type": "string",
+                "maxLength": 2000
+              }
+            },
+            "required": [
+              "operations_type",
+              "order_action",
+              "po_numbers",
+              "stock_items",
+              "requested_changes",
+              "question_summary"
+            ],
+            "additionalProperties": true
+          },
+          "review_reasons": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 1000
+            },
+            "maxItems": 100
+          },
+          "requires_review": {
+            "type": "boolean"
+          },
+          "source_archive": {
+            "type": "object",
+            "properties": {
+              "s3_bucket": {
+                "type": "string",
+                "maxLength": 63
+              },
+              "s3_key": {
+                "type": "string",
+                "maxLength": 2000
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$",
+                "nullable": true
+              }
+            },
+            "required": [
+              "s3_bucket",
+              "s3_key"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "schema_version",
+          "email_message_id",
+          "provider_message_id",
+          "department",
+          "operations_type",
+          "order_action",
+          "original_email",
+          "request"
+        ],
+        "additionalProperties": true
+      },
+      "OperationsReceipt": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "companyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "ORDER_STATUS",
+              "STOCK",
+              "PROCUREMENT",
+              "OTHER"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "NEEDS_REVIEW",
+              "REVIEWED",
+              "APPROVED",
+              "REJECTED",
+              "COMPLETED"
+            ]
+          },
+          "requiresReview": {
+            "type": "boolean"
+          },
+          "duplicate": {
+            "type": "boolean"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "id",
+          "companyId",
+          "kind",
+          "status",
+          "requiresReview",
+          "duplicate",
+          "version"
+        ],
+        "additionalProperties": true
+      },
+      "OperationsFacts": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "requestStatus": {
+            "type": "string",
+            "maxLength": 30
+          },
+          "checkedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "requiresReview": {
+            "type": "boolean"
+          },
+          "facts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "maxLength": 100
+                },
+                "text": {
+                  "type": "string",
+                  "maxLength": 3000
+                }
+              },
+              "required": [
+                "id",
+                "text"
+              ],
+              "additionalProperties": false
+            },
+            "maxItems": 100
+          },
+          "reviewReasons": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 1000
+            },
+            "maxItems": 100
+          }
+        },
+        "required": [
+          "id",
+          "requestStatus",
+          "checkedAt",
+          "requiresReview",
+          "facts",
+          "reviewReasons"
         ],
         "additionalProperties": false
       }

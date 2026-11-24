@@ -1,6 +1,7 @@
 // Versioned design contract. A route is not operational merely because it is
 // listed here; runtime delivery and mock-client acceptance are tracked separately.
 import {salesIntakeRequestSchema,salesIntakeReceiptSchema} from '../sales-intake/openapi.js';
+import {operationsRequestSchema,operationsReceiptSchema} from '../operations-intake/openapi.js';
 export const AUTOMATION_API_VERSION='1.0.0';
 export const AUTOMATION_SCOPES=['automation.read','automation.write.drafts','automation.write.intake'];
 export const AUTOMATION_OPERATIONS=[
@@ -16,6 +17,8 @@ export const AUTOMATION_OPERATIONS=[
  ['GET','/switches','readSwitches','automation.read','Switch'],
  ['GET','/settings','readSettings','automation.read','Setting'],
  ['POST','/intake','queueIntake','automation.write.intake','QueueReceipt','IntakeRequest'],
+ ['POST','/operations-intake','queueOperationsIntake','automation.write.intake','OperationsReceipt','OperationsRequest'],
+ ['GET','/operations-intake/{id}/facts','operationsFacts','automation.read','OperationsFacts'],
  ['POST','/drafts','createDraft','automation.write.drafts','QueueReceipt','DraftRequest'],
  ['POST','/review-items','queueReview','automation.write.intake','QueueReceipt','ReviewRequest'],
  ['POST','/tasks','queueTask','automation.write.intake','QueueReceipt','TaskRequest'],
@@ -58,6 +61,9 @@ export function automationOpenApi(){
  };
  schemas.IntakeRequest=salesIntakeRequestSchema;
  schemas.SalesIntakeReceipt=salesIntakeReceiptSchema;
+ schemas.OperationsRequest=operationsRequestSchema;
+ schemas.OperationsReceipt=operationsReceiptSchema;
+ schemas.OperationsFacts=object({id:{type:'string',format:'uuid'},requestStatus:text(30),checkedAt:{type:'string',format:'date-time'},requiresReview:{type:'boolean'},facts:array(object({id:text(100),text:text(3000)}),100),reviewReasons:array(text(1000),100)});
  const paths={};
  for(const op of AUTOMATION_OPERATIONS){
   const query=op.method==='GET'?[{name:'companyId',in:'query',required:true,schema:company},{name:'page',in:'query',schema:{type:'integer',minimum:1}},{name:'pageSize',in:'query',schema:{type:'integer',minimum:1,maximum:100}}]:[];
@@ -68,7 +74,7 @@ export function automationOpenApi(){
   const response=object({data:array(ref(op.response)),companyId:company,freshness:array(ref('Freshness'),30),pagination:object({page:{type:'integer',minimum:1},pageSize:{type:'integer',minimum:1,maximum:100},hasMore:{type:'boolean'}})});
   const responses={'200':{description:'Bounded company-scoped result; draft/queue receipt for writes. No approval or send is performed.',headers:{'X-ControlDesk-API-Version':{schema:{type:'string',enum:[AUTOMATION_API_VERSION]}}},content:{'application/json':{schema:response}}}};
   for(const status of ['400','401','403','404','409','413','422','429','503'])responses[status]={description:{401:'Missing, invalid, revoked or expired service token',403:'Wrong scope or company; no fallback to staff access',409:'Replay mismatch or unconfirmed workflow setting',413:'Size limit',429:'Rate limit; Retry-After applies'}[status]??'Request refused; no partial mutation',content:{'application/json':{schema:ref('Error')}}};
-  const operation={operationId:op.id,summary:op.id,security:[{ServiceToken:[]}],'x-required-scope':op.scope,'x-implementation-status':['readSwitches','queueIntake'].includes(op.id)?'IMPLEMENTED':'PLANNED',parameters:query,responses};
+  const operation={operationId:op.id,summary:op.id,security:[{ServiceToken:[]}],'x-required-scope':op.scope,'x-implementation-status':['readSwitches','queueIntake','queueOperationsIntake','operationsFacts'].includes(op.id)?'IMPLEMENTED':'PLANNED',parameters:query,responses};
   if(op.request)operation.requestBody={required:true,content:{'application/json':{schema:ref(op.request)}}};
   if(op.method==='POST'&&op.scope!=='automation.read')operation.parameters.push({name:'Idempotency-Key',in:'header',required:true,schema:{type:'string',minLength:8,maxLength:200}});
   if(op.id==='queueIntake'){
@@ -76,6 +82,16 @@ export function automationOpenApi(){
    const receipt=object({data:ref('SalesIntakeReceipt')});
    operation.responses['200'].content['application/json'].schema=receipt;
    operation.responses['201']={...operation.responses['200'],description:'Persisted structured request; linked draft only when all prerequisites pass.'};
+  }
+  if(op.id==='queueOperationsIntake'){
+   operation.parameters=[{name:'companyId',in:'query',required:true,schema:company},{name:'Idempotency-Key',in:'header',required:true,schema:{type:'string',pattern:'^ops:[0-9a-fA-F-]{36}$'},description:'ops: followed by the email_message_id. Retrying unchanged data returns the same request ID.'}];
+   operation.responses['200'].content['application/json'].schema=object({data:ref('OperationsReceipt')});
+   operation.responses['201']={...operation.responses['200'],description:'New Operations request persisted for staff review; no order, stock or supplier PO is changed.'};
+  }
+  if(op.id==='operationsFacts'){
+   operation.parameters=[{name:'companyId',in:'query',required:true,schema:company},{name:'id',in:'path',required:true,schema:{type:'string',format:'uuid'}}];
+   operation.responses['200'].content['application/json'].schema=object({data:ref('OperationsFacts')});
+   operation.responses['200'].description='Allowlisted current operational facts for this credential\'s own reviewed request. Unknown, stale or unreviewed data returns requiresReview with an empty facts array.';
   }
   paths[op.path]={[op.method.toLowerCase()]:operation};
  }
