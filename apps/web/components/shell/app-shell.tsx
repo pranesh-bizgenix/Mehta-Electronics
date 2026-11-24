@@ -48,7 +48,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const counts: Badges = badges.status === 'ready' ? badges.data : badges.data ?? {};
   const collapsed = preferences.sidebarCollapsed;
   const protectedScreen = NAV.flatMap(group => group.items).filter(item => pathname === item.href || pathname.startsWith(`${item.href}/`)).sort((a, b) => b.href.length - a.href.length)[0];
-  const screenAllowed = !protectedScreen || ((!protectedScreen.ownerOnly || state.user.role === 'OWNER') && (protectedScreen.permission === 'authenticated' || can(protectedScreen.permission)));
+  const screenAllowed = pathname === '/operations/requests' ? ['orders.read','items.read','purchasing.read','operations.read'].some(key=>can(key)) : !protectedScreen || ((!protectedScreen.ownerOnly || state.user.role === 'OWNER') && (protectedScreen.permission === 'authenticated' || can(protectedScreen.permission)));
   const activeScreen = NAV.flatMap(group=>group.items).filter(item=>pathname===item.href||pathname.startsWith(`${item.href}/`)).sort((a,b)=>b.href.length-a.href.length)[0]?.label ?? 'Workspace';
 
   return (
@@ -151,7 +151,7 @@ function Notifications({ unread, onRead }: { unread: number; onRead: () => void 
       {items?.length === 0 && <p className="ds-menu-item muted">You’re all caught up.</p>}
       {items?.slice(0, 8).map((n) => (
         <button key={n.id} type="button" className="ds-menu-item" style={{ alignItems: 'flex-start', paddingBlock: 'var(--space-1)', height: 'auto' }}
-          onClick={() => { if (!n.read) void api.post(`/api/v1/notifications/${n.id}/read`, {}).then(onRead);if(n.entityId){const key=encodeURIComponent(n.entityId),href=n.entityType==='SALES_INTAKE'?`/incoming-requests?requestId=${key}`:n.entityType==='QUOTATION'?`/quotations/${key}`:n.entityType==='ENQUIRY'?`/enquiries?open=${key}`:null;if(href)router.push(href);} }}>
+          onClick={() => { if (!n.read) void api.post(`/api/v1/notifications/${n.id}/read`, {}).then(onRead);if(n.entityId){const key=encodeURIComponent(n.entityId),href=n.entityType==='OPERATIONS_INTAKE'?`/operations/requests?operationRequestId=${key}`:n.entityType==='SALES_INTAKE'?`/incoming-requests?requestId=${key}`:n.entityType==='QUOTATION'?`/quotations/${key}`:n.entityType==='ENQUIRY'?`/enquiries?open=${key}`:null;if(href)router.push(href);} }}>
           <Icon name={n.type === 'ESCALATION' ? 'alert' : 'bell'} />
           <span className="stack-sm" style={{ gap: 0, minWidth: 0 }}><strong className={n.read ? 'muted' : undefined}>{n.title}</strong><span className="ds-cell-secondary">{formatRelative(n.createdAt)}</span></span>
         </button>
