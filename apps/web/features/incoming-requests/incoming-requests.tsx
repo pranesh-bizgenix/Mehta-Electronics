@@ -12,6 +12,7 @@ import {LevelPrice} from '@/features/quotations/level-price';
 import {intakeApi,type IntakeDetail,type IntakeLine,type IntakeRow,type IntakePolicy,type MessageType} from './api';
 import {sampleIntakeAdapter} from './sample-adapter';
 import {OriginalExtraction,ReviewedHeader,ReviewedLineExtras,ReviewIssues} from './review-fields';
+import {InboxNavigation} from './inbox-navigation';
 
 const labels:Record<MessageType,string>={CUSTOMER_PO:'Customer PO',QUOTATION_REQUEST:'Quotation request',LEAD_ENQUIRY:'Lead enquiry'};
 const human=(s:string)=>s.replaceAll('_',' ').replaceAll(':',': ');
@@ -36,6 +37,7 @@ export function IncomingRequestsView({businessEmail}:{businessEmail:string|null}
  const open=async(row:IntakeRow)=>{setReviewSaved(false);setError(undefined);setOpening(true);try{const value=mode==='SAMPLE'?sampleIntakeAdapter.detail(row.id):await service?.detail(row.id);if(value)setDetail(value);}catch(e){setError(e);}finally{setOpening(false);}};
  const run=async(fn:()=>Promise<void>)=>{setBusy(true);setError(undefined);try{await fn();setRevision(n=>n+1);}catch(e){setError(e);}finally{setBusy(false);}};
  return <div className="stack-lg">
+  <InboxNavigation current="SALES"/>
   <PageHeader title="Incoming requests" crumbs={[{label:'Sales'},{label:'Incoming requests'}]} description="Review customer POs, quotation requests and enquiries, then follow the linked sales and warehouse records." actions={<div className="cluster"><SelectField label="Data source" value={mode} options={[{value:'SAMPLE',label:'Sample walkthrough'},{value:'LIVE',label:'Saved CRM requests'}]} onChange={e=>{setMode(e.target.value);setError(undefined);}}/>{mode==='LIVE'&&can('rules.manage')&&<Button variant="secondary" disabled={!service||busy} onClick={()=>void run(async()=>{const p=await service!.policy();setPolicy(p);setPolicyText(JSON.stringify(p.value,null,2));setPolicyOpen(true);})}>Intake settings</Button>}</div>}/>
   <Notice tone="info" title={mode==='SAMPLE'?'Sample data — fictional, read-only':'Saved CRM requests'}>{mode==='SAMPLE'?'These examples demonstrate the request layouts and review cases. They do not create customers, quotations, stock or performance results. Switch to Saved CRM requests to see persisted deliveries.':'These are requests successfully received by the CRM for the selected company. A failed external delivery does not create a saved request. Open a request to review its original information and missing details.'}</Notice>
   <div className="grid-2"><Card title="Email" actions={<Badge tone="neutral">External delivery</Badge>}><p style={{overflowWrap:'anywhere'}}>{businessEmail??'Business inbox not configured'}</p><p className="muted">Requests appear here after the configured email automation successfully delivers them to the CRM.</p></Card><Card title="WhatsApp" actions={<Badge tone="neutral">Not connected</Badge>}><p className="muted">WhatsApp integration is not part of structured Make intake.</p></Card></div>
