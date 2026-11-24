@@ -1,0 +1,15 @@
+import type {ApiClient,Paginated} from '@/lib/api/client';
+export const accountCategories=['CREDIT_NOTE','DEBIT_NOTE','INVOICE','REMINDER','DUE_PAYMENT','PAYMENT_CLAIM','PAYMENT_STATUS','PAYMENT_CONFIRMATION','PAYMENT_DISPUTE','OTHER_PAYMENT','OTHER'] as const;
+export type AccountCategory=typeof accountCategories[number];
+export const accountLabels:Record<AccountCategory,string>={CREDIT_NOTE:'Credit-note request',DEBIT_NOTE:'Debit-note request',INVOICE:'Invoice request',REMINDER:'Payment follow-up',DUE_PAYMENT:'Outstanding / due-date enquiry',PAYMENT_CLAIM:'Payment reported — verify',PAYMENT_STATUS:'Payment-status enquiry',PAYMENT_CONFIRMATION:'Receipt-confirmation request',PAYMENT_DISPUTE:'Payment dispute',OTHER_PAYMENT:'Other payment message',OTHER:'Accounts review'};
+export interface AccountRow {id:string;category:AccountCategory;status:string;version:number;subject:string;sender:string;summary:string;customer_id:number|null;invoice_document_id:string|null;finance_operation_id:string|null;assigned_to:number;customer_name?:string;assigned_name?:string;created_at:string}
+export interface AccountReview {sourceChecked:boolean;invoiceCompanyConfirmed:boolean;invoiceVersion?:number|null;financialSourceChecked:boolean;amount:string|null;currency:string|null;paymentDate:string|null;dueDate:string|null;paymentReference:string|null}
+export interface AccountDetail extends AccountRow {reviewed_by:number|null;source:{emailId:string;providerMessageId:string;sender:string;subject:string;body:string|null;category:AccountCategory;action:string;summary:string;invoiceNumbers:string[];poNumbers:string[];paymentReferences:string[];claimedAmount:string|null;adjustmentAmount:string|null;statedDueAmount:string|null;currency:string|null;paymentDate:string|null;statedDueDate:string|null;reminderRequest:string|null;requestReason:string|null;warnings:string[];sourceArchive:{bucket:string;key:string;sha256:string|null}|null};resolutions:Partial<AccountReview>;blockers:string[];invoice:{id:string;number:string|null;status:string;source:string;version:number;invoiceReferenceId:string|null;originalVerified:boolean}|null;operation:{id:string;kind:string;reference:string;status:string}|null;events:{id:number;action:string;actor_name:string|null;reason:string;created_at:string}[]}
+export const accountsIntakeApi=(api:ApiClient,companyId:string)=>{const base='/api/crm/accounts-intake',query={companyId};return {
+ list:(category:string,status:string,search:string,page:number,signal?:AbortSignal)=>api.get<Paginated<AccountRow>>(base,{query:{...query,category,status,search,page},signal}),
+ detail:(id:string)=>api.data<AccountDetail>('GET',`${base}/${id}`,undefined,{query}),
+ staff:()=>api.data<{id:number;name:string}[]>('GET',base+'/staff'),
+ review:(id:string,body:unknown)=>api.data<AccountDetail>('POST',`${base}/${id}/review`,body,{query}),
+ action:(id:string,body:unknown)=>api.data<AccountDetail>('POST',`${base}/${id}/actions`,body,{query}),
+ handoff:(id:string,body:unknown)=>api.data<{id:string;duplicate:boolean}>('POST',`${base}/${id}/finance-draft`,body,{query})
+};};
