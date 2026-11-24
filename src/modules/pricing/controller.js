@@ -1,4 +1,5 @@
 import {TextDecoder} from 'node:util';
+import {baseCatalogPage} from './base-catalog.js';
 import {AppError,validationFailed} from '../../core/errors.js';
 import {AuditRepository,TransactionRunner} from '../../core/runtime.js';
 import {hasPermission} from '../../rbac.js';
@@ -26,6 +27,7 @@ export function priceImportRoutes({db,route,json,readJson}){
  const manual=new ManualPriceService(service);
  const disposition=new PriceDispositionService({db,repository:new PriceDispositionRepository(db),transactions:new TransactionRunner(db),audit:new AuditRepository(db),access:service.access});
  return [
+  route('GET','/api/crm/base-price-catalog','items.list_price.read',async({res,url,user})=>{service.access.require(user,'items.read');json(res,200,baseCatalogPage(url.searchParams));}),
   route('GET','/api/crm/price-dispositions','items.list_price.read',async({res,url,user})=>json(res,200,{data:await disposition.list(user,url.searchParams.get('page')??1)})),
   route('GET','/api/crm/price-dispositions/:id','items.list_price.read',async({res,user,params})=>json(res,200,{data:await disposition.detail(user,params.id)})),
   route('POST','/api/crm/price-dispositions/preview','items.update',async({req,res,user})=>json(res,200,{data:await disposition.preview(user,await readJson(req))})),
