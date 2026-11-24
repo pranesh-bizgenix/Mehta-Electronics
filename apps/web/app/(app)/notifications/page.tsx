@@ -1,0 +1,17 @@
+'use client';
+import Link from 'next/link';
+import {useEffect,useState} from 'react';
+import {useApi} from '@/lib/api/provider';
+import type {Paginated} from '@/lib/api/client';
+import {Button,DataTable,ErrorState,PageHeader,SelectField} from '@/components/ds';
+import {formatDateTime} from '@/lib/format';
+interface SavedNotification {id:string;read:boolean;type:string;title:string;message:string;entityType:string|null;entityId:string|null;created_at:string}
+const href=(n:SavedNotification)=>{const id=encodeURIComponent(n.entityId??'');return !id?null:n.entityType==='ACCOUNTS_INTAKE'?'/accounts/incoming?requestId='+id:n.entityType==='OPERATIONS_INTAKE'?'/operations/requests?operationRequestId='+id:n.entityType==='SALES_INTAKE'?'/incoming-requests?requestId='+id:n.entityType==='QUOTATION'?'/quotations/'+id:n.entityType==='ENQUIRY'?'/enquiries?open='+id:null;};
+export default function NotificationHistoryPage(){
+ const api=useApi(),[module,setModule]=useState(''),[unread,setUnread]=useState('false'),[page,setPage]=useState(1),[revision,setRevision]=useState(0),[result,setResult]=useState<Paginated<SavedNotification>>(),[loading,setLoading]=useState(false),[error,setError]=useState<unknown>();
+ useEffect(()=>{if(new URLSearchParams(window.location.search).get('module')==='accounts')setModule('accounts');},[]);
+ useEffect(()=>{const timer=setInterval(()=>{if(document.visibilityState==='visible')setRevision(v=>v+1);},30000);return()=>clearInterval(timer);},[]);
+ useEffect(()=>{const ab=new AbortController();setLoading(true);setError(undefined);api.get<Paginated<SavedNotification>>('/api/crm/notification-history',{query:{module,unreadOnly:unread,page},signal:ab.signal}).then(setResult).catch(e=>{if(!ab.signal.aborted)setError(e);}).finally(()=>{if(!ab.signal.aborted)setLoading(false);});return()=>ab.abort();},[api,module,unread,page,revision]);
+ const mark=async(n:SavedNotification)=>{try{await api.post('/api/v1/notifications/'+n.id+'/read',{});setRevision(v=>v+1);}catch(e){setError(e);}};
+ return <div className="stack-lg"><PageHeader title="Saved notifications" description="Your notification history, including payment messages, reminders and due-date enquiries. Reading a notification keeps it in this history." actions={<Button variant="secondary" onClick={()=>setRevision(v=>v+1)}>Refresh notifications</Button>}/><DataTable<SavedNotification> id="notification-history" caption="Saved notifications" rows={result?.data} rowKey={r=>r.id} loading={loading} pagination={result?.pagination} onPage={setPage} filters={<><SelectField label="Notification source" value={module} placeholder="All notifications" options={[{value:'accounts',label:'Accounts messages'}]} onChange={e=>{setModule(e.target.value);setPage(1);}}/><SelectField label="Read status" value={unread} options={[{value:'false',label:'Read and unread'},{value:'true',label:'Unread only'}]} onChange={e=>{setUnread(e.target.value);setPage(1);}}/></>} columns={[{key:'title',header:'Notification',render:n=><><span className="ds-cell-primary">{n.title}</span><span className="ds-cell-secondary">{n.message}</span></>},{key:'status',header:'Status',render:n=>n.read?'Read':'Unread'},{key:'date',header:'Received',render:n=>formatDateTime(n.created_at)},{key:'action',header:'Actions',render:n=><div className="cluster">{href(n)&&<Link href={href(n)!} onClick={()=>{if(!n.read)void mark(n);}}>Open request</Link>}{!n.read&&<Button variant="ghost" onClick={()=>void mark(n)}>Mark read</Button>}</div>}]}/>{error!==undefined&&<ErrorState error={error}/>}</div>;
+}

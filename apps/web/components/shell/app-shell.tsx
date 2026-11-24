@@ -146,12 +146,12 @@ function Notifications({ unread, onRead }: { unread: number; onRead: () => void 
   const load = () => { api.data<Notification[]>('GET', '/api/v1/notifications').then(setItems).catch(() => setItems([])); };
   return (
     <Menu label="Notifications" trigger={(t) => <IconButton icon="bell" label={unread ? `Notifications, ${unread} unread` : 'Notifications'} dot={unread > 0} {...t} onClick={() => { t.onClick(); load(); }} />}>
-      <p className="ds-menu-label">Notifications</p>
+      <p className="ds-menu-label">Notifications</p><Link className="ds-menu-item" href="/notifications">View all saved notifications</Link>
       {items === null && <div className="ds-menu-item"><Spinner /></div>}
       {items?.length === 0 && <p className="ds-menu-item muted">You’re all caught up.</p>}
       {items?.slice(0, 8).map((n) => (
         <button key={n.id} type="button" className="ds-menu-item" style={{ alignItems: 'flex-start', paddingBlock: 'var(--space-1)', height: 'auto' }}
-          onClick={() => { if (!n.read) void api.post(`/api/v1/notifications/${n.id}/read`, {}).then(onRead);if(n.entityId){const key=encodeURIComponent(n.entityId),href=n.entityType==='OPERATIONS_INTAKE'?`/operations/requests?operationRequestId=${key}`:n.entityType==='SALES_INTAKE'?`/incoming-requests?requestId=${key}`:n.entityType==='QUOTATION'?`/quotations/${key}`:n.entityType==='ENQUIRY'?`/enquiries?open=${key}`:null;if(href)router.push(href);} }}>
+          onClick={() => { if (!n.read) void api.post(`/api/v1/notifications/${n.id}/read`, {}).then(onRead);if(n.entityId){const key=encodeURIComponent(n.entityId),href=n.entityType==='ACCOUNTS_INTAKE'?`/accounts/incoming?requestId=${key}`:n.entityType==='OPERATIONS_INTAKE'?`/operations/requests?operationRequestId=${key}`:n.entityType==='SALES_INTAKE'?`/incoming-requests?requestId=${key}`:n.entityType==='QUOTATION'?`/quotations/${key}`:n.entityType==='ENQUIRY'?`/enquiries?open=${key}`:null;if(href)router.push(href);} }}>
           <Icon name={n.type === 'ESCALATION' ? 'alert' : 'bell'} />
           <span className="stack-sm" style={{ gap: 0, minWidth: 0 }}><strong className={n.read ? 'muted' : undefined}>{n.title}</strong><span className="ds-cell-secondary">{formatRelative(n.createdAt)}</span></span>
         </button>

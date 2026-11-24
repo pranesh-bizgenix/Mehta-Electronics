@@ -26,6 +26,7 @@ export const NAV: NavGroup[] = [
     { href: '/email-automation/errors', label: 'Error center', icon: 'alert' as IconName, permission: 'email_automation.read' }
   ] }] : []),
   { label: 'Overview', items: [
+    { href: '/notifications', label: 'Saved notifications', icon: 'bell', permission: 'authenticated', keywords: 'notification history unread messages payment reminders dues' },
     { href: '/dashboard', label: 'Dashboard', icon: 'dashboard', permission: 'dashboard.read', keywords: 'home owner kpi' },
     { href: '/reports', label: 'Business report PDFs', icon: 'quote', permission: 'authenticated', keywords: 'export pdf reports' },
     { href: '/work', label: 'My work', icon: 'clock', permission: 'work.read', badge: 'slaBreaches', badgeTone: 'danger', keywords: 'sla due' }
@@ -43,6 +44,10 @@ export const NAV: NavGroup[] = [
     { href: '/orders', label: 'Order status', icon: 'truck', permission: 'orders.read', keywords: 'sales orders supplied pending partial dispatch lr delivery customer po' },
     { href: '/items/stock-checks', label: 'Stock', icon: 'items', permission: 'items.read', keywords: 'inventory availability warehouse free reserved stock checks daily analysis' },
     { href: '/purchasing', label: 'Procurement', icon: 'cart', permission: 'purchasing.read', keywords: 'purchasing supplier comparison rfq purchase request po grn goods receipt' }
+  ] },
+  { label: 'Accounts', items: [
+    { href: '/accounts/incoming', label: 'Incoming Accounts requests', icon: 'inbox', permission: 'collections.read', keywords: 'finance email payments reminders due invoice requests' },
+    { href: '/accounts/adjustments', label: 'Credit / debit requests', icon: 'ledger', permission: 'collections.read', keywords: 'credit debit adjustment approval review' }
   ] },
   { label: 'Supply', items: [
     { href: '/logistics', label: 'Logistics & store', icon: 'truck', permission: 'logistics.read', keywords: 'grn dispatch photos assigned orders store' },
