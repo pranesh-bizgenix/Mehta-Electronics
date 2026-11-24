@@ -1,0 +1,5 @@
+import {randomUUID} from 'node:crypto';
+export function accountsFixture(category='PAYMENT_CLAIM',email=randomUUID()){
+ const branch=['CREDIT_NOTE','DEBIT_NOTE','INVOICE'].includes(category)?'REQUEST':category==='OTHER'?'OTHER':'PAYMENT';
+ return {schema_version:'meheta-accounts-v1',email_message_id:email,provider_message_id:'ZZTEST_ACCOUNTS_'+email,department:'ACCOUNTS',accounts_branch:branch,category,request:{accounts_branch:branch,category,intent:{action:'OTHER',summary:'Fictional Accounts request'},invoice_numbers:['ZZTEST_INVOICE'],po_numbers:[],payment_references:['ZZTEST_UTR_'+email],claimed_amount:'100.10',requested_adjustment_amount:null,stated_due_amount:null,currency:'INR',payment_date:'2026-11-24',stated_due_date:null,reminder_request_text:null,reason:'ZZTEST source'},original_email:{sender:'fictional@example.test',subject:'ZZTEST_ Accounts '+category,body:'Fictional verification only; no money transfer or external email.'},review_reasons:[],source_archive:{s3_bucket:'test-archive',s3_key:'accounts/source.json'}};
+}
