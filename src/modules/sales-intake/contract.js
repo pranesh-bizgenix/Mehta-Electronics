@@ -50,7 +50,7 @@ export function normalizeIntake(input){
   const p=`source.attachments.${index}`;keys(a,['id','name','mimeType','bytes','sha256','storageReference'],p);
   if(!Number.isSafeInteger(a.bytes)||a.bytes<0||a.bytes>100*1024*1024)fail(p+'.bytes','Use a non-negative byte count up to 100 MiB.');
   if(typeof a.sha256!=='string'||!/^[a-f0-9]{64}$/.test(a.sha256))fail(p+'.sha256','Use a lowercase SHA-256 hash.');
-  const storageReference=required(a.storageReference,p+'.storageReference',2000);if(!/^s3:\/\/[^/\s]+\/[^\x00-\x20]+$/.test(storageReference))fail(p+'.storageReference','Use an S3 location reference; file contents and arbitrary URLs are not accepted.');
+  const storageReference=required(a.storageReference,p+'.storageReference',2000).replace(/\s/gu,c=>encodeURIComponent(c));if(!/^s3:\/\/[^/\s]+\/[^\x00-\x20]+$/.test(storageReference)||storageReference.length>2000)fail(p+'.storageReference','Use an S3 location reference; file contents and arbitrary URLs are not accepted.');
   const name=required(a.name,p+'.name',200);if(/[\\/]/.test(name))fail(p+'.name','Use a filename without a path.');
   source.attachments.push({id:required(a.id,p+'.id',300),name,mimeType:required(a.mimeType,p+'.mimeType',120),bytes:a.bytes,sha256:a.sha256,storageReference});
  }

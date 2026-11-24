@@ -55,7 +55,7 @@ export function mapMakeSalesDelivery(input){
    if(uom&&!/^[\p{L}\p{N}._/ -]{1,40}$/u.test(uom))warn(prefix+': verify the unit of measurement.');
    return {lineId:String(i+1),description:text(line.item_description,prefix+' description'),productCode:text(line.product_material_code,prefix+' code'),hsn:text(line.hsn_sac_code,prefix+' HSN'),quantity:exact(line.quantity,prefix+' quantity',true),uom:uom&&/^[\p{L}\p{N}._/ -]{1,40}$/u.test(uom)?uom:null,unitPrice:exact(line.unit_price,prefix+' price'),discount,gstRate:exact(line.gst_rate,prefix+' GST',false,true),taxableAmount:exact(line.taxable_amount,prefix+' taxable amount')};
   });
-  const attachments=references.map(a=>({id:String(a.id),name:String(a.name).replace(/[\\/\x00-\x1f]/g,'_'),mimeType:a.mimeType,bytes:typeof a.bytes==='string'?Number(a.bytes):a.bytes,sha256:a.sha256,storageReference:a.storageReference}));
+  const attachments=references.map(a=>({id:String(a.id),name:String(a.name).replace(/[\\/\x00-\x1f]/g,'_'),mimeType:a.mimeType,bytes:typeof a.bytes==='string'?Number(a.bytes):a.bytes,sha256:a.sha256,storageReference:typeof a.storageReference==='string'?a.storageReference.replace(/\s/gu,c=>encodeURIComponent(c)):a.storageReference}));
   if(attachments.length>20)throw new Error('More than 20 attachments require reviewed handling; no references were discarded.');
   const identity=doc.source?.sha256??hash(JSON.stringify(doc));
   const sourceKey='gmail:'+providerId+':'+identity;

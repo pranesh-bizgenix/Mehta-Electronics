@@ -43,3 +43,19 @@ test('Make receipt records only IDs after a valid CRM acknowledgement',()=>{
  for(const response of [{statusCode:401,data:{error:'No access'}},{statusCode:200,data:{}},{statusCode:500,data:{data:receipt}}])assert.throws(()=>makeSalesReceipt(response,id),/not acknowledged/);
  assert.throws(()=>makeSalesReceipt({statusCode:201,data:{data:receipt}},"';DROP"),/not acknowledged/);
 });
+
+for(const name of ['Purchase Order 01.pdf','MEHTA 4600778676.pdf','PO 018 DT 07.08.2026.pdf','Mehta -17.11.2026.xlsx','two  spaces.pdf',' leading.pdf','trailing .pdf','already%20encoded.pdf','tab\tname.pdf','unicode\u00a0space.pdf'])test('Attachment location retains the S3 key with URI-safe whitespace: '+JSON.stringify(name),()=>{
+ const input=fixture();input.attachments=[{id:'sample-attachment',name,mimeType:'application/pdf',bytes:'100',sha256:'a'.repeat(64),storageReference:'s3://sample-bucket/attachments/'+name}];
+ const original=JSON.stringify(input),n=normalizeIntake(JSON.parse(mapMakeSalesDelivery(input).deliveries[0].body)),reference=n.source.attachments[0].storageReference;
+ assert.equal(reference,'s3://sample-bucket/attachments/'+name.replace(/\s/gu,c=>encodeURIComponent(c)));assert.equal(/\s/u.test(reference),false);assert.equal(JSON.stringify(input),original);
+});
+
+test('Whitespace normalization never admits a non-S3 attachment URL',()=>{
+ const input=fixture();input.attachments=[{id:'sample',name:'sample.pdf',mimeType:'application/pdf',bytes:1,sha256:'a'.repeat(64),storageReference:'https://sample.example/a b.pdf'}];
+ assert.throws(()=>normalizeIntake(JSON.parse(mapMakeSalesDelivery(input).deliveries[0].body)),{status:422});
+});
+
+test('Already queued Make deliveries accept URI-safe normalization without changing their event identity',()=>{
+ const raw=JSON.parse(mapMakeSalesDelivery(fixture()).deliveries[0].body);raw.source.attachments=[{id:'sample',name:'Purchase Order.pdf',mimeType:'application/pdf',bytes:100,sha256:'a'.repeat(64),storageReference:'s3://sample-bucket/Purchase Order.pdf'}];
+ const before=JSON.stringify(raw),n=normalizeIntake(raw);assert.equal(n.source.attachments[0].storageReference,'s3://sample-bucket/Purchase%20Order.pdf');assert.equal(n.eventId,raw.eventId);assert.equal(JSON.stringify(raw),before);
+});
