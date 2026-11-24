@@ -13,7 +13,7 @@ function testDatabaseUrl() {
 }
 
 const quote = name => `"${name.replaceAll('"', '""')}"`;
-const sessionKeys = ['mehta.actor_id','mehta.audit_reason','mehta.quotation_write','mehta.order_write','mehta.procurement_write','mehta.purchase_document_write','mehta.automation_credential_id','mehta.sales_intake_write','mehta.customer_management_write'];
+const sessionKeys = ['mehta.actor_id','mehta.audit_reason','mehta.quotation_write','mehta.order_write','mehta.procurement_write','mehta.purchase_document_write','mehta.automation_credential_id','mehta.sales_intake_write','mehta.customer_management_write','mehta.operations_intake_write'];
 function managed(statement) {
   const text = statement.replace(/'(?:''|[^'])*'/g, '').replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/--[^\r\n]*/g, ' ');
   if (/\b(?:BEGIN|COMMIT|ROLLBACK|SAVEPOINT|RELEASE|CREATE|ALTER|DROP|TRUNCATE|COPY|VACUUM|GRANT|REVOKE|RESET)\b|^\s*(?:END|SET|DO)\b/i.test(text) || text.includes(';')) {

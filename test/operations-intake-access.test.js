@@ -1,0 +1,20 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {randomUUID} from 'node:crypto';
+import {OperationsIntakeService} from '../src/modules/operations-intake/service.js';
+import {operationsFixture} from '../test-support/operations-intake-fixture.js';
+import {OperationsStockRepository} from '../src/modules/operations-intake/stock-repository.js';
+const service=()=>new OperationsIntakeService({db:{prepare(){throw new Error('No database access expected');}}});
+const row=()=>({id:randomUUID(),kind:'ORDER_STATUS',customer_id:null,assigned_to:10,backup_owner_id:11});
+test('staff session objects never become machine credentials',async()=>{await assert.rejects(service().receive({id:10,role:'OWNER'},operationsFixture(),'wrong'),e=>e.status===403);});
+for(const scope of ['automation.read','automation.write.drafts','rules.manage','*'])test(`scope ${scope} cannot ingest Operations requests`,async()=>{await assert.rejects(service().receive({kind:'AUTOMATION_SERVICE',scope},operationsFixture(),'wrong'),e=>e.status===403);});
+test('invalid company and idempotency headers reject before any database access',async()=>{const s=service(),p={kind:'AUTOMATION_SERVICE',scope:'automation.write.intake',companyId:randomUUID()};await assert.rejects(s.receive(p,operationsFixture(),'wrong'),e=>e.status===422);await assert.rejects(s.receive({...p,companyId:'invalid'},operationsFixture(),'wrong'),e=>e.status===422);});
+test('missing request is not exposed through permission errors',async()=>{await assert.rejects(service().access({id:10,role:'OWNER'},null),e=>e.status===404);});
+test('unassigned executive cannot read another staff request',async()=>{await assert.rejects(service().access({id:12,role:'EXECUTIVE'},row()),e=>e.status===404);});
+test('assigned executive and backup can read their order request',async()=>{const r=row();assert.equal((await service().access({id:10,role:'EXECUTIVE'},r)).id,r.id);assert.equal((await service().access({id:11,role:'EXECUTIVE'},r)).id,r.id);});
+test('accounts read access does not authorise order-request edits',async()=>{await assert.rejects(service().access({id:10,role:'ACCOUNTS'},row(),true),e=>e.status===403);});
+test('owner access does not depend on an invented Operations role',async()=>{const r=row();assert.equal((await service().access({id:99,role:'OWNER'},r)).id,r.id);});
+test('machine facts cannot be fetched with a write-only token or a staff session',async()=>{await assert.rejects(service().facts({kind:'AUTOMATION_SERVICE',scope:'automation.write.intake'},randomUUID()),e=>e.status===403);await assert.rejects(service().facts({id:10,role:'OWNER'},randomUUID()),e=>e.status===403);});
+test('unmapped products stay unknown without scanning imported stock',async()=>{const repo=new OperationsStockRepository({prepare(){throw new Error('No whole-stock scan permitted');}});repo.links=async()=>[];const rows=await repo.batch(randomUUID(),[{id:1,uom:'NOS'}]);assert.equal(rows.get(1).stable,false);assert.equal(rows.get(1).stockInHand,undefined);});
+
+test('default empty queue status is valid while unknown statuses reject',async()=>{const svc=service();svc.repo.list=async(company,kind,status,page,actorId)=>({company,kind,status,page,actorId});const params=new URLSearchParams({companyId:randomUUID(),kind:'ORDER_STATUS'});assert.equal((await svc.list({id:99,role:'OWNER'},params)).status,'');params.set('status','INVALID');await assert.rejects(svc.list({id:99,role:'OWNER'},params),e=>e.status===422);});
