@@ -3,6 +3,7 @@ import {TransactionRunner,AuditRepository,fingerprint,SystemClock} from '../../c
 import {conflict,forbidden,notFound,validationFailed} from '../../core/errors.js';
 import {hasPermission} from '../../rbac.js';
 import {workflowRule} from '../rules/workflow-rules.js';
+import {departmentOwners} from '../automation-api/department-routing.js';
 import {evaluateStock} from '../stock/availability.js';
 import {requireCustomerHandler} from '../operations/customer-gates.js';
 import {StockCheckService} from '../stock/service.js';
@@ -62,11 +63,12 @@ export class OperationsIntakeService {
    const existing=await this.repo.existing(companyId,source.emailId);
    if(existing){if(existing.request_hash!==hash||existing.credential_id!==principal.credentialId)throw conflict('This email was already delivered with different content or a different credential.');return this.receipt(existing,true);}
    for(const id of [principal.ownerId,principal.backupOwnerId])if(!(await this.repo.one("SELECT id FROM users WHERE id=? AND status='ACTIVE'",id)))throw conflict('Integration owner or backup is inactive.');
+   const routing=await departmentOwners(this.db,principal,'OPERATIONS',[readPermission(source.kind),writePermission(source.kind)]);
    const contacts=await this.repo.contacts(source.sender),customerId=contacts.length===1?contacts[0].id:null;
    let orderId=null;if(customerId&&source.kind==='ORDER_STATUS'&&source.poNumbers.length===1){const matches=await this.repo.orders(companyId,customerId,source.poNumbers[0]);if(matches.length===1)orderId=matches[0].id;}
-   const row=await this.repo.one('INSERT INTO crm_operations_intakes(company_id,credential_id,email_message_id,provider_message_id,request_hash,kind,source,customer_id,sales_order_id,assigned_to,backup_owner_id) VALUES(?,?,?,?,?,?,?::text::jsonb,?,?,?,?) RETURNING *',companyId,principal.credentialId,source.emailId,source.providerMessageId,hash,source.kind,JSON.stringify(source),customerId,orderId,principal.ownerId,principal.backupOwnerId);
-   await this.event(row,actor,'RECEIVED','Receive authenticated Operations request',{customerId,orderId},principal.credentialId);
-   await new NotificationService({repository:new NotificationRepository(this.db)}).notify(principal.ownerId,{type:'OPERATIONS_REQUEST_RECEIVED',title:'Operations request needs review',message:'Open Operations to review the received request.',entityType:'OPERATIONS_INTAKE',entityId:row.id},`operations-intake:${row.id}:received`);
+   const row=await this.repo.one('INSERT INTO crm_operations_intakes(company_id,credential_id,email_message_id,provider_message_id,request_hash,kind,source,customer_id,sales_order_id,assigned_to,backup_owner_id) VALUES(?,?,?,?,?,?,?::text::jsonb,?,?,?,?) RETURNING *',companyId,principal.credentialId,source.emailId,source.providerMessageId,hash,source.kind,JSON.stringify(source),customerId,orderId,routing.ownerId,routing.backupOwnerId);
+   await this.event(row,actor,'RECEIVED','Receive authenticated Operations request',{customerId,orderId,routing:routing.routing},principal.credentialId);
+   for(const recipientId of new Set([routing.ownerId,routing.backupOwnerId]))await new NotificationService({repository:new NotificationRepository(this.db)}).notify(recipientId,{type:'OPERATIONS_REQUEST_RECEIVED',title:'Operations request needs review',message:'Open Operations to review the received request.',entityType:'OPERATIONS_INTAKE',entityId:row.id},`operations-intake:${row.id}:received`);
    return this.receipt(row,false);
   });
  }
