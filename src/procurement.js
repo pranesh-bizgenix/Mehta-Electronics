@@ -10,6 +10,9 @@ import {quotePolicy} from './quotation-workflow.js';
 import {orderDetail,validateOriginal} from './sales-orders.js';
 import {calculateQuotation,scaled,money} from '../public/quotation-math.js';
 import {writeAudit} from './db.js';
+import {withCommercialCharges} from './modules/sourcing/domain.js';
+import {decimal as exactDecimal,compare as exactCompare} from '../public/money.js';
+const decimalEqual=(a,b)=>exactCompare(exactDecimal(a),exactDecimal(b))===0;
 
 const tables={vendors:'crm_procurement_vendors',requests:'crm_purchase_requests',rfqs:'crm_rfqs',replies:'crm_rfq_vendor_replies',pos:'crm_supplier_pos',grns:'crm_grns',documents:'crm_supplier_documents'};
 const fail=(status,message)=>{throw Object.assign(new Error(message),{status});};
@@ -88,7 +91,7 @@ export async function saveSupplierPo(db,recordId,b,user){const why=reason(b);ret
  const rfq=b.rfqId?await purchaseRecord(db,'rfqs',b.rfqId,user):null;let reply=null;if(rfq){if(rfq.status!=='WINNER_SELECTED')fail(409,'Select an RFQ winner first.');reply=await purchaseRecord(db,'replies',rfq.winner_reply_id,user);if(reply.payload.validUntil<today())fail(409,'Winning reply expired. Record a new RFQ before ordering.');}
  const request=rfq?await purchaseRecord(db,'requests',rfq.request_id,user):null;if(request?.sales_order_id&&b.salesOrderId&&id(b.salesOrderId)!==request.sales_order_id)fail(422,'RFQ purchase order must retain its purchase request sales-order link.');const orderId=b.salesOrderId||request?.sales_order_id||null,source=orderId?await purchaseSource(db,orderId,user):null;if(!rfq&&!source)fail(422,'Choose an RFQ winner or sales order.');
  const vendor=await purchaseRecord(db,'vendors',reply?.vendor_id??b.vendorId,user);if(vendor.status!=='ACTIVE')fail(409,'Vendor is inactive.');if(!validDate(b.deliveryBy))fail(422,'Enter supplier delivery date.');
- const itemLines=await lines(db,b.lines??reply?.payload.lines);const payload={vendor:vendor.payload,deliveryBy:b.deliveryBy,terms:text(b.terms??reply?.payload.terms??'',10000),notes:text(b.notes??'',10000),sourceOrder:source?.source??null,sourceReply:reply?{id:reply.id,version:reply.version,validUntil:reply.payload.validUntil}:null,...await purchaseTotals(db,vendor,itemLines),_editor:user.id};let after;
+ const itemLines=await lines(db,b.lines??reply?.payload.lines),baseTotals=await purchaseTotals(db,vendor,itemLines),pricedTotals=withCommercialCharges(baseTotals,reply?.payload.commercial,vendor.payload.stateCode,baseTotals.buyerState);const payload={vendor:vendor.payload,deliveryBy:b.deliveryBy,terms:text(b.terms??reply?.payload.terms??'',10000),notes:text(b.notes??'',10000),sourceOrder:source?.source??null,sourceReply:reply?{id:reply.id,version:reply.version,validUntil:reply.payload.validUntil}:null,...pricedTotals,_editor:user.id};let after;
  if(old){await db.prepare('UPDATE crm_supplier_pos SET vendor_id=?,rfq_id=?,sales_order_id=?,approval_fingerprint=NULL,approved_by=NULL WHERE id=?').run(vendor.id,rfq?.id??null,source?.orderId??null,old.id);after=await update(db,'pos',old,payload,user,'DRAFT');}
  else{const r=await db.prepare('INSERT INTO crm_supplier_pos(number,vendor_id,rfq_id,sales_order_id,payload,created_by) VALUES(?,?,?,?,?::text::jsonb,?)').run(number('SPO'),vendor.id,rfq?.id??null,source?.orderId??null,json(payload),user.id);after=await purchaseRecord(db,'pos',r.insertedId,user);}
  await event(db,'pos',old,after,user,old?'SUPPLIER_PO_REVISED':'SUPPLIER_PO_CREATED',why);return after;
@@ -98,20 +101,23 @@ function compareLines(expected,actual){const alerts=[];for(const a of actual){co
  if(e.partCode!==a.partCode)alerts.push({code:'PART_CODE_DIFFERENCE',itemId:a.itemId,expected:e.partCode,actual:a.partCode});if(e.uom!==a.uom)alerts.push({code:'UOM_DIFFERENCE',itemId:a.itemId});}
  for(const e of expected)if(!actual.some(a=>a.itemId===e.itemId))alerts.push({code:'MISSING_ITEM',itemId:e.itemId});return alerts;
 }
-function exactMargin(source,purchases,policy){if(!policy||!purchases.length)return null;const sales=[];
+export function exactMargin(source,purchases,policy,extraCost='0.00'){if(!policy||!purchases.length)return null;const sales=[];
  for(const p of purchases){const matches=source.lines.filter(l=>l.itemId===p.itemId);if(matches.length!==1||matches[0].uom!==p.uom)return null;sales.push({...matches[0],quantity:p.quantity});}
- const result=calculateQuotation(sales,source.sellerState,source.placeOfSupply),revenue=cents(result.subtotal),cost=purchases.reduce((sum,p)=>sum+cents(p.net),0n),floor=scaled(policy.floor_percent);
+ const result=calculateQuotation(sales,source.sellerState,source.placeOfSupply),revenue=cents(result.subtotal),goodsCost=purchases.reduce((sum,p)=>sum+cents(p.net),0n),charges=cents(extraCost),cost=goodsCost+charges,floor=scaled(policy.floor_percent);
  const below=(net,c)=>net===0n?c>0n:(net-c)*100000000n<net*floor;
- return {percent:revenue===0n?null:money((revenue-cost)*10000n/revenue),salesNet:money(revenue),supplierCost:money(cost),floor:policy.floor_percent,belowFloor:below(revenue,cost)||(policy.margin_basis==='LINE_AND_TOTAL'&&result.lines.some((l,i)=>below(cents(l.net),cents(purchases[i].net)))),note:'Estimated gross margin for these quantities before GST; excludes freight/landed-cost adjustments.'};
+ return {percent:revenue===0n?null:money((revenue-cost)*10000n/revenue),salesNet:money(revenue),supplierCost:money(cost),floor:policy.floor_percent,belowFloor:below(revenue,cost)||(policy.margin_basis==='LINE_AND_TOTAL'&&result.lines.some((l,i)=>{const net=cents(purchases[i].net);return goodsCost===0n?charges>0n||below(cents(l.net),net):(cents(l.net)-net)*goodsCost*100000000n-charges*net*100000000n<cents(l.net)*floor*goodsCost;})),note:charges>0n?'Estimated gross margin before GST, including confirmed supplier charges allocated by line net value.':'Estimated gross margin for these quantities before GST; no additional supplier charges recorded.'};
 }
 export async function supplierPoCheck(db,poId,user){const po=await purchaseRecord(db,'pos',poId,user),vendor=await purchaseRecord(db,'vendors',po.vendor_id,user),policy=await quotePolicy(db),flags=[];
  if(!await usableSetting(db,'margin.floor_percent'))flags.push('QUOTATION_POLICY_NOT_CONFIRMED');
  const principalRule=await workflowRule(db,'procurement.principal_ordering',false);if(!principalRule)flags.push('PRINCIPAL_ORDERING_NOT_CONFIGURED');
  if(vendor.status!=='ACTIVE')flags.push('INACTIVE_VENDOR');if(!policy||policy.seller_state!==po.payload.buyerState||vendor.payload.stateCode!==po.payload.vendorState)flags.push('TAX_STATE_CHANGED');
- if(po.payload.sourceReply){const r=await purchaseRecord(db,'replies',po.payload.sourceReply.id,user);if(r.version!==po.payload.sourceReply.version||r.payload.validUntil<today()||r.status!=='RECORDED')flags.push('SOURCE_REPLY_CHANGED_OR_EXPIRED');if(compareLines(r.payload.lines,po.payload.lines).length)flags.push('WINNER_REPLY_DIFFERENCE');}
+ if(po.payload.sourceReply){const r=await purchaseRecord(db,'replies',po.payload.sourceReply.id,user);if(r.version!==po.payload.sourceReply.version||r.payload.validUntil<today()||r.status!=='RECORDED')flags.push('SOURCE_REPLY_CHANGED_OR_EXPIRED');if(compareLines(r.payload.lines,po.payload.lines).length)flags.push('WINNER_REPLY_DIFFERENCE');
+ if(r.payload.commercial){if(digest(r.payload.commercial)!==digest(po.payload.commercial??null))flags.push('COMMERCIAL_TERMS_CHANGED');if(!r.payload.commercial.chargesConfirmed)flags.push('SUPPLIER_CHARGES_UNCONFIRMED');
+ for(const line of r.payload.commercial.lines??[]){if(!line.conversionId)continue;const factor=await db.prepare("SELECT factor::text AS factor FROM item_pack_factors WHERE id=? AND item_id=? AND upper(trim(from_uom))=upper(trim(?)) AND upper(trim(to_uom))=upper(trim(?)) AND status='APPROVED' AND NOT is_deleted AND valid_from<=?::date AND (valid_to IS NULL OR valid_to>=?::date)").get(line.conversionId,line.itemId,line.supplierUom,line.baseUom,today(),today());if(!factor||!decimalEqual(factor.factor,line.factor))flags.push('PACK_CONVERSION_CHANGED_OR_EXPIRED');}}
+ }
  let source=null,margin=null;
  if(po.sales_order_id){source=await orderDetail(db,po.sales_order_id,user);if(source.version!==po.payload.sourceOrder.version)flags.push('CUSTOMER_PO_CHANGED');if(!['APPROVED','PARTIALLY_DISPATCHED'].includes(source.effectiveStatus))flags.push('SALES_ORDER_NOT_APPROVED');
- margin=exactMargin(source,po.payload.lines,policy);if(!margin)flags.push('MARGIN_UNAVAILABLE_UNMATCHED_OR_AMBIGUOUS_ITEMS');else if(margin.belowFloor)flags.push('MARGIN_BELOW_FLOOR');
+ margin=exactMargin(source,po.payload.lines,policy,po.payload.chargeTotals?.subtotal??'0.00');if(!margin)flags.push('MARGIN_UNAVAILABLE_UNMATCHED_OR_AMBIGUOUS_ITEMS');else if(margin.belowFloor)flags.push('MARGIN_BELOW_FLOOR');
  }
  const result={flags:[...new Set(flags)].sort(),margin};
  return {...result,principalInstructions:principalRule?.value.instructions??null,fingerprint:digest({version:po.version,result,principalRuleVersion:principalRule?.version??null,vendorVersion:vendor.version,policyRevision:policy?.revision,orderVersion:source?.version,orderStatus:source?.effectiveStatus})};
