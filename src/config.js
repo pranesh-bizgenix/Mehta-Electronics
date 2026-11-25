@@ -21,6 +21,14 @@ const integer = (value, fallback) => {
   return Number.isFinite(parsed) ? parsed : fallback;
 };
 
+function testMfaAccounts(value){
+ if(!value)return [];
+ let entries;try{entries=JSON.parse(value);}catch{throw new Error('MFA_TEST_EXEMPT_ACCOUNTS must be a JSON array.');}
+ if(!Array.isArray(entries)||entries.length>20||entries.some(e=>!e||!Number.isSafeInteger(e.userId)||e.userId<1||typeof e.email!=='string'||!/^[^@\s]+@test\.local$/.test(e.email)||typeof e.expiresAt!=='string'||!Number.isFinite(Date.parse(e.expiresAt))))throw new Error('Test MFA exceptions require at most 20 exact fictional account IDs, emails and expiry timestamps.');
+ if(new Set(entries.map(e=>e.userId)).size!==entries.length||new Set(entries.map(e=>e.email)).size!==entries.length)throw new Error('Test MFA exception entries must be unique.');
+ return entries;
+}
+
 export function getConfig(overrides = {}) {
   const databaseUrl = String(process.env.DATABASE_URL || '').trim().replace(/^DATABASE_URL\s*=/i, '').trim();
   const config = {
@@ -54,6 +62,7 @@ export function getConfig(overrides = {}) {
     mfaEnabled: String(process.env.MFA_ENABLED ?? 'false').toLowerCase() === 'true',
     mfaTestExemptUserId: integer(process.env.MFA_TEST_EXEMPT_USER_ID, 0),
     mfaTestExemptEmail: String(process.env.MFA_TEST_EXEMPT_EMAIL || '').trim().toLowerCase(),
+    mfaTestExemptAccounts: testMfaAccounts(process.env.MFA_TEST_EXEMPT_ACCOUNTS),
     schedulerEnabled: String(process.env.SCHEDULER_ENABLED ?? 'true').toLowerCase() !== 'false',
     isProduction: process.env.NODE_ENV === 'production',
     ...overrides,
