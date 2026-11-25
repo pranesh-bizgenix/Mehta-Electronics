@@ -2903,6 +2903,199 @@
         }
       }
     },
+    "/api/v1/automation/customer-support/intake": {
+      "post": {
+        "operationId": "queueSupportIntake",
+        "summary": "queueSupportIntake",
+        "security": [
+          {
+            "ServiceToken": []
+          }
+        ],
+        "x-required-scope": "automation.write.intake",
+        "x-implementation-status": "IMPLEMENTED",
+        "parameters": [
+          {
+            "name": "companyId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^MEHETA-CS-[a-f0-9]{64}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Bounded company-scoped result; draft/queue receipt for writes. No approval or send is performed.",
+            "headers": {
+              "X-ControlDesk-API-Version": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "1.0.0"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/SupportReceipt"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Support request retained for staff review; no claim approval or replacement movement is performed.",
+            "headers": {
+              "X-ControlDesk-API-Version": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "1.0.0"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/SupportReceipt"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Request refused; no partial mutation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, revoked or expired service token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong scope or company; no fallback to staff access",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Request refused; no partial mutation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Replay mismatch or unconfirmed workflow setting",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Size limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request refused; no partial mutation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit; Retry-After applies",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Request refused; no partial mutation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SupportRequest"
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/automation/operations-intake/{id}/facts": {
       "get": {
         "operationId": "operationsFacts",
@@ -5978,6 +6171,1164 @@
           "version"
         ],
         "additionalProperties": true
+      },
+      "SupportRequest": {
+        "type": "object",
+        "properties": {
+          "schemaVersion": {
+            "enum": [
+              "1.0"
+            ]
+          },
+          "eventId": {
+            "type": "string",
+            "pattern": "^MEHETA-CS-[0-9a-f]{64}$"
+          },
+          "requestKey": {
+            "type": "string",
+            "pattern": "^MEHETA-CS-[0-9a-fA-F-]{36}$"
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "companyId": {
+            "type": "string",
+            "pattern": "^[0-9a-fA-F-]{36}$"
+          },
+          "department": {
+            "enum": [
+              "CUSTOMER_SUPPORT"
+            ]
+          },
+          "category": {
+            "enum": [
+              "PRODUCT_ENQUIRY",
+              "PRODUCT_SUPPORT",
+              "OTHER"
+            ]
+          },
+          "intent": {
+            "type": "object",
+            "properties": {
+              "action": {
+                "enum": [
+                  "ASK_PRICE",
+                  "ASK_PRODUCT_DETAILS",
+                  "ASK_PRODUCT_SUITABILITY",
+                  "REPORT_PRODUCT_ISSUE",
+                  "REQUEST_WARRANTY",
+                  "PROVIDE_INVOICE",
+                  "OTHER"
+                ]
+              },
+              "summary": {
+                "type": "string",
+                "maxLength": 2000,
+                "minLength": 1
+              },
+              "source": {
+                "enum": [
+                  "LLM",
+                  "VALIDATION_FALLBACK"
+                ]
+              }
+            },
+            "required": [
+              "action",
+              "summary",
+              "source"
+            ],
+            "additionalProperties": false
+          },
+          "source": {
+            "type": "object",
+            "properties": {
+              "system": {
+                "enum": [
+                  "MAKE_MEHETA_CUSTOMER_SUPPORT"
+                ]
+              },
+              "emailId": {
+                "type": "string",
+                "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+              },
+              "providerMessageId": {
+                "type": "string",
+                "maxLength": 200,
+                "minLength": 1
+              },
+              "threadId": {
+                "type": "string",
+                "maxLength": 200
+              },
+              "mailbox": {
+                "type": "string",
+                "format": "email",
+                "maxLength": 254
+              },
+              "senderEmail": {
+                "type": "string",
+                "format": "email",
+                "maxLength": 254
+              },
+              "subject": {
+                "type": "string",
+                "maxLength": 2000
+              },
+              "receivedAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "originalText": {
+                "type": "string",
+                "maxLength": 100000
+              },
+              "attachments": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "filename": {
+                      "type": "string",
+                      "maxLength": 160
+                    },
+                    "mimeType": {
+                      "type": "string",
+                      "maxLength": 200
+                    },
+                    "attachmentId": {
+                      "maxLength": 300,
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "bytes": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "sha256": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{64}$"
+                    },
+                    "archived": {
+                      "type": "boolean"
+                    },
+                    "readable": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "filename",
+                    "mimeType",
+                    "bytes",
+                    "sha256",
+                    "archived",
+                    "readable"
+                  ],
+                  "additionalProperties": false
+                },
+                "maxItems": 200
+              },
+              "archive": {
+                "type": "object",
+                "properties": {
+                  "bucket": {
+                    "enum": [
+                      "mehetas3"
+                    ]
+                  },
+                  "key": {
+                    "type": "string",
+                    "pattern": "^MEHETAs/",
+                    "maxLength": 1024
+                  },
+                  "sha256": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  },
+                  "status": {
+                    "enum": [
+                      "AVAILABLE",
+                      "FAILED"
+                    ]
+                  }
+                },
+                "required": [
+                  "bucket",
+                  "key",
+                  "sha256",
+                  "status"
+                ],
+                "additionalProperties": false
+              },
+              "emailEvidence": {
+                "type": "object",
+                "properties": {
+                  "bucket": {
+                    "enum": [
+                      "mehetas3"
+                    ]
+                  },
+                  "key": {
+                    "pattern": "^MEHETAs/",
+                    "maxLength": 1024,
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "sha256": {
+                    "pattern": "^[0-9a-f]{64}$",
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "bytes": {
+                    "minimum": 0,
+                    "type": "integer",
+                    "nullable": true
+                  }
+                },
+                "required": [
+                  "bucket",
+                  "key",
+                  "sha256",
+                  "bytes"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "system",
+              "emailId",
+              "providerMessageId",
+              "threadId",
+              "mailbox",
+              "senderEmail",
+              "subject",
+              "receivedAt",
+              "originalText",
+              "attachments",
+              "archive",
+              "emailEvidence"
+            ],
+            "additionalProperties": false
+          },
+          "identity": {
+            "type": "object",
+            "properties": {
+              "emailVerificationRequired": {
+                "enum": [
+                  false
+                ]
+              },
+              "otpRequired": {
+                "enum": [
+                  false
+                ]
+              },
+              "senderVerified": {
+                "enum": [
+                  false
+                ]
+              },
+              "contactMatchInformationalOnly": {
+                "enum": [
+                  true
+                ]
+              }
+            },
+            "required": [
+              "emailVerificationRequired",
+              "otpRequired",
+              "senderVerified",
+              "contactMatchInformationalOnly"
+            ],
+            "additionalProperties": false
+          },
+          "request": {
+            "type": "object",
+            "properties": {
+              "productCodes": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "maxLength": 300
+                },
+                "maxItems": 10
+              },
+              "productNames": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "maxLength": 300
+                },
+                "maxItems": 10
+              },
+              "issueDescription": {
+                "maxLength": 4000,
+                "type": "string",
+                "nullable": true
+              },
+              "serialNumbers": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                "maxItems": 200
+              },
+              "invoiceNumbers": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                "maxItems": 200
+              },
+              "attachmentsPresent": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "productCodes",
+              "productNames",
+              "issueDescription",
+              "serialNumbers",
+              "invoiceNumbers",
+              "attachmentsPresent"
+            ],
+            "additionalProperties": false
+          },
+          "products": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "requestedCode": {
+                  "maxLength": 10000,
+                  "type": "string",
+                  "nullable": true
+                },
+                "requestedName": {
+                  "maxLength": 10000,
+                  "type": "string",
+                  "nullable": true
+                },
+                "matchStatus": {
+                  "enum": [
+                    "MATCHED",
+                    "NOT_FOUND",
+                    "AMBIGUOUS_ITEM",
+                    "PRICE_PROFILE_MISSING",
+                    "AMBIGUOUS_PRICE_PROFILE"
+                  ]
+                },
+                "matchMethod": {
+                  "enum": [
+                    "EXACT_CODE",
+                    "EXACT_NAME",
+                    null
+                  ]
+                },
+                "itemId": {
+                  "pattern": "^[1-9][0-9]*$",
+                  "minimum": 1,
+                  "anyOf": [
+                    {
+                      "type": "integer"
+                    },
+                    {
+                      "type": "string"
+                    }
+                  ],
+                  "nullable": true
+                },
+                "profileId": {
+                  "pattern": "^[1-9][0-9]*$",
+                  "minimum": 1,
+                  "anyOf": [
+                    {
+                      "type": "integer"
+                    },
+                    {
+                      "type": "string"
+                    }
+                  ],
+                  "nullable": true
+                },
+                "partCode": {
+                  "maxLength": 10000,
+                  "type": "string",
+                  "nullable": true
+                },
+                "description": {
+                  "maxLength": 10000,
+                  "type": "string",
+                  "nullable": true
+                },
+                "brand": {
+                  "maxLength": 10000,
+                  "type": "string",
+                  "nullable": true
+                },
+                "hsn": {
+                  "maxLength": 10000,
+                  "type": "string",
+                  "nullable": true
+                },
+                "uom": {
+                  "maxLength": 10000,
+                  "type": "string",
+                  "nullable": true
+                },
+                "packSize": {
+                  "pattern": "^\\d{1,14}(?:\\.\\d{1,6})?$",
+                  "type": "string",
+                  "nullable": true
+                },
+                "moq": {
+                  "pattern": "^\\d{1,14}(?:\\.\\d{1,6})?$",
+                  "type": "string",
+                  "nullable": true
+                },
+                "listPrice": {
+                  "pattern": "^\\d{1,14}(?:\\.\\d{1,6})?$",
+                  "type": "string",
+                  "nullable": true
+                },
+                "currency": {
+                  "enum": [
+                    "INR",
+                    null
+                  ]
+                },
+                "priceSource": {
+                  "enum": [
+                    "crm_item_profiles.list_price"
+                  ]
+                },
+                "priceCheckedAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "taxIncluded": {
+                  "type": "null"
+                },
+                "availability": {
+                  "type": "null"
+                },
+                "profileScope": {
+                  "enum": [
+                    "COMPANY",
+                    "GLOBAL_FALLBACK",
+                    null
+                  ]
+                }
+              },
+              "required": [
+                "requestedCode",
+                "requestedName",
+                "matchStatus",
+                "matchMethod",
+                "itemId",
+                "profileId",
+                "partCode",
+                "description",
+                "brand",
+                "hsn",
+                "uom",
+                "packSize",
+                "moq",
+                "listPrice",
+                "currency",
+                "priceSource",
+                "priceCheckedAt",
+                "taxIncluded",
+                "availability",
+                "profileScope"
+              ],
+              "additionalProperties": false
+            },
+            "maxItems": 10
+          },
+          "invoice": {
+            "type": "object",
+            "properties": {
+              "attachmentStatus": {
+                "enum": [
+                  "NOT_APPLICABLE",
+                  "MISSING",
+                  "PRESENT",
+                  "UNREADABLE",
+                  "NO_INVOICE_DOCUMENT"
+                ]
+              },
+              "extracted": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "sourceFilename": {
+                      "type": "string",
+                      "maxLength": 160
+                    },
+                    "sourceSha256": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{64}$"
+                    },
+                    "documentType": {
+                      "enum": [
+                        "INVOICE",
+                        "OTHER"
+                      ]
+                    },
+                    "invoiceNumber": {
+                      "maxLength": 10000,
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "invoiceDate": {
+                      "format": "date",
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "sellerName": {
+                      "maxLength": 10000,
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "sellerGstin": {
+                      "maxLength": 10000,
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "buyerName": {
+                      "maxLength": 10000,
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "buyerGstin": {
+                      "maxLength": 10000,
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "currency": {
+                      "pattern": "^[A-Z]{3}$",
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "subtotal": {
+                      "pattern": "^\\d{1,14}(?:\\.\\d{1,6})?$",
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "taxTotal": {
+                      "pattern": "^\\d{1,14}(?:\\.\\d{1,6})?$",
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "total": {
+                      "pattern": "^\\d{1,14}(?:\\.\\d{1,6})?$",
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "description": {
+                            "maxLength": 10000,
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "productCode": {
+                            "maxLength": 10000,
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "quantity": {
+                            "pattern": "^\\d{1,14}(?:\\.\\d{1,6})?$",
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "uom": {
+                            "maxLength": 10000,
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "unitPrice": {
+                            "pattern": "^\\d{1,14}(?:\\.\\d{1,6})?$",
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "taxableAmount": {
+                            "pattern": "^\\d{1,14}(?:\\.\\d{1,6})?$",
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "taxRate": {
+                            "pattern": "^\\d{1,14}(?:\\.\\d{1,6})?$",
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "lineTotal": {
+                            "pattern": "^\\d{1,14}(?:\\.\\d{1,6})?$",
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "serialNumbers": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "maxLength": 200
+                            },
+                            "maxItems": 200
+                          },
+                          "hsnSacCode": {
+                            "maxLength": 10000,
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "discount": {
+                            "maxLength": 10000,
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "cgstRate": {
+                            "pattern": "^\\d{1,14}(?:\\.\\d{1,6})?$",
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "sgstRate": {
+                            "pattern": "^\\d{1,14}(?:\\.\\d{1,6})?$",
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "igstRate": {
+                            "pattern": "^\\d{1,14}(?:\\.\\d{1,6})?$",
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "cgstAmount": {
+                            "pattern": "^\\d{1,14}(?:\\.\\d{1,6})?$",
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "sgstAmount": {
+                            "pattern": "^\\d{1,14}(?:\\.\\d{1,6})?$",
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "igstAmount": {
+                            "pattern": "^\\d{1,14}(?:\\.\\d{1,6})?$",
+                            "type": "string",
+                            "nullable": true
+                          }
+                        },
+                        "required": [
+                          "description",
+                          "productCode",
+                          "quantity",
+                          "uom",
+                          "unitPrice",
+                          "taxableAmount",
+                          "taxRate",
+                          "lineTotal",
+                          "serialNumbers",
+                          "hsnSacCode",
+                          "discount",
+                          "cgstRate",
+                          "sgstRate",
+                          "igstRate",
+                          "cgstAmount",
+                          "sgstAmount",
+                          "igstAmount"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "maxItems": 200
+                    },
+                    "missingFields": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "maxLength": 200
+                      },
+                      "maxItems": 200
+                    },
+                    "sellerAddress": {
+                      "maxLength": 10000,
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "buyerBillingAddress": {
+                      "maxLength": 10000,
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "deliveryAddress": {
+                      "maxLength": 10000,
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "contactPerson": {
+                      "maxLength": 10000,
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "email": {
+                      "maxLength": 10000,
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "phone": {
+                      "maxLength": 10000,
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "poNumber": {
+                      "maxLength": 10000,
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "paymentTerms": {
+                      "maxLength": 10000,
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "otherTerms": {
+                      "maxLength": 10000,
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "invoiceDueDate": {
+                      "format": "date",
+                      "type": "string",
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "sourceFilename",
+                    "sourceSha256",
+                    "documentType",
+                    "invoiceNumber",
+                    "invoiceDate",
+                    "sellerName",
+                    "sellerGstin",
+                    "buyerName",
+                    "buyerGstin",
+                    "currency",
+                    "subtotal",
+                    "taxTotal",
+                    "total",
+                    "items",
+                    "missingFields",
+                    "sellerAddress",
+                    "buyerBillingAddress",
+                    "deliveryAddress",
+                    "contactPerson",
+                    "email",
+                    "phone",
+                    "poNumber",
+                    "paymentTerms",
+                    "otherTerms",
+                    "invoiceDueDate"
+                  ],
+                  "additionalProperties": false
+                },
+                "maxItems": 5
+              },
+              "verification": {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "enum": [
+                      "NOT_APPLICABLE",
+                      "INVOICE_REQUIRED",
+                      "DOCUMENT_UNREADABLE",
+                      "NO_INVOICE_DOCUMENT",
+                      "NOT_FOUND",
+                      "AMBIGUOUS",
+                      "MISMATCH",
+                      "VERIFIED",
+                      "REVIEW_REQUIRED"
+                    ]
+                  },
+                  "databaseInvoiceId": {
+                    "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "databaseInvoiceNumber": {
+                    "maxLength": 300,
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "verifiedInvoiceDate": {
+                    "format": "date",
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "matchChecks": {
+                    "type": "object",
+                    "properties": {
+                      "number": {
+                        "type": "boolean"
+                      },
+                      "date": {
+                        "type": "boolean"
+                      },
+                      "issued": {
+                        "type": "boolean"
+                      },
+                      "total": {
+                        "type": "boolean"
+                      },
+                      "currency": {
+                        "type": "boolean"
+                      },
+                      "sellerGstin": {
+                        "type": "boolean"
+                      },
+                      "buyerGstin": {
+                        "type": "boolean"
+                      },
+                      "linesAvailable": {
+                        "type": "boolean"
+                      },
+                      "serialNumbersVerified": {
+                        "type": "boolean"
+                      },
+                      "itemLines": {
+                        "type": "boolean"
+                      },
+                      "sourceComplete": {
+                        "type": "boolean"
+                      },
+                      "warrantyPolicy": {
+                        "type": "boolean"
+                      },
+                      "affectedProduct": {
+                        "type": "boolean"
+                      }
+                    },
+                    "required": [],
+                    "additionalProperties": false
+                  },
+                  "discrepancies": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "maxLength": 200
+                    },
+                    "maxItems": 200
+                  }
+                },
+                "required": [
+                  "status",
+                  "databaseInvoiceId",
+                  "databaseInvoiceNumber",
+                  "verifiedInvoiceDate",
+                  "matchChecks",
+                  "discrepancies"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "attachmentStatus",
+              "extracted",
+              "verification"
+            ],
+            "additionalProperties": false
+          },
+          "warranty": {
+            "type": "object",
+            "properties": {
+              "policy": {
+                "enum": [
+                  "TWELVE_CALENDAR_MONTHS_FROM_INVOICE_DATE",
+                  "APPROVED_CALENDAR_MONTHS_FROM_INVOICE_DATE",
+                  "POLICY_UNCONFIRMED"
+                ]
+              },
+              "months": {
+                "minimum": 1,
+                "maximum": 1200,
+                "type": "integer",
+                "nullable": true
+              },
+              "expiryDateInclusive": {
+                "enum": [
+                  true
+                ]
+              },
+              "timezone": {
+                "enum": [
+                  "Asia/Kolkata"
+                ]
+              },
+              "checkedOn": {
+                "type": "string",
+                "format": "date"
+              },
+              "invoiceDate": {
+                "format": "date",
+                "type": "string",
+                "nullable": true
+              },
+              "expiresOn": {
+                "format": "date",
+                "type": "string",
+                "nullable": true
+              },
+              "status": {
+                "enum": [
+                  "NOT_APPLICABLE",
+                  "INVOICE_REQUIRED",
+                  "PENDING_VERIFICATION",
+                  "ELIGIBLE_FOR_ASSESSMENT",
+                  "EXPIRED",
+                  "PRODUCT_NOT_ON_INVOICE",
+                  "INVALID_INVOICE_DATE",
+                  "REVIEW_REQUIRED"
+                ]
+              },
+              "reasonCode": {
+                "type": "string",
+                "maxLength": 200
+              },
+              "claimApproved": {
+                "enum": [
+                  false
+                ]
+              },
+              "appliedPolicy": {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "enum": [
+                      "RESOLVED"
+                    ]
+                  },
+                  "months": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "source": {
+                    "enum": [
+                      "APPROVED_DATABASE_POLICY",
+                      "USER_CONFIGURED_DEFAULT"
+                    ]
+                  },
+                  "policyIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+                    },
+                    "maxItems": 200
+                  }
+                },
+                "required": [
+                  "status",
+                  "months",
+                  "source"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "policy",
+              "months",
+              "expiryDateInclusive",
+              "timezone",
+              "checkedOn",
+              "invoiceDate",
+              "expiresOn",
+              "status",
+              "reasonCode",
+              "claimApproved"
+            ],
+            "additionalProperties": false
+          },
+          "replies": {
+            "type": "object",
+            "properties": {
+              "acknowledgement": {
+                "type": "object",
+                "properties": {
+                  "required": {
+                    "type": "boolean"
+                  },
+                  "status": {
+                    "enum": [
+                      "NOT_REQUIRED",
+                      "PENDING",
+                      "PREPARED",
+                      "SENT",
+                      "FAILED",
+                      "UNCERTAIN"
+                    ]
+                  },
+                  "providerMessageId": {
+                    "maxLength": 200,
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "text": {
+                    "maxLength": 100000,
+                    "type": "string",
+                    "nullable": true
+                  }
+                },
+                "required": [
+                  "required",
+                  "status",
+                  "providerMessageId",
+                  "text"
+                ],
+                "additionalProperties": false
+              },
+              "answer": {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "enum": [
+                      "NOT_REQUIRED",
+                      "PENDING",
+                      "PREPARED",
+                      "SENT",
+                      "FAILED",
+                      "UNCERTAIN"
+                    ]
+                  },
+                  "providerMessageId": {
+                    "maxLength": 200,
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "text": {
+                    "maxLength": 100000,
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "selectedFactIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "maxLength": 200
+                    },
+                    "maxItems": 50
+                  },
+                  "modelSelectionFailed": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "status",
+                  "providerMessageId",
+                  "text",
+                  "selectedFactIds",
+                  "modelSelectionFailed"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "acknowledgement",
+              "answer"
+            ],
+            "additionalProperties": false
+          },
+          "requiresReview": {
+            "type": "boolean"
+          },
+          "reviewReasons": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 2000
+            },
+            "maxItems": 500
+          },
+          "processedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "schemaVersion",
+          "eventId",
+          "requestKey",
+          "revision",
+          "companyId",
+          "department",
+          "category",
+          "intent",
+          "source",
+          "identity",
+          "request",
+          "products",
+          "invoice",
+          "warranty",
+          "replies",
+          "requiresReview",
+          "reviewReasons",
+          "processedAt"
+        ],
+        "additionalProperties": false,
+        "title": "MEHETA Customer Support outbound CRM JSON v1"
+      },
+      "SupportReceipt": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "companyId",
+          "status",
+          "requestKey",
+          "revision",
+          "duplicate",
+          "requiresReview",
+          "version"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "companyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "NEEDS_REVIEW",
+              "REVIEWED",
+              "LINKED",
+              "CLOSED",
+              "REJECTED"
+            ]
+          },
+          "requestKey": {
+            "type": "string"
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "duplicate": {
+            "type": "boolean"
+          },
+          "requiresReview": {
+            "type": "boolean"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
       },
       "OperationsReceipt": {
         "type": "object",
