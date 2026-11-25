@@ -1,0 +1,12 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {selectDepartmentOwners} from '../src/modules/automation-api/department-routing.js';
+const principal={companyId:'company-a',ownerId:47,backupOwnerId:48};
+const rule={version:3,value:[{companyId:'company-a',department:'CUSTOMER_SUPPORT',ownerUserId:70,backupUserId:71}]};
+const users=[70,71].map(id=>({id,status:'ACTIVE',on_leave:false,must_change_password:0}));
+const choose=(r=rule,u=users,can=()=>true)=>selectDepartmentOwners(principal,'CUSTOMER_SUPPORT',r,u,['operations.read','operations.write'],can);
+test('Department policy assigns business work without changing integration authentication',()=>{assert.deepEqual(choose(),{ownerId:70,backupOwnerId:71,routing:'DEPARTMENT_POLICY',ruleVersion:3});assert.equal(principal.ownerId,47);});
+test('Missing or different-company settings preserve the existing integration assignment',()=>{assert.equal(choose(null).routing,'INTEGRATION_DEFAULT');assert.equal(choose({...rule,value:[{...rule.value[0],companyId:'company-b'}]}).ownerId,47);});
+for(const change of [{status:'INACTIVE'},{on_leave:true},{must_change_password:1}])test('Unavailable department recipient falls back for review: '+JSON.stringify(change),()=>{assert.equal(choose(rule,[{...users[0],...change},users[1]]).routing,'DEPARTMENT_UNAVAILABLE');});
+test('Both recipients need the required business permissions',()=>{assert.equal(choose(rule,users,(user)=>user.id===70).routing,'DEPARTMENT_UNAVAILABLE');});
+test('Primary and backup cannot be the same person',()=>{assert.equal(choose({...rule,value:[{...rule.value[0],backupUserId:70}]}).routing,'DEPARTMENT_UNAVAILABLE');});
