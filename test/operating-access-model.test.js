@@ -1,0 +1,8 @@
+import test from 'node:test';import assert from 'node:assert/strict';
+import {OPERATING_ROLES} from '../src/modules/access/operating-model.js';
+import {logisticsPermissions} from '../src/logistics-policy.js';
+const role=key=>OPERATING_ROLES.find(r=>r.key===key);
+test('Only Owner uses full access; ordinary roles have explicit grants',()=>{assert.equal(role('OWNER').permissions,null);for(const r of OPERATING_ROLES.filter(r=>r.key!=='OWNER')){assert.ok(r.permissions.length);assert.ok(!r.permissions.includes('*'));assert.equal(new Set(r.permissions).size,r.permissions.length);assert.ok(!r.permissions.includes('access.manage'));assert.ok(!r.permissions.includes('rules.manage'));}});
+test('Sales preparation, independent approval and accounting remain distinct',()=>{assert.ok(!role('EXECUTIVE').permissions.includes('quotations.approve'));assert.ok(role('MANAGER').permissions.includes('quotations.approve'));assert.ok(!role('OPERATIONS_COORDINATOR').permissions.includes('collections.read'));assert.ok(!role('CUSTOMER_SUPPORT').permissions.includes('collections.approve'));assert.ok(role('ACCOUNTS').permissions.includes('collections.approve'));});
+test('Warehouse roles stay inside the existing operational redaction policy',()=>{for(const key of ['LOGISTICS_LEAD','STORE_STAFF'])assert.deepEqual([...role(key).permissions].sort(),[...logisticsPermissions[key]].sort());});
+test('Warranty authority and credit exceptions remain reserved for Owner',()=>{for(const r of OPERATING_ROLES.filter(r=>r.permissions))for(const key of ['operations.approve','orders.credit.review','customers.credit_exempt','quotations.policy.manage','quotations.cost.manage'])assert.ok(!r.permissions.includes(key));});
