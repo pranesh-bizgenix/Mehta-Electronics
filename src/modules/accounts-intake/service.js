@@ -3,6 +3,7 @@ import {TransactionRunner,AuditRepository,fingerprint} from '../../core/runtime.
 import {conflict,forbidden,notFound,validationFailed} from '../../core/errors.js';
 import {NotificationRepository,NotificationService} from '../notifications/notification-service.js';
 import {financeAccess,detail as billingDetail} from '../billing/service.js';
+import {departmentOwners} from '../automation-api/department-routing.js';
 import {AccountsIntakeRepository} from './repository.js';
 import {normalizeAccounts,categories,statuses,labels,reviewSchema,actionSchema,handoffSchema,validateDay} from './contract.js';
 const terminal=r=>['REJECTED','COMPLETED'].includes(r.status);
@@ -29,10 +30,11 @@ export class AccountsIntakeService {
    const previous=await this.repo.existing(companyId,source.emailId,source.providerMessageId);if(previous){if(previous.request_hash!==hash||previous.credential_id!==principal.credentialId)throw conflict('This email was delivered with different content or a different credential.');return this.receipt(previous,true);}
    const owner=await this.repo.one("SELECT id,role FROM users WHERE id=? AND status='ACTIVE'",principal.ownerId);if(!owner)throw conflict('Accounts integration owner is inactive.');financeAccess(owner);
    if(principal.ownerId===principal.backupOwnerId||!await this.repo.one("SELECT id FROM users WHERE id=? AND status='ACTIVE'",principal.backupOwnerId))throw conflict('Choose an active different integration backup.');
+   const routing=await departmentOwners(this.db,principal,'ACCOUNTS',['collections.read','collections.write']);
    const contacts=await this.repo.contacts(source.sender),customerId=contacts.length===1?contacts[0].id:null;
    const candidates=customerId&&source.invoiceNumbers.length===1?await this.repo.scopedInvoices(companyId,customerId,source.invoiceNumbers):[];
-   const row=await this.repo.one('INSERT INTO crm_accounts_intakes(company_id,credential_id,email_message_id,provider_message_id,request_hash,source,category,customer_id,invoice_document_id,assigned_to,backup_owner_id) VALUES(?,?,?,?,?,?::text::jsonb,?,?,?,?,?) RETURNING *',companyId,principal.credentialId,source.emailId,source.providerMessageId,hash,JSON.stringify(source),source.category,customerId,candidates.length===1?candidates[0].id:null,principal.ownerId,principal.backupOwnerId);
-   await this.log(row,actor,'RECEIVED','Receive authenticated Accounts request',{category:row.category,customerId,invoiceId:row.invoice_document_id},principal.credentialId);await this.notify(row);return this.receipt(row,false);
+   const row=await this.repo.one('INSERT INTO crm_accounts_intakes(company_id,credential_id,email_message_id,provider_message_id,request_hash,source,category,customer_id,invoice_document_id,assigned_to,backup_owner_id) VALUES(?,?,?,?,?,?::text::jsonb,?,?,?,?,?) RETURNING *',companyId,principal.credentialId,source.emailId,source.providerMessageId,hash,JSON.stringify(source),source.category,customerId,candidates.length===1?candidates[0].id:null,routing.ownerId,routing.backupOwnerId);
+   await this.log(row,actor,'RECEIVED','Receive authenticated Accounts request',{category:row.category,customerId,invoiceId:row.invoice_document_id,routing:routing.routing},principal.credentialId);await this.notify(row);return this.receipt(row,false);
   });
  }
  async row(actor,id,companyId,write=false,lock=false){financeAccess(actor,write);const row=await this.repo.get(validate(s.uuid(),id),validate(s.uuid(),companyId),lock);if(!row)throw notFound('Accounts request not found.');return row;}
@@ -71,7 +73,7 @@ export class AccountsIntakeService {
   const result=await this.operations.create(actor,b.kind,{title:labels[row.category]+' — '+row.id,customerId:row.customer_id,ownerId:row.assigned_to,backupId:b.backupId,reason:b.reason,payload});
   const updated=await this.repo.one('UPDATE crm_accounts_intakes SET finance_operation_id=?,resolutions=?::text::jsonb,version=version+1 WHERE id=? RETURNING *',result.record.id,JSON.stringify({...r,handoffHash:commandHash}),id);await this.log(updated,actor,'FINANCE_DRAFT_CREATED',b.reason,{operationId:result.record.id,kind:b.kind});return {id:result.record.id,duplicate:false};
  });}
- async notificationHistory(actor,params){if(!actor?.id)throw forbidden();const page=validate(s.int({min:1,max:100000}),params.get('page')??1),unread=params.get('unreadOnly')==='true',accounts=params.get('module')==='accounts';const where="WHERE user_id=? AND channel='IN_APP' AND (?::boolean IS NOT TRUE OR delivery_state<>'READ') AND (?::boolean IS NOT TRUE OR payload->>'entityType'='ACCOUNTS_INTAKE')",args=[actor.id,unread,accounts];
+ async notificationHistory(actor,params){if(!actor?.id)throw forbidden();const page=validate(s.int({min:1,max:100000}),params.get('page')??1),unread=params.get('unreadOnly')==='true',module=params.get('module'),entity=module==='accounts'?'ACCOUNTS_INTAKE':module==='support'?'SUPPORT_INTAKE':null;const where="WHERE user_id=? AND channel='IN_APP' AND (?::boolean IS NOT TRUE OR delivery_state<>'READ') AND (?::text IS NULL OR payload->>'entityType'=?)",args=[actor.id,unread,entity,entity];
   const [data,total]=await Promise.all([this.repo.all(`SELECT id,delivery_state='READ' AS read,payload,created_at FROM notifications ${where} ORDER BY created_at DESC,id DESC LIMIT 25 OFFSET ?`,...args,(page-1)*25),this.repo.one(`SELECT count(*)::integer AS n FROM notifications ${where}`,...args)]);return {data:data.map(({payload,...r})=>({...r,...payload})),pagination:{page,pageSize:25,total:total.n,pages:Math.ceil(total.n/25)}};
  }
 }
