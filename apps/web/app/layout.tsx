@@ -7,6 +7,7 @@ import '../styles/tokens.css';
 import '../styles/base.css';
 import '../styles/components.css';
 import '../styles/workspace.css';
+import '../styles/workspace-refresh.css';
 import { Providers } from './providers';
 import { THEME_BOOT_SCRIPT } from '@/lib/preferences';
 
