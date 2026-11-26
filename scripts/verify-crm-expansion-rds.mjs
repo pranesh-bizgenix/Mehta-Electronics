@@ -1,0 +1,33 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import {withAuthorizedRdsRollbackVerification} from '../test-support/transaction.js';
+import {SourcingService} from '../src/modules/sourcing/service.js';
+import {reportData,reportPdf} from '../src/modules/billing/reports.js';
+import {saveVendor,saveRequest,createRfq,selectWinner,saveSupplierPo,supplierPoCheck} from '../src/procurement.js';
+import {shipmentRegister} from '../src/modules/dispatch/routes.js';
+import {verifyPerformanceOrderStates} from '../test-support/performance-order-states.js';
+const report={checks:[],cleanup:'All changes use an outer rollback; no fixtures are retained.'};
+await withAuthorizedRdsRollbackVerification(async db=>{
+ const owner=await db.prepare("SELECT id,role FROM users WHERE role='OWNER' AND status='ACTIVE' ORDER BY id LIMIT 1").get(),reviewer=await db.prepare("SELECT id,role FROM users WHERE role IN ('OWNER','MANAGER') AND status='ACTIVE' AND id<>? ORDER BY id LIMIT 1").get(owner.id),sourcing=new SourcingService({db});
+ const check=async(name,run)=>{await run();report.checks.push(name);console.log('PASS',name);};
+ await check('Twelve KPI order states exclude drafts, stale approvals and cancelled records',()=>verifyPerformanceOrderStates(db));
+ await check('Manual delivery register reads existing shipment records without a provider',async()=>{const data=await shipmentRegister(db,owner,new URLSearchParams('search=ZZTEST_'));assert.ok(Array.isArray(data.data));assert.match(data.note,/No live carrier/);});
+ await check('Actual RDS staff metrics execute and contain no unavailable numeric results',async()=>{const data=await reportData(db,owner,'staff_performance',{from:'2026-11-01',to:'2026-11-25'});assert.ok(Array.isArray(data.rows));assert.ok(!JSON.stringify(data).includes('NaN'));await assert.rejects(reportData(db,owner,'staff_performance',{from:'2026-11-01',to:'2026-11-25',status:'DONE'}),{status:422});});
+ await check('Staff report generates a branded PDF with an audited export',async()=>{const file=await reportPdf(db,owner,'staff_performance',{from:'2026-11-01',to:'2026-11-25',reason:'ZZTEST staff performance PDF verification'});assert.equal(file.bytes.subarray(0,4).toString(),'%PDF');fs.mkdirSync('verification-output/crm-expansion',{recursive:true});fs.writeFileSync('verification-output/crm-expansion/staff-performance.pdf',file.bytes);});
+ await check('Pack conversions require an independent reviewer and resolve exact factor',async()=>{assert.ok(reviewer,'Independent reviewer required');const item=await db.prepare("SELECT id,uom FROM items WHERE status='ACTIVE' AND NOT is_deleted AND length(trim(uom))>0 ORDER BY id LIMIT 1").get();assert.ok(item);const from='ZZTEST_PACK_'+Date.now(),row=await sourcing.createConversion(owner,{itemId:item.id,fromUom:from,toUom:item.uom,factor:'10',validFrom:'2026-11-25',validTo:null,sourceDocumentId:null,reason:'ZZTEST pack conversion verification'});await assert.rejects(sourcing.decideConversion(owner,row.id,{decision:'APPROVE',reason:'ZZTEST maker check'}),{status:403});await sourcing.decideConversion(reviewer,row.id,{decision:'APPROVE',reason:'ZZTEST independent pack review'});const factor=await sourcing.factor(item.id,from,item.uom,'2026-11-25');assert.equal(factor.id,row.id);assert.equal(Number(factor.factor),10);await assert.rejects(sourcing.decideConversion(reviewer,row.id,{decision:'APPROVE',reason:'ZZTEST repeated approval'}),{status:409});});
+ await check('Unknown permissions cannot read supplier conversions',()=>assert.rejects(sourcing.conversions({id:owner.id,role:'UNKNOWN'}),{status:403}));
+ await check('Supplier offer, comparison PDF and existing PO retain exact commercial charges',async()=>{
+  const item=await db.prepare("SELECT id,uom FROM items WHERE status='ACTIVE' AND NOT is_deleted AND length(trim(uom))>0 ORDER BY id LIMIT 1").get(),reason='ZZTEST supplier offer and PO commercial verification';
+  const vendor=await saveVendor(db,null,{name:'ZZTEST_FREIGHT_SUPPLIER',stateCode:'33',reason},owner);
+  const request=await saveRequest(db,null,{subject:'ZZTEST sourcing request',requiredBy:'2026-12-15',reason,lines:[{itemId:item.id,quantity:'2',unitPrice:'100',discountPercent:'0',taxPercent:'18'}]},owner);
+  const rfq=await createRfq(db,{requestId:request.id,requestVersion:request.version,vendorIds:[vendor.id],replyBy:'2026-12-05',reason},owner);
+  const pack=await db.prepare("SELECT from_uom FROM item_pack_factors WHERE item_id=? AND from_uom LIKE 'ZZTEST_PACK_%' AND created_by=? ORDER BY created_at DESC LIMIT 1").get(item.id,owner.id);assert.ok(pack);
+  const body={rfqVersion:rfq.version,replyVersion:null,vendorId:vendor.id,validUntil:'2026-12-15',promisedOn:'2026-12-10',currency:'INR',terms:'',reason,evidence:'ZZTEST fictional offer retained for rollback verification',chargesConfirmed:true,charges:[{kind:'FREIGHT',amount:'50',taxPercent:'18'}],lines:[{itemId:item.id,uom:pack.from_uom,quantity:'0.2',unitPrice:'1000',discountPercent:'0',taxPercent:'18'}]};
+  const reply=await sourcing.recordOffer(owner,rfq.id,body),comparison=await sourcing.comparison(owner,rfq.id);assert.equal(comparison.landedRows[0].offers[0].requestedCostExGst,'250.00');
+  const file=await sourcing.pdf(owner,rfq.id,reason);assert.equal(file.bytes.subarray(0,4).toString(),'%PDF');fs.writeFileSync('verification-output/crm-expansion/supplier-comparison.pdf',file.bytes);
+  await assert.rejects(sourcing.recordOffer(owner,rfq.id,{...body,replyVersion:reply.version,lines:[{...body.lines[0],uom:'ZZTEST_UNKNOWN_UNIT'}]}),{status:409});
+  await selectWinner(db,rfq.id,{version:rfq.version,replyId:reply.id,replyVersion:reply.version,reason},owner);
+  const po=await saveSupplierPo(db,null,{rfqId:rfq.id,deliveryBy:'2026-12-10',reason},owner);assert.equal(po.payload.subtotal,'250.00');assert.equal(po.payload.total,'295.00');assert.equal(po.payload.lines.length,1);assert.ok(!(await supplierPoCheck(db,po.id,owner)).flags.includes('COMMERCIAL_TERMS_CHANGED'));
+ });
+},{productionTransactions:true});
+fs.mkdirSync('verification-output/crm-expansion',{recursive:true});fs.writeFileSync('verification-output/crm-expansion/rds-report.json',JSON.stringify(report,null,2));
