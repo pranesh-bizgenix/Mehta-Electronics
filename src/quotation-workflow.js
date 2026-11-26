@@ -8,6 +8,7 @@ import {writeAudit,recordQuotationRevision,quotationView} from './db.js';
 import {hasPermission} from './rbac.js';
 import {calculateQuotation,scaled} from '../public/quotation-math.js';
 import {quotationPdf} from './quotation-document.js';
+import {quotationSupplierTerms} from './quotation-supplier-terms.js';
 import {costErrors,policyErrors} from '../public/quotation-setup-validation.js';
 import {validationFailed,conflict} from './core/errors.js';
 import {requestAvailability,requireAvailability,invalidateAvailability} from './modules/sales-intake/availability.js';
@@ -72,6 +73,7 @@ export async function importQuoteCosts(db,b,user,preview){can(user,'quotations.c
  });
 }
 function visible(row,user){const out={...row.public_snapshot,id:row.quotation_id,status:row.status,version:row.version,created_by:row.created_by,updated_at:row.updated_at,duplicateOf:row.duplicate_of,requiresWarehouseReview:row.private_snapshot.availabilityRequired===true};
+ if(row.created_at)out.documentDate=row.created_at;
  if(costAccess(user))out.pricing=row.private_snapshot;return out;
 }
 async function rowFor(db,quoteId){const row=await db.prepare('SELECT * FROM crm_quotation_workflows WHERE quotation_id=?').get(id(quoteId));if(!row)fail(404,'Workflow quotation not found.');return row;}
@@ -246,7 +248,8 @@ export async function emailWorkflowQuote(db,quoteId,b,user,config,sendMail){
  if(b.version!=null&&b.version!==row.version)fail(409,'Quotation changed. Reload before sending.');
  if(['APPROVED','SENT'].includes(row.status))await ensureCurrent(db,row);
  const quote=visible(row,{role:'EXECUTIVE'}),subject=text(b.subject||`Quotation ${quote.quotation_number}`,300),message=text(b.message||'Please find the approved quotation attached.',10000),pdf=await quotationPdf(quote);
- try{attempted=true;await sendMail(config,{quote,to:b.to,subject,message,pdf});}catch(err){fail(err.code==='SMTP_NOT_CONFIGURED'?503:502,err.code==='SMTP_NOT_CONFIGURED'?'Email delivery is not configured.':'Email delivery failed. Check delivery before retrying.');}
+ const supplierTerms=await quotationSupplierTerms();
+ try{attempted=true;await sendMail(config,{quote,to:b.to,subject,message,pdf,supplierTerms});}catch(err){fail(err.code==='SMTP_NOT_CONFIGURED'?503:502,err.code==='SMTP_NOT_CONFIGURED'?'Email delivery is not configured.':'Email delivery failed. Check delivery before retrying.');}
  await bindFirstQuotationOwner(db,row.public_snapshot.customerId,row.created_by,user);
  // Serialize edits/policy changes with delivery so a different version cannot be sent.
  await db.prepare("UPDATE crm_quotation_workflows SET status='SENT' WHERE quotation_id=?").run(row.quotation_id);

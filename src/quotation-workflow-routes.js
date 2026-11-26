@@ -3,9 +3,16 @@ import {quotationPdf,quotationPrintHtml} from './quotation-document.js';
 import {importQuoteCosts} from './quotation-workflow.js';
 import {previewQuoteCosts} from './quotation-cost-import.js';
 import {usableSetting} from './modules/decisions/service.js';
+import {quotationSupplierTerms} from './quotation-supplier-terms.js';
+import {writeAudit} from './db.js';
 export function quotationWorkflowRoutes({db,route,json,readJson}){
  const save=(fn,code=200)=>async({req,res,params,user})=>{const b=await readJson(req);if(!b||Array.isArray(b)||typeof b!=='object')throw Object.assign(new Error('Provide a JSON object.'),{status:422});json(res,code,{data:await fn(params,b,user)});};
  return [
+ route('GET','/api/crm/quotation-supplier-terms','quotations.read',async({res,user})=>{
+  const file=await quotationSupplierTerms();
+  await writeAudit(db,{userId:user.id,entity:'QUOTATION_SUPPLIER_TERMS',recordId:'KGEP-v1.1',action:'PDF_DOWNLOAD',reason:'Download original supplier reference terms',newValue:{sha256:file.sha256,source:'KGEP',version:'1.1'}});
+  res.writeHead(200,{'content-type':'application/pdf','content-length':file.bytes.length,'content-disposition':`attachment; filename="${file.filename}"`,'cache-control':'no-store','x-content-type-options':'nosniff'});res.end(file.bytes);
+ }),
  route('POST','/api/crm/quotation-cost-import/preview','quotations.cost.manage',save((p,b,u)=>previewQuoteCosts(db,b,u))),
  route('POST','/api/crm/quotation-cost-import/commit','quotations.cost.manage',save((p,b,u)=>importQuoteCosts(db,b,u,previewQuoteCosts))),
  route('GET','/api/crm/quotation-enquiries/:id','quotations.create',async({res,params,user})=>json(res,200,{data:await quotationEnquiry(db,params.id,user)})),

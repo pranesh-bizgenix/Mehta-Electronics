@@ -102,6 +102,7 @@ export function QuoteEditorView({ id, enquiryId, customerId }: { id?: string; en
           {!q&&<Link className="ds-button" data-variant="secondary" href="/quotations">Back to quotations</Link>}
           {q && <Button variant="secondary" icon="eye" onClick={() => setPreview(true)}>Preview</Button>}
           {q && <a className="ds-button" data-variant="secondary" href={`/api/crm/quotations/${q.id}/pdf`} target="_blank" rel="noopener"><Icon name="download" /><span>PDF</span></a>}
+          {q && <a className="ds-button" data-variant="secondary" href="/api/crm/quotation-supplier-terms" target="_blank" rel="noopener"><Icon name="download" /><span>KGEP supplier terms</span></a>}
           {q && can('quotations.create') && <Button variant="ghost" icon="plus" onClick={() => setReasonFor({ kind: 'duplicate' })}>Duplicate</Button>}
         </div>
       </header>
