@@ -1,0 +1,930 @@
+[
+  {
+    "route": "/accounts/adjustments",
+    "source": "apps/web/app/(app)/accounts/adjustments/page.tsx",
+    "title": "Credit & debit requests",
+    "pattern": "register",
+    "desktop": "not checked",
+    "mobile": "not checked",
+    "states": [
+      "loading",
+      "empty",
+      "error",
+      "populated",
+      "permission-restricted"
+    ],
+    "figma": "3:279"
+  },
+  {
+    "route": "/accounts/incoming",
+    "source": "apps/web/app/(app)/accounts/incoming/page.tsx",
+    "title": "Incoming Accounts requests",
+    "pattern": "inbox",
+    "desktop": "not checked",
+    "mobile": "not checked",
+    "states": [
+      "loading",
+      "empty",
+      "error",
+      "populated",
+      "permission-restricted"
+    ],
+    "figma": "3:393"
+  },
+  {
+    "route": "/audit",
+    "source": "apps/web/app/(app)/audit/page.tsx",
+    "title": "Audit trail",
+    "pattern": "register",
+    "desktop": "not checked",
+    "mobile": "not checked",
+    "states": [
+      "loading",
+      "empty",
+      "error",
+      "populated",
+      "permission-restricted"
+    ],
+    "figma": "3:507"
+  },
+  {
+    "route": "/automation",
+    "source": "apps/web/app/(app)/automation/page.tsx",
+    "title": "Automation controls",
+    "pattern": "administration",
+    "desktop": "not checked",
+    "mobile": "not checked",
+    "states": [
+      "loading",
+      "empty",
+      "error",
+      "populated",
+      "permission-restricted"
+    ],
+    "figma": "3:621"
+  },
+  {
+    "route": "/billing",
+    "source": "apps/web/app/(app)/billing/page.tsx",
+    "title": "Invoice documents",
+    "pattern": "register",
+    "desktop": "not checked",
+    "mobile": "not checked",
+    "states": [
+      "loading",
+      "empty",
+      "error",
+      "populated",
+      "permission-restricted"
+    ],
+    "figma": "3:702"
+  },
+  {
+    "route": "/contracts",
+    "source": "apps/web/app/(app)/contracts/page.tsx",
+    "title": "Customer contracts",
+    "pattern": "register",
+    "desktop": "not checked",
+    "mobile": "not checked",
+    "states": [
+      "loading",
+      "empty",
+      "error",
+      "populated",
+      "permission-restricted"
+    ],
+    "figma": "3:816"
+  },
+  {
+    "route": "/customers",
+    "source": "apps/web/app/(app)/customers/page.tsx",
+    "title": "Customers",
+    "pattern": "register",
+    "desktop": "not checked",
+    "mobile": "not checked",
+    "states": [
+      "loading",
+      "empty",
+      "error",
+      "populated",
+      "permission-restricted"
+    ],
+    "figma": "3:930"
+  },
+  {
+    "route": "/customers/[id]",
+    "source": "apps/web/app/(app)/customers/[id]/page.tsx",
+    "title": "Customer overview",
+    "pattern": "detail",
+    "desktop": "not checked",
+    "mobile": "not checked",
+    "states": [
+      "loading",
+      "empty",
+      "error",
+      "populated",
+      "permission-restricted"
+    ],
+    "figma": "2:379"
+  },
+  {
+    "route": "/dashboard",
+    "source": "apps/web/app/(app)/dashboard/page.tsx",
+    "title": "Business overview",
+    "pattern": "dashboard",
+    "desktop": "not checked",
+    "mobile": "not checked",
+    "states": [
+      "loading",
+      "empty",
+      "error",
+      "populated",
+      "permission-restricted"
+    ],
+    "figma": "2:74"
+  },
+  {
+    "route": "/decisions",
+    "source": "apps/web/app/(app)/decisions/page.tsx",
+    "title": "Business decisions",
+    "pattern": "administration",
+    "desktop": "not checked",
+    "mobile": "not checked",
+    "states": [
+      "loading",
+      "empty",
+      "error",
+      "populated",
+      "permission-restricted"
+    ],
+    "figma": "3:1044"
+  },
+  {
+    "route": "/design-system",
+    "source": "apps/web/app/(app)/design-system/page.tsx",
+    "title": "UI components",
+    "pattern": "register",
+    "desktop": "not checked",
+    "mobile": "not checked",
+    "states": [
+      "loading",
+      "empty",
+      "error",
+      "populated",
+      "permission-restricted"
+    ],
+    "figma": "3:1125"
+  },
+  {
+    "route": "/email-automation/attachments",
+    "source": "apps/web/app/(app)/email-automation/attachments/page.tsx",
+    "title": "Attachments",
+    "pattern": "register",
+    "desktop": "not checked",
+    "mobile": "not checked",
+    "states": [
+      "loading",
+      "empty",
+      "error",
+      "populated",
+      "permission-restricted"
+    ],
+    "figma": "3:1239"
+  },
+  {
+    "route": "/email-automation/dashboard",
+    "source": "apps/web/app/(app)/email-automation/dashboard/page.tsx",
+    "title": "Dashboard",
+    "pattern": "dashboard",
+    "desktop": "not checked",
+    "mobile": "not checked",
+    "states": [
+      "loading",
+      "empty",
+      "error",
+      "populated",
+      "permission-restricted"
+    ],
+    "figma": "3:1353"
+  },
+  {
+    "route": "/email-automation/errors",
+    "source": "apps/web/app/(app)/email-automation/errors/page.tsx",
+    "title": "Errors",
+    "pattern": "monitor",
+    "desktop": "not checked",
+    "mobile": "not checked",
+    "states": [
+      "loading",
+      "empty",
+      "error",
+      "populated",
+      "permission-restricted"
+    ],
+    "figma": "3:1467"
+  },
+  {
+    "route": "/email-automation/inbox",
+    "source": "apps/web/app/(app)/email-automation/inbox/page.tsx",
+    "title": "Inbox",
+    "pattern": "inbox",
+    "desktop": "not checked",
+    "mobile": "not checked",
+    "states": [
+      "loading",
+      "empty",
+      "error",
+      "populated",
+      "permission-restricted"
+    ],
+    "figma": "3:1588"
+  },
+  {
+    "route": "/email-automation/inbox/[id]",
+    "source": "apps/web/app/(app)/email-automation/inbox/[id]/page.tsx",
+    "title": "[Id]",
+    "pattern": "detail",
+    "desktop": "not checked",
+    "mobile": "not checked",
+    "states": [
+      "loading",
+      "empty",
+      "error",
+      "populated",
+      "permission-restricted"
+    ],
+    "figma": "3:1702"
+  },
+  {
+    "route": "/email-automation/integrations",
+    "source": "apps/web/app/(app)/email-automation/integrations/page.tsx",
+    "title": "Integrations",
+    "pattern": "monitor",
+    "desktop": "not checked",
+    "mobile": "not checked",
+    "states": [
+      "loading",
+      "empty",
+      "error",
+      "populated",
+      "permission-restricted"
+    ],
+    "figma": "3:1796"
+  },
+  {
+    "route": "/email-automation/processing",
+    "source": "apps/web/app/(app)/email-automation/processing/page.tsx",
+    "title": "Processing",
+    "pattern": "monitor",
+    "desktop": "not checked",
+    "mobile": "not checked",
+    "states": [
+      "loading",
+      "empty",
+      "error",
+      "populated",
+      "permission-restricted"
+    ],
+    "figma": "3:1917"
+  },
+  {
+    "route": "/enquiries",
+    "source": "apps/web/app/(app)/enquiries/page.tsx",
+    "title": "Enquiries",
+    "pattern": "register",
+    "desktop": "not checked",
+    "mobile": "not checked",
+    "states": [
+      "loading",
+      "empty",
+      "error",
+      "populated",
+      "permission-restricted"
+    ],
+    "figma": "3:2038"
+  },
+  {
+    "route": "/exceptions",
+    "source": "apps/web/app/(app)/exceptions/page.tsx",
+    "title": "Exceptions",
+    "pattern": "register",
+    "desktop": "not checked",
+    "mobile": "not checked",
+    "states": [
+      "loading",
+      "empty",
+      "error",
+      "populated",
+      "permission-restricted"
+    ],
+    "figma": "3:2152"
+  },
+  {
+    "route": "/incoming-requests",
+    "source": "apps/web/app/(app)/incoming-requests/page.tsx",
+    "title": "Incoming Sales requests",
+    "pattern": "inbox",
+    "desktop": "not checked",
+    "mobile": "not checked",
+    "states": [
+      "loading",
+      "empty",
+      "error",
+      "populated",
+      "permission-restricted"
+    ],
+    "figma": "2:193"
+  },
+  {
+    "route": "/items/manual-price-list",
+    "source": "apps/web/app/(app)/items/manual-price-list/page.tsx",
+    "title": "Manual price list",
+    "pattern": "form",
+    "desktop": "not checked",
+    "mobile": "not checked",
+    "states": [
+      "loading",
+      "empty",
+      "error",
+      "populated",
+      "permission-restricted"
+    ],
+    "figma": "3:2266"
+  },
+  {
+    "route": "/items",
+    "source": "apps/web/app/(app)/items/page.tsx",
+    "title": "Items & price lists",
+    "pattern": "register",
+    "desktop": "not checked",
+    "mobile": "not checked",
+    "states": [
+      "loading",
+      "empty",
+      "error",
+      "populated",
+      "permission-restricted"
+    ],
+    "figma": "3:2360"
+  },
+  {
+    "route": "/items/price-imports",
+    "source": "apps/web/app/(app)/items/price-imports/page.tsx",
+    "title": "Price-list imports",
+    "pattern": "register",
+    "desktop": "not checked",
+    "mobile": "not checked",
+    "states": [
+      "loading",
+      "empty",
+      "error",
+      "populated",
+      "permission-restricted"
+    ],
+    "figma": "3:2474"
+  },
+  {
+    "route": "/items/price-levels",
+    "source": "apps/web/app/(app)/items/price-levels/page.tsx",
+    "title": "Customer price levels",
+    "pattern": "register",
+    "desktop": "not checked",
+    "mobile": "not checked",
+    "states": [
+      "loading",
+      "empty",
+      "error",
+      "populated",
+      "permission-restricted"
+    ],
+    "figma": "3:2588"
+  },
+  {
+    "route": "/items/price-retirement",
+    "source": "apps/web/app/(app)/items/price-retirement/page.tsx",
+    "title": "Price-list retirement",
+    "pattern": "register",
+    "desktop": "not checked",
+    "mobile": "not checked",
+    "states": [
+      "loading",
+      "empty",
+      "error",
+      "populated",
+      "permission-restricted"
+    ],
+    "figma": "3:2702"
+  },
+  {
+    "route": "/items/stock-checks",
+    "source": "apps/web/app/(app)/items/stock-checks/page.tsx",
+    "title": "Stock checks",
+    "pattern": "register",
+    "desktop": "not checked",
+    "mobile": "not checked",
+    "states": [
+      "loading",
+      "empty",
+      "error",
+      "populated",
+      "permission-restricted"
+    ],
+    "figma": "3:2816"
+  },
+  {
+    "route": "/logistics",
+    "source": "apps/web/app/(app)/logistics/page.tsx",
+    "title": "Logistics & store",
+    "pattern": "register",
+    "desktop": "not checked",
+    "mobile": "not checked",
+    "states": [
+      "loading",
+      "empty",
+      "error",
+      "populated",
+      "permission-restricted"
+    ],
+    "figma": "3:2930"
+  },
+  {
+    "route": "/messages",
+    "source": "apps/web/app/(app)/messages/page.tsx",
+    "title": "Incoming messages",
+    "pattern": "inbox",
+    "desktop": "not checked",
+    "mobile": "not checked",
+    "states": [
+      "loading",
+      "empty",
+      "error",
+      "populated",
+      "permission-restricted"
+    ],
+    "figma": "3:3044"
+  },
+  {
+    "route": "/notifications",
+    "source": "apps/web/app/(app)/notifications/page.tsx",
+    "title": "Saved notifications",
+    "pattern": "inbox",
+    "desktop": "not checked",
+    "mobile": "not checked",
+    "states": [
+      "loading",
+      "empty",
+      "error",
+      "populated",
+      "permission-restricted"
+    ],
+    "figma": "3:3158"
+  },
+  {
+    "route": "/operations/delivery-tracking",
+    "source": "apps/web/app/(app)/operations/delivery-tracking/page.tsx",
+    "title": "Delivery tracking",
+    "pattern": "register",
+    "desktop": "not checked",
+    "mobile": "not checked",
+    "states": [
+      "loading",
+      "empty",
+      "error",
+      "populated",
+      "permission-restricted"
+    ],
+    "figma": "3:3272"
+  },
+  {
+    "route": "/operations",
+    "source": "apps/web/app/(app)/operations/page.tsx",
+    "title": "Support & collections",
+    "pattern": "register",
+    "desktop": "not checked",
+    "mobile": "not checked",
+    "states": [
+      "loading",
+      "empty",
+      "error",
+      "populated",
+      "permission-restricted"
+    ],
+    "figma": "3:3386"
+  },
+  {
+    "route": "/operations/requests",
+    "source": "apps/web/app/(app)/operations/requests/page.tsx",
+    "title": "Incoming Operations requests",
+    "pattern": "inbox",
+    "desktop": "not checked",
+    "mobile": "not checked",
+    "states": [
+      "loading",
+      "empty",
+      "error",
+      "populated",
+      "permission-restricted"
+    ],
+    "figma": "3:3500"
+  },
+  {
+    "route": "/orders",
+    "source": "apps/web/app/(app)/orders/page.tsx",
+    "title": "Sales orders",
+    "pattern": "register",
+    "desktop": "not checked",
+    "mobile": "not checked",
+    "states": [
+      "loading",
+      "empty",
+      "error",
+      "populated",
+      "permission-restricted"
+    ],
+    "figma": "3:3614"
+  },
+  {
+    "route": "/purchasing",
+    "source": "apps/web/app/(app)/purchasing/page.tsx",
+    "title": "Procurement",
+    "pattern": "register",
+    "desktop": "not checked",
+    "mobile": "not checked",
+    "states": [
+      "loading",
+      "empty",
+      "error",
+      "populated",
+      "permission-restricted"
+    ],
+    "figma": "3:3728"
+  },
+  {
+    "route": "/purchasing/purchase-orders",
+    "source": "apps/web/app/(app)/purchasing/purchase-orders/page.tsx",
+    "title": "Supplier PO documents",
+    "pattern": "register",
+    "desktop": "not checked",
+    "mobile": "not checked",
+    "states": [
+      "loading",
+      "empty",
+      "error",
+      "populated",
+      "permission-restricted"
+    ],
+    "figma": "3:3842"
+  },
+  {
+    "route": "/purchasing/rfqs",
+    "source": "apps/web/app/(app)/purchasing/rfqs/page.tsx",
+    "title": "Vendor RFQ documents",
+    "pattern": "register",
+    "desktop": "not checked",
+    "mobile": "not checked",
+    "states": [
+      "loading",
+      "empty",
+      "error",
+      "populated",
+      "permission-restricted"
+    ],
+    "figma": "3:3956"
+  },
+  {
+    "route": "/purchasing/sourcing",
+    "source": "apps/web/app/(app)/purchasing/sourcing/page.tsx",
+    "title": "Supplier comparisons",
+    "pattern": "register",
+    "desktop": "not checked",
+    "mobile": "not checked",
+    "states": [
+      "loading",
+      "empty",
+      "error",
+      "populated",
+      "permission-restricted"
+    ],
+    "figma": "3:4070"
+  },
+  {
+    "route": "/quotations/new",
+    "source": "apps/web/app/(app)/quotations/new/page.tsx",
+    "title": "New quotation",
+    "pattern": "form",
+    "desktop": "not checked",
+    "mobile": "not checked",
+    "states": [
+      "loading",
+      "empty",
+      "error",
+      "populated",
+      "permission-restricted"
+    ],
+    "figma": "2:300"
+  },
+  {
+    "route": "/quotations",
+    "source": "apps/web/app/(app)/quotations/page.tsx",
+    "title": "Quotations",
+    "pattern": "register",
+    "desktop": "not checked",
+    "mobile": "not checked",
+    "states": [
+      "loading",
+      "empty",
+      "error",
+      "populated",
+      "permission-restricted"
+    ],
+    "figma": "3:4184"
+  },
+  {
+    "route": "/quotations/[id]",
+    "source": "apps/web/app/(app)/quotations/[id]/page.tsx",
+    "title": "Quotation details",
+    "pattern": "detail",
+    "desktop": "not checked",
+    "mobile": "not checked",
+    "states": [
+      "loading",
+      "empty",
+      "error",
+      "populated",
+      "permission-restricted"
+    ],
+    "figma": "3:4298"
+  },
+  {
+    "route": "/reports",
+    "source": "apps/web/app/(app)/reports/page.tsx",
+    "title": "Business reports",
+    "pattern": "register",
+    "desktop": "not checked",
+    "mobile": "not checked",
+    "states": [
+      "loading",
+      "empty",
+      "error",
+      "populated",
+      "permission-restricted"
+    ],
+    "figma": "3:4392"
+  },
+  {
+    "route": "/rules",
+    "source": "apps/web/app/(app)/rules/page.tsx",
+    "title": "Rules & switches",
+    "pattern": "administration",
+    "desktop": "not checked",
+    "mobile": "not checked",
+    "states": [
+      "loading",
+      "empty",
+      "error",
+      "populated",
+      "permission-restricted"
+    ],
+    "figma": "3:4506"
+  },
+  {
+    "route": "/settings",
+    "source": "apps/web/app/(app)/settings/page.tsx",
+    "title": "Settings",
+    "pattern": "administration",
+    "desktop": "not checked",
+    "mobile": "not checked",
+    "states": [
+      "loading",
+      "empty",
+      "error",
+      "populated",
+      "permission-restricted"
+    ],
+    "figma": "3:4587"
+  },
+  {
+    "route": "/setup",
+    "source": "apps/web/app/(app)/setup/page.tsx",
+    "title": "Setup checklist",
+    "pattern": "administration",
+    "desktop": "not checked",
+    "mobile": "not checked",
+    "states": [
+      "loading",
+      "empty",
+      "error",
+      "populated",
+      "permission-restricted"
+    ],
+    "figma": "3:4668"
+  },
+  {
+    "route": "/support/incoming",
+    "source": "apps/web/app/(app)/support/incoming/page.tsx",
+    "title": "Incoming Support requests",
+    "pattern": "inbox",
+    "desktop": "not checked",
+    "mobile": "not checked",
+    "states": [
+      "loading",
+      "empty",
+      "error",
+      "populated",
+      "permission-restricted"
+    ],
+    "figma": "3:4749"
+  },
+  {
+    "route": "/tally/conflicts",
+    "source": "apps/web/app/(app)/tally/conflicts/page.tsx",
+    "title": "Tally conflicts",
+    "pattern": "monitor",
+    "desktop": "not checked",
+    "mobile": "not checked",
+    "states": [
+      "loading",
+      "empty",
+      "error",
+      "populated",
+      "permission-restricted"
+    ],
+    "figma": "3:4863"
+  },
+  {
+    "route": "/tally/connector",
+    "source": "apps/web/app/(app)/tally/connector/page.tsx",
+    "title": "Tally connector",
+    "pattern": "monitor",
+    "desktop": "not checked",
+    "mobile": "not checked",
+    "states": [
+      "loading",
+      "empty",
+      "error",
+      "populated",
+      "permission-restricted"
+    ],
+    "figma": "3:4984"
+  },
+  {
+    "route": "/tally/financial",
+    "source": "apps/web/app/(app)/tally/financial/page.tsx",
+    "title": "Receipts & outstanding",
+    "pattern": "monitor",
+    "desktop": "not checked",
+    "mobile": "not checked",
+    "states": [
+      "loading",
+      "empty",
+      "error",
+      "populated",
+      "permission-restricted"
+    ],
+    "figma": "3:5105"
+  },
+  {
+    "route": "/tally/monitor",
+    "source": "apps/web/app/(app)/tally/monitor/page.tsx",
+    "title": "Sync monitor",
+    "pattern": "monitor",
+    "desktop": "not checked",
+    "mobile": "not checked",
+    "states": [
+      "loading",
+      "empty",
+      "error",
+      "populated",
+      "permission-restricted"
+    ],
+    "figma": "3:5226"
+  },
+  {
+    "route": "/tally",
+    "source": "apps/web/app/(app)/tally/page.tsx",
+    "title": "Tally & reconciliation",
+    "pattern": "monitor",
+    "desktop": "not checked",
+    "mobile": "not checked",
+    "states": [
+      "loading",
+      "empty",
+      "error",
+      "populated",
+      "permission-restricted"
+    ],
+    "figma": "3:5347"
+  },
+  {
+    "route": "/tally/write",
+    "source": "apps/web/app/(app)/tally/write/page.tsx",
+    "title": "Tally write operations",
+    "pattern": "monitor",
+    "desktop": "not checked",
+    "mobile": "not checked",
+    "states": [
+      "loading",
+      "empty",
+      "error",
+      "populated",
+      "permission-restricted"
+    ],
+    "figma": "3:5468"
+  },
+  {
+    "route": "/tasks",
+    "source": "apps/web/app/(app)/tasks/page.tsx",
+    "title": "Staff tasks",
+    "pattern": "work",
+    "desktop": "not checked",
+    "mobile": "not checked",
+    "states": [
+      "loading",
+      "empty",
+      "error",
+      "populated",
+      "permission-restricted"
+    ],
+    "figma": "3:5589"
+  },
+  {
+    "route": "/users/automation-credentials",
+    "source": "apps/web/app/(app)/users/automation-credentials/page.tsx",
+    "title": "Integration credentials",
+    "pattern": "administration",
+    "desktop": "not checked",
+    "mobile": "not checked",
+    "states": [
+      "loading",
+      "empty",
+      "error",
+      "populated",
+      "permission-restricted"
+    ],
+    "figma": "3:5703"
+  },
+  {
+    "route": "/users",
+    "source": "apps/web/app/(app)/users/page.tsx",
+    "title": "Users & roles",
+    "pattern": "administration",
+    "desktop": "not checked",
+    "mobile": "not checked",
+    "states": [
+      "loading",
+      "empty",
+      "error",
+      "populated",
+      "permission-restricted"
+    ],
+    "figma": "3:5784"
+  },
+  {
+    "route": "/work",
+    "source": "apps/web/app/(app)/work/page.tsx",
+    "title": "My work",
+    "pattern": "work",
+    "desktop": "not checked",
+    "mobile": "not checked",
+    "states": [
+      "loading",
+      "empty",
+      "error",
+      "populated",
+      "permission-restricted"
+    ],
+    "figma": "3:5865"
+  },
+  {
+    "route": "/login",
+    "source": "apps/web/app/login/page.tsx",
+    "title": "Sign in",
+    "pattern": "auth",
+    "desktop": "not checked",
+    "mobile": "not checked",
+    "states": [
+      "loading",
+      "empty",
+      "error",
+      "populated",
+      "permission-restricted"
+    ],
+    "figma": "5:5028"
+  },
+  {
+    "route": "/",
+    "source": "apps/web/app/page.tsx",
+    "title": "Home redirect",
+    "pattern": "register",
+    "desktop": "not checked",
+    "mobile": "not checked",
+    "states": [
+      "loading",
+      "empty",
+      "error",
+      "populated",
+      "permission-restricted"
+    ],
+    "figma": "3:6051"
+  }
+]

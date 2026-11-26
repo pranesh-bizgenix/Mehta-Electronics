@@ -1,0 +1,250 @@
+{
+  "routes": [
+    {
+      "route": "/accounts/adjustments",
+      "nodeId": "3:279"
+    },
+    {
+      "route": "/accounts/incoming",
+      "nodeId": "3:393"
+    },
+    {
+      "route": "/audit",
+      "nodeId": "3:507"
+    },
+    {
+      "route": "/automation",
+      "nodeId": "3:621"
+    },
+    {
+      "route": "/billing",
+      "nodeId": "3:702"
+    },
+    {
+      "route": "/contracts",
+      "nodeId": "3:816"
+    },
+    {
+      "route": "/customers",
+      "nodeId": "3:930"
+    },
+    {
+      "route": "/customers/[id]",
+      "nodeId": "2:379"
+    },
+    {
+      "route": "/dashboard",
+      "nodeId": "2:74"
+    },
+    {
+      "route": "/decisions",
+      "nodeId": "3:1044"
+    },
+    {
+      "route": "/design-system",
+      "nodeId": "3:1125"
+    },
+    {
+      "route": "/email-automation/attachments",
+      "nodeId": "3:1239"
+    },
+    {
+      "route": "/email-automation/dashboard",
+      "nodeId": "3:1353"
+    },
+    {
+      "route": "/email-automation/errors",
+      "nodeId": "3:1467"
+    },
+    {
+      "route": "/email-automation/inbox",
+      "nodeId": "3:1588"
+    },
+    {
+      "route": "/email-automation/inbox/[id]",
+      "nodeId": "3:1702"
+    },
+    {
+      "route": "/email-automation/integrations",
+      "nodeId": "3:1796"
+    },
+    {
+      "route": "/email-automation/processing",
+      "nodeId": "3:1917"
+    },
+    {
+      "route": "/enquiries",
+      "nodeId": "3:2038"
+    },
+    {
+      "route": "/exceptions",
+      "nodeId": "3:2152"
+    },
+    {
+      "route": "/incoming-requests",
+      "nodeId": "2:193"
+    },
+    {
+      "route": "/items/manual-price-list",
+      "nodeId": "3:2266"
+    },
+    {
+      "route": "/items",
+      "nodeId": "3:2360"
+    },
+    {
+      "route": "/items/price-imports",
+      "nodeId": "3:2474"
+    },
+    {
+      "route": "/items/price-levels",
+      "nodeId": "3:2588"
+    },
+    {
+      "route": "/items/price-retirement",
+      "nodeId": "3:2702"
+    },
+    {
+      "route": "/items/stock-checks",
+      "nodeId": "3:2816"
+    },
+    {
+      "route": "/logistics",
+      "nodeId": "3:2930"
+    },
+    {
+      "route": "/messages",
+      "nodeId": "3:3044"
+    },
+    {
+      "route": "/notifications",
+      "nodeId": "3:3158"
+    },
+    {
+      "route": "/operations/delivery-tracking",
+      "nodeId": "3:3272"
+    },
+    {
+      "route": "/operations",
+      "nodeId": "3:3386"
+    },
+    {
+      "route": "/operations/requests",
+      "nodeId": "3:3500"
+    },
+    {
+      "route": "/orders",
+      "nodeId": "3:3614"
+    },
+    {
+      "route": "/purchasing",
+      "nodeId": "3:3728"
+    },
+    {
+      "route": "/purchasing/purchase-orders",
+      "nodeId": "3:3842"
+    },
+    {
+      "route": "/purchasing/rfqs",
+      "nodeId": "3:3956"
+    },
+    {
+      "route": "/purchasing/sourcing",
+      "nodeId": "3:4070"
+    },
+    {
+      "route": "/quotations/new",
+      "nodeId": "2:300"
+    },
+    {
+      "route": "/quotations",
+      "nodeId": "3:4184"
+    },
+    {
+      "route": "/quotations/[id]",
+      "nodeId": "3:4298"
+    },
+    {
+      "route": "/reports",
+      "nodeId": "3:4392"
+    },
+    {
+      "route": "/rules",
+      "nodeId": "3:4506"
+    },
+    {
+      "route": "/settings",
+      "nodeId": "3:4587"
+    },
+    {
+      "route": "/setup",
+      "nodeId": "3:4668"
+    },
+    {
+      "route": "/support/incoming",
+      "nodeId": "3:4749"
+    },
+    {
+      "route": "/tally/conflicts",
+      "nodeId": "3:4863"
+    },
+    {
+      "route": "/tally/connector",
+      "nodeId": "3:4984"
+    },
+    {
+      "route": "/tally/financial",
+      "nodeId": "3:5105"
+    },
+    {
+      "route": "/tally/monitor",
+      "nodeId": "3:5226"
+    },
+    {
+      "route": "/tally",
+      "nodeId": "3:5347"
+    },
+    {
+      "route": "/tally/write",
+      "nodeId": "3:5468"
+    },
+    {
+      "route": "/tasks",
+      "nodeId": "3:5589"
+    },
+    {
+      "route": "/users/automation-credentials",
+      "nodeId": "3:5703"
+    },
+    {
+      "route": "/users",
+      "nodeId": "3:5784"
+    },
+    {
+      "route": "/work",
+      "nodeId": "3:5865"
+    },
+    {
+      "route": "/login",
+      "nodeId": "5:5028"
+    },
+    {
+      "route": "/",
+      "nodeId": "3:6051"
+    }
+  ],
+  "mobile": "3:6165",
+  "localIconComponents": {
+    "dashboard": "3:227",
+    "customers": "3:230",
+    "inbox": "3:233",
+    "quote": "3:236",
+    "truck": "3:239",
+    "tasks": "3:242",
+    "ledger": "3:245",
+    "bell": "3:248",
+    "chevronRight": "3:251",
+    "menu": "3:254"
+  },
+  "count": 58
+}
