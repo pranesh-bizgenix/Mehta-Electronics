@@ -86,7 +86,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </nav>
 
       <div className="ds-main-column">
-        {process.env.NEXT_PUBLIC_UI_REVIEW === 'true' && <div className="cd-review-banner" role="status">Design preview ? Awaiting your approval ? Production is unchanged</div>}
+        {process.env.NEXT_PUBLIC_UI_REVIEW === 'true' && <div className="cd-review-banner" role="status">Design preview | Awaiting your approval | Production is unchanged</div>}
         <header className="ds-topbar">
           <IconButton className="ds-mobile-only" icon="menu" label="Open navigation" aria-expanded={drawerOpen} aria-controls="app-sidebar" onClick={() => setDrawerOpen(true)} />
           <IconButton className="ds-desktop-only" icon="sidebar" label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'} onClick={() => update({ sidebarCollapsed: !collapsed })} />
