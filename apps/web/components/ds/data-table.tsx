@@ -174,7 +174,7 @@ export function DataTable<T>(props: DataTableProps<T>) {
                     onClick={onRowClick ? (e) => { if (!(e.target as HTMLElement).closest('button,a,input,label')) onRowClick(row); } : undefined}
                     tabIndex={onRowClick ? 0 : undefined} onKeyDown={onRowClick ? (e) => { if (e.key === 'Enter') onRowClick(row); } : undefined}>
                     {bulkActions && <td className="ds-col-check" data-label=""><Checkbox label={<span className="sr-only">Select row</span>} checked={selected.has(key)} onChange={() => setSelected((s) => { const n = new Set(s); if (n.has(key)) n.delete(key); else n.add(key); return n; })} /></td>}
-                    {shown.map((c) => <td key={c.key} data-label={c.header} className={c.numeric ? 'ds-col-end num' : undefined}>{c.render(row)}</td>)}
+                    {shown.map((c) => <td key={c.key} data-label={c.header} className={c.numeric ? 'ds-col-end num' : undefined}><div className="ds-cell-value">{c.render(row)}</div></td>)}
                     {rowActions && <td data-label=""><div className="ds-row-actions">{rowActions(row)}</div></td>}
                   </tr>
                 );
