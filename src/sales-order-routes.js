@@ -2,6 +2,7 @@ import {OrderReconciliationService} from './tally-order-reconciliation.js';
 import {listTallyOrders} from './tally-order-list.js';
 import {tallyOrderDetail} from './tally-order-detail.js';
 import {compareStoredOrders} from './tally-orders/stored-comparison.js';
+import {downloadSalesOrderPdf} from './sales-order-document.js';
 import {orderList,orderDetail,saveOrder,orderAction,orderHistory,uploadOriginal,downloadOriginal,dispatchOrder,markDelivered,logisticsSearch,orderQuoteSource} from './sales-orders.js';
 const fail=(status,message)=>{throw Object.assign(new Error(message),{status});};
 export function salesOrderRoutes({db,config={},route,json,readJson}){
@@ -32,6 +33,10 @@ export function salesOrderRoutes({db,config={},route,json,readJson}){
  route('GET','/api/crm/orders','orders.read',async({res,url,user})=>json(res,200,await orderList(db,url,user))),
  route('POST','/api/crm/orders','orders.create',save((p,b,u)=>saveOrder(db,null,b,u),201)),
  route('GET','/api/crm/orders/:id','orders.read',async({res,params,user})=>json(res,200,{data:await orderDetail(db,params.id,user)})),
+ route('POST','/api/crm/orders/:id/pdf','orders.read',async({req,res,params,user})=>{
+  const b=await body(req),file=await downloadSalesOrderPdf(db,params.id,b,user);
+  res.writeHead(200,{'content-type':'application/pdf','content-length':file.bytes.length,'content-disposition':`${b.preview?'inline':'attachment'}; filename="${file.filename}"`,'cache-control':'no-store','x-content-type-options':'nosniff','content-security-policy':"sandbox; default-src 'none'; frame-ancestors 'self'"});res.end(file.bytes);
+ }),
  route('PUT','/api/crm/orders/:id','orders.update',save((p,b,u)=>saveOrder(db,p.id,b,u))),
  route('POST','/api/crm/orders/:id/actions','orders.read',save((p,b,u)=>orderAction(db,p.id,b,u))),
  route('GET','/api/crm/orders/:id/history','orders.read',async({res,params,user})=>json(res,200,{data:await orderHistory(db,params.id,user)})),
