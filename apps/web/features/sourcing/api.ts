@@ -1,0 +1,7 @@
+import type {ApiClient} from '@/lib/api/client';
+export interface Requested {itemId:number;partCode:string;description:string;uom:string;quantity:string;discountPercent:string;taxPercent:string}
+export interface BidLine {itemId:number;uom:string;quantity:string;unitPrice:string;discountPercent:string;taxPercent:string}
+export interface Comparison {rfq:{id:number;number:string;version:number;status:string;payload:{lines:Requested[]}};invited:{vendor_id:number;vendor:{name:string}}[];replies:{id:number;vendor_id:number;version:number}[];comparisonFingerprint:string;note:string;landedRows:{item:Requested;offers:{replyId:number;vendorId:number;vendorName?:string;available:boolean;baseQuantity?:string;landedBaseRateExGst?:string;promisedOn:string|null;flags:string[]}[]}[]}
+export interface Conversion {id:string;item_id:number;part_code:string;from_uom:string;to_uom:string;factor:string;valid_from:string;valid_to:string|null;status:string;created_by:number}
+export interface Charge {kind:string;amount:string;taxPercent:string}
+export const sourcingApi=(api:ApiClient)=>({comparison:(id:number)=>api.data<Comparison>('GET','/api/crm/sourcing/rfqs/'+id),conversions:(signal?:AbortSignal)=>api.data<Conversion[]>('GET','/api/crm/sourcing/conversions',undefined,{signal}),offer:(id:number,body:unknown)=>api.data('POST','/api/crm/sourcing/rfqs/'+id+'/offers',body),conversion:(body:unknown)=>api.data('POST','/api/crm/sourcing/conversions',body),decision:(id:string,body:unknown)=>api.data('POST','/api/crm/sourcing/conversions/'+id+'/decision',body)});
