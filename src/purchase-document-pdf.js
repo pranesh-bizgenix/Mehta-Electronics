@@ -1,8 +1,10 @@
 import PDFDocument from 'pdfkit';
 import {fileURLToPath} from 'node:url';
 import {amountInWords} from './purchase-document-math.js';
+import {supplierPurchaseOrderPdf} from './supplier-purchase-order-pdf.js';
 const placeholder=value=>value||'[Needs confirmation]';
-export function purchaseDocumentPdf(record,{draft=false,sample=false}={}){
+export function purchaseDocumentPdf(record,{draft=false,sample=false,onLayout}={}){
+ if(record.kind==='PO')return supplierPurchaseOrderPdf(record,{draft,sample,onLayout});
  return new Promise((resolve,reject)=>{
   const doc=new PDFDocument({size:'A4',margins:{top:112,bottom:55,left:42,right:42},bufferPages:true,info:{Title:`${record.kind} ${record.number}`}}),chunks=[];
   doc.on('data',c=>chunks.push(c));doc.on('error',reject);doc.on('end',()=>resolve(Buffer.concat(chunks)));
