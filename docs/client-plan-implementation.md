@@ -211,18 +211,18 @@ Migrations are applied and their checksums validated in the existing database; s
 
 The internal workflows are a substantial implementation of the plan. It would be inaccurate to label F1â€“F17 completely delivered: the external adapters, statutory issuance, bulk parsers, vendor templates, portals and unresolved policy decisions above still require work and client inputs. No stakeholder acceptance is inferred from passing tests.
 
-## 2026-11-04 — Login-free localhost review
+## 2026-11-04 ï¿½ Login-free localhost review
 
 - User explicitly requested removal of login on localhost. Added opt-in `LOCAL_REVIEW_ACCESS=true` in the local ignored `.env`.
 - `src/local-access.js` bootstraps a normal session for the existing first active Owner on `/api/auth/me`; it creates no users or passwords. Sessions and review entry are audited. Existing account password/MFA configuration is unchanged in the database; onboarding gates are bypassed in the local request context.
 - Requires a loopback listener, loopback TCP peer, local Host with the configured port, and same-origin requests; forwarded headers grant no access. Connector authentication is unchanged. Permissions, CSRF, maker-checker and business gates still run.
 - Changed: `src/local-access.js`, `src/app.js`, `src/config.js`, `test/local-access.test.js`, local `.env`, and this document. No migration.
-- Verification: `node --test test/local-access.test.js` — 2 passed, 0 failed, 0 skipped. Started the existing production listener with `npm.cmd start`; live `/api/auth/me` returned 200, Owner, mustChangePassword=false, CSRF token and session cookie; `/api/v1/me/badges` with that session returned 200. Initial sandbox attempts could not reach PostgreSQL; startup succeeded with local network access.
+- Verification: `node --test test/local-access.test.js` ï¿½ 2 passed, 0 failed, 0 skipped. Started the existing production listener with `npm.cmd start`; live `/api/auth/me` returned 200, Owner, mustChangePassword=false, CSRF token and session cookie; `/api/v1/me/badges` with that session returned 200. Initial sandbox attempts could not reach PostgreSQL; startup succeeded with local network access.
 - Risks: anyone using this machine's localhost CRM can act as that Owner. Set `LOCAL_REVIEW_ACCESS=false` and restart to require login again. Review-mode actions share the existing Owner audit identity. No remote deployment or connector installation performed. Broader P24 work remains in progress.
 - Browser verification: headless Playwright opened `/dashboard` without credentials, stayed on `/dashboard`, found the main navigation visible, and found no forced-password banner. Passed. No screenshots or secrets saved.
 - `npm.cmd test -- test/local-access.test.js` was stopped while its initial whole-database residue scan was still running, to prioritize immediate review; that guarded command is not reported as passed. The direct 2-test run and live browser/API checks above passed.
 
-## 2026-11-04 — CRM priority: New quotation page
+## 2026-11-04 ï¿½ CRM priority: New quotation page
 
 User redirected implementation from Tally P24 to the CRM New quotation page. P24 and later plan items remain pending; this task does not declare them complete.
 
@@ -244,10 +244,10 @@ User redirected implementation from Tally P24 to the CRM New quotation page. P24
 - This implementation log. No migration and no business setup values seeded.
 
 ### Verification
-- `npm.cmd --prefix apps/web run typecheck` — PASS.
-- `npm.cmd --prefix apps/web run check:tokens` — PASS.
-- `npm.cmd test -- test/quotation-setup.test.js test/quotations.test.js` — PASS: 10 passed, 0 failed, 0 skipped; initial and final database residue checks passed. Covers missing policy, missing costs, exact arithmetic, CSRF/permission checks, audit/history and independent approval.
-- `npm.cmd --prefix apps/web run build` — PASS; final CSS correction is being rechecked before handover.
+- `npm.cmd --prefix apps/web run typecheck` ï¿½ PASS.
+- `npm.cmd --prefix apps/web run check:tokens` ï¿½ PASS.
+- `npm.cmd test -- test/quotation-setup.test.js test/quotations.test.js` ï¿½ PASS: 10 passed, 0 failed, 0 skipped; initial and final database residue checks passed. Covers missing policy, missing costs, exact arithmetic, CSRF/permission checks, audit/history and independent approval.
+- `npm.cmd --prefix apps/web run build` ï¿½ PASS; final CSS correction is being rechecked before handover.
 - Actual localhost page returned HTTP 200 and displayed New quotation, its fields, main navigation and the real missing-policy notice. Screenshot: `output/new-quotation-desktop.png`.
 - Browser check initially identified a required-label selector mismatch, then a customer icon sizing issue and an exact-text selector mismatch for the permission message. Selectors and icon sizing corrected; final rerun recorded below.
 
@@ -257,7 +257,7 @@ User redirected implementation from Tally P24 to the CRM New quotation page. P24
 - Existing outgoing message/email ownership and send gates are unchanged. No connector build, installation or Tally write performed in this task.
 - Final verification: production build PASS after the icon sizing and tablet layout correction. `node test-support/check-new-quotation.mjs` PASS: 4 passed, 0 failed, 0 skipped (missing policy, customer context/item entry/exact totals/draft request, mobile overflow, denied role). All mocked browser writes stayed in browser memory. Production listener restarted at `http://127.0.0.1:3000`; New quotation is ready for review.
 
-## 2026-11-04 — Quotation source and policy reconciliation
+## 2026-11-04 ï¿½ Quotation source and policy reconciliation
 
 - Request: use `Quote.eml` and previously supplied documents as drafting references. Inspected the email's plain-text/HTML alternatives and reread the original F4, F2, F16 and top-level business-rule/conflict documents in the exported client plan.
 - Found: the email is a request for prices with 11 item rows and a 3-set heading, not an issued quotation. No attachment, prices, global margin, approval levels or confirmed commercial policy. Set-versus-row quantity interpretation remains unconfirmed.
@@ -265,11 +265,11 @@ User redirected implementation from Tally P24 to the CRM New quotation page. P24
 - Verification: Python standard email MIME parser read both alternatives from the source file; SHA256 recorded. Original HTML client-plan pages parsed as text and reviewed. No automated intake/extraction feature was implemented. No runtime code, business rows, permissions, costs, policy values or automation settings changed. No migration.
 - Tests: not run for this documentation-only review. No claim of end-to-end automatic quotation pricing: customer class/contract/slab/dated-list selection, locked list prices, historic-list approval and remaining confirmed policy inputs are still pending. No source was treated as permission to send messages or populate policy values.
 
-## 2026-11-04 — Additional quotation request review
+## 2026-11-04 ï¿½ Additional quotation request review
 
 Read `Request for quotation.eml` in place with the standard Python MIME parser. Four RR cable specifications plus requested availability/lead time; only an inline signature JPEG. Recorded source hash, colour-quantity ambiguity and drafting implications in `docs/reference-requirements-register.md`; updated this log. No application code, database records or migrations changed. Source inspection passed; no tests run for documentation-only changes. Actual stock, lead time, certification and rates remain unverified; no global policy inferred.
 
-## 2026-11-04 — RFQ details implemented in the quotation workflow
+## 2026-11-04 ï¿½ RFQ details implemented in the quotation workflow
 
 ### What changed
 - Added optional customer RFQ reference and original quantity instructions, with an explicit final-quantity review checkbox. Drafts may retain unresolved set/colour instructions; submission, approval and mark-sent use the existing server gate and stop until quantities are confirmed. Quantities are never multiplied or consolidated automatically.
@@ -281,31 +281,31 @@ Read `Request for quotation.eml` in place with the standard Python MIME parser. 
 - Long line specifications continue across PDF pages without repeating line quantities or money on continuation segments.
 
 ### Files changed
-- `public/quotation-request.js` and `.d.ts` — shared typed normalization, validation and quantity-review blocker.
-- `src/quotation-workflow.js` — validated snapshot fields, review gate and duplication behavior.
-- `src/quotation-document.js` — print/PDF whitelisted RFQ details and long-row pagination.
-- `apps/web/features/quotations/api.ts`, `use-quote-editor.ts`, `quote-editor.tsx` — typed inputs, per-line details, review state and saved views.
-- `apps/web/styles/workspace.css` — expandable line detail styling.
-- `test/quotation-request.test.js`, `test-support/check-new-quotation.mjs` — rollback-only workflow/API and browser-only UI fixtures.
+- `public/quotation-request.js` and `.d.ts` ï¿½ shared typed normalization, validation and quantity-review blocker.
+- `src/quotation-workflow.js` ï¿½ validated snapshot fields, review gate and duplication behavior.
+- `src/quotation-document.js` ï¿½ print/PDF whitelisted RFQ details and long-row pagination.
+- `apps/web/features/quotations/api.ts`, `use-quote-editor.ts`, `quote-editor.tsx` ï¿½ typed inputs, per-line details, review state and saved views.
+- `apps/web/styles/workspace.css` ï¿½ expandable line detail styling.
+- `test/quotation-request.test.js`, `test-support/check-new-quotation.mjs` ï¿½ rollback-only workflow/API and browser-only UI fixtures.
 - `docs/quotations.md`, `docs/reference-requirements-register.md`, and this implementation log.
 
 ### Migration
 None. New optional fields live in the existing versioned JSON snapshots in `mehta_electronics_local`. No sample business values, users or quotations were committed.
 
 ### Commands and results
-- `npm.cmd --prefix apps/web run typecheck` — PASS.
-- `npm.cmd --prefix apps/web run check:tokens` — PASS.
-- `node --check src/quotation-document.js`, `node --check src/quotation-workflow.js`, `node --check test/quotation-request.test.js` — PASS.
-- Initial guarded `npm.cmd test -- test/quotation-request.test.js test/quotation-setup.test.js test/quotations.test.js` — 13 passed, 1 failed due to passing an Owner ID instead of an actor object in the new test fixture. Corrected the fixture. Both its initial and final whole-database residue checks passed.
-- Final `node --test --test-concurrency=1 test/quotation-request.test.js test/quotation-setup.test.js test/quotations.test.js` — PASS: **14 passed, 0 failed, 0 skipped**, with live-name-guarded, rolled-back transaction fixtures. The initial wrapper failure is not reported as a passing command.
-- Final `npm.cmd --prefix apps/web run build` — PASS (including TypeScript and design-token checks).
-- `node test-support/check-new-quotation.mjs` — PASS: **4 passed, 0 failed, 0 skipped**, including expanded mobile details, validation, draft request values and denied-role state. Browser fixture business writes were intercepted; none entered PostgreSQL.
-- Scoped `git diff --check` — PASS. Existing localhost production listener restarted with `npm.cmd start` for review.
+- `npm.cmd --prefix apps/web run typecheck` ï¿½ PASS.
+- `npm.cmd --prefix apps/web run check:tokens` ï¿½ PASS.
+- `node --check src/quotation-document.js`, `node --check src/quotation-workflow.js`, `node --check test/quotation-request.test.js` ï¿½ PASS.
+- Initial guarded `npm.cmd test -- test/quotation-request.test.js test/quotation-setup.test.js test/quotations.test.js` ï¿½ 13 passed, 1 failed due to passing an Owner ID instead of an actor object in the new test fixture. Corrected the fixture. Both its initial and final whole-database residue checks passed.
+- Final `node --test --test-concurrency=1 test/quotation-request.test.js test/quotation-setup.test.js test/quotations.test.js` ï¿½ PASS: **14 passed, 0 failed, 0 skipped**, with live-name-guarded, rolled-back transaction fixtures. The initial wrapper failure is not reported as a passing command.
+- Final `npm.cmd --prefix apps/web run build` ï¿½ PASS (including TypeScript and design-token checks).
+- `node test-support/check-new-quotation.mjs` ï¿½ PASS: **4 passed, 0 failed, 0 skipped**, including expanded mobile details, validation, draft request values and denied-role state. Browser fixture business writes were intercepted; none entered PostgreSQL.
+- Scoped `git diff --check` ï¿½ PASS. Existing localhost production listener restarted with `npm.cmd start` for review.
 
 ### Not verified / remaining
 Real customer quotation creation and issuance were not performed. Actual stock, supplier lead times and compliance certification remain to be verified by staff. Existing Owner quotation policy remains required and was not filled from RFQ emails. Automatic contract/slab/dated-price-list resolution, locked list-price provenance and related pending pricing decisions remain unfinished. No email intake, sending, automation switch, Tally write or connector installation was changed.
 
-## 2026-11-04 — P26 CRM navigation and source context
+## 2026-11-04 ï¿½ P26 CRM navigation and source context
 
 - Customer 360 New enquiry now carries the customer ID. The destination loads that exact customer, opens the CRM source tab, handles loading/failure, removes creation parameters on close and responds to same-page query changes.
 - Create sales order carries the quotation ID. Orders loads the exact approved source through the existing permission/current-approval endpoint, pins customer/quotation options even outside lookup pages and preserves source decimal strings. Original customer PO number, date and total remain explicit inputs. Missing/stale source quotations block saving.
@@ -317,7 +317,7 @@ Real customer quotation creation and issuance were not performed. Actual stock, 
 - Final port check unexpectedly found an existing development process (`node src/server.js --dev`, PID 22972). Following the user's stop-server instruction, identified and stopped only that listener. Final complete browser check PASS and port 3000 has no listener. No server was started by this task.
 - Limits: real user clicking with live production records remains unverified; browser writes are intercepted, workflow data tests always roll back. No business policy values, approvals, send gates, connector installation or Tally writes changed.
 
-## 2026-11-04 — P27 Linked Tally records in global search
+## 2026-11-04 ï¿½ P27 Linked Tally records in global search
 
 ### What changed
 - Ctrl+K now appends linked Tally customers/items after CRM record results and explicitly labels them `Source: Tally`. Selecting a source hit opens its exact entity, company and stable record key using the P26 navigation path.
@@ -328,7 +328,7 @@ Real customer quotation creation and issuance were not performed. Actual stock, 
 
 ### Verification
 - New rollback-only service/real-handler test: PASS after correcting the fixture for the existing visibility-cache trigger and removing an incorrect `is_deleted` assumption from queries on legacy customer/item tables. Tests cover company isolation with identical source keys, stable/linked-only results, nonfinancial output/search, category-specific permission providers and session enforcement. Earlier failed development checks are not reported as passed.
-- Latest guarded regression: `npm.cmd test -- test/tally-global-search.test.js test/crm-navigation.test.js test/tally-customer-wizard.test.js test/tally-item-wizard.test.js` — **12 passed, 0 failed, 0 skipped**. Initial whole-database residue check passed; final residue result recorded below when complete.
+- Latest guarded regression: `npm.cmd test -- test/tally-global-search.test.js test/crm-navigation.test.js test/tally-customer-wizard.test.js test/tally-item-wizard.test.js` ï¿½ **12 passed, 0 failed, 0 skipped**. Initial whole-database residue check passed; final residue result recorded below when complete.
 - Production build/typecheck/design-token checks: PASS. Scoped syntax/whitespace checks: PASS.
 - Intercepted production-asset browser check: **5 passed, 0 failed, 0 skipped**, including prior context tests plus debounce, CRM-before-Tally ordering, explicit source labels, Home/End/arrows/Enter and source navigation. No server or alternative listener started; browser fixtures never entered business tables. Final port check confirmed the CRM server stopped.
 
@@ -724,7 +724,7 @@ Simplified the Owner Users & roles permission matrix: every editable permission 
 - Existing master/category switches, dry-run, mapping, approval and outbox safety controls remain unchanged and OFF by default.
 - Verification: web TypeScript typecheck passed.
 
-## Repository checkpoint — 2026-11-16
+## Repository checkpoint ï¿½ 2026-11-16
 - Collected the current CRM, Tally connector, UI, migration, documentation, test, and review-artifact changes for the requested repository commit.
 - Ignored local Next.js verification builds and compiled connector output packages.
 - Validation: npm.cmd run lint passed. Full tests, production builds, and database migrations were not run for this commit-only task.
@@ -1262,3 +1262,66 @@ Fixed issues found during verification: an empty status filter was incorrectly t
 - No migration or backend change. Source files: apps/web/features/incoming-requests/inbox-navigation.tsx (new), incoming-requests.tsx and accounts-intake/inbox.tsx (small rendering edits). Evidence: verification-output/accounts-intake/real-email-batch/progress.json and report.json. No new commit or push in this recovery task.
 - Scope: reception and review visibility for these fifteen real test emails, not financial approval/completion or every future email. Existing scoped Make credential requires normal renewal before its saved expiry on 30 November 2026.
 - Final deployed acceptance passed: all fifteen drawers, original-email matches, one Owner notification each, all saved-notification screen links and mobile width. Initial connection reset/loading-timing assertions were rechecked successfully; evidence report records the limitation.
+
+### Customer Support intake and CRM workflow integration - 25 November 2026
+- Added scoped POST /api/v1/automation/customer-support/intake and typed staff APIs, reusing operations.read/write permissions with no automatic role grants. The existing service credential is company-scoped and cannot approve claims or financial adjustments.
+- Added immutable original messages, retained delivery revisions, optimistic staff review, provider-message deduplication and append-only events through additive migration 0068_support_intake.sql. Existing CRM, audit, notification and Tally tables were not altered.
+- Fresh full RDS backup postgres-2026-11-25T05-13-46-063Z-8b2f7412.dump was catalogued and hashed; the unchanged ten-minute freshness gate allowed migration 0068. Recorded verification time 05:17:39 UTC, total applied migrations 68. The interrupted earlier archive was never accepted as a verified backup.
+- Added Customer Support navigation and /support/incoming with original message/attachment references, product/invoice checks, missing-information review, assignment, reply history and links to the existing complaints, warranty and returns workflows. Case handoff is idempotent; existing workflow permissions and independent approvals remain authoritative. Unfinished linked cases block closure.
+- Added Support links and filtering to the existing bell and saved notification history. Reading a notification retains it. Shared files changed only for route/OpenAPI registration, navigation, notification links/filtering and additive contract tests. No Tally connector code changed.
+- CRM warranty assessment uses the confirmed existing warranty.policy rule and an issued invoice scoped to the customer/company. Make eligibility remains advisory. Missing policy/invoice blocks warranty handoff; no duration, claim approval, payment, replacement or stock movement is invented.
+- Existing MEHETA Customer Support modules 138/144/156/151/163/177/179 were updated to remove the unconfirmed twelve-month fallback, enable the established CRM endpoint, validate durable receipts, retain delivery failures for bounded retries and retain invalid receipts for review. Sales, Accounts and Operations branch configuration was not edited by this task.
+- Validation: 97 focused Support/Accounts/Operations/customer-domain checks and two OpenAPI/metadata checks passed; syntax lint and final production build passed. The ordinary npm test and the mixed-suite local-DB metadata test refused the configured RDS target under their existing guard, which was not changed. These refusals are not recorded as passes.
+- All twenty authorized RDS operational checks passed, including ten fictional entries, source/revision preservation, HTTP 201/200 replay, access/company isolation, immutable history, unique notifications, reviewed case handoff, stale versions and blocked unverified warranty/closure. All verification fixtures, notifications, audit and work records rolled back.
+- Production candidate dpl_99wJeTmWQgr1rQqE5jGxxCYUAfm8 was verified Ready after a transient CLI connection reset and promoted to https://mehta-controldesk.vercel.app. Live credential-bound validation returned expected 401/422 responses without creating requests.
+- Six real pre-existing CS4 test messages whose CRM delivery had been disabled were recovered from their exact stored validated Make JSON through the scoped HTTP endpoint; no emails were resent. Subjects are CS4-P01-01, 03, 05, 06, 07 and 09. All six drawers/provider IDs/originals, one actual saved review, saved-notification links and 390px mobile width passed deployed browser checks. These are recovered deliveries, not proof of a new Gmail-trigger run.
+- During this task MEHETA was independently changed to a four-inbox scheduled queue. Existing Support endpoint/receipt/retry edits survived. The user explicitly authorized keeping that current four-inbox version active for current and future mail; no polling/subscenario rebuild was performed by this task. Fresh-email end-to-end result is recorded separately when verified.
+- Manual path: Customer Support > Incoming Support requests > select company > open email > review source and missing fields > match customer/invoice and owner > enter findings/reason > Save Support review > create appropriate linked case if applicable. Continue evidence and approval steps in the existing case; bell/Saved notifications reopen the exact request.
+- Evidence: verification-output/support-intake/rds-report.json and browser-report.json; private backup receipts, deployment logs and source references remain ignored under .vercel/acceptance and backups. No commit or push was requested for this implementation task.
+- Needs confirmation: official warranty period/product exceptions, first-response clock and working hours (the source has same-day/24-hour/48-hour statements), complaint bands, replacement authority/custody evidence and staff permission assignments. No end-to-end physical replacement or legal warranty-policy approval is claimed.
+- Final release: dpl_vc3KEj4TJ6T66LJq4FyAxbCgQXgi verified Ready and aliased to the production domain after transient CLI watch resets. Final build passed. Added India-calendar expiry/leap-day tests, invalidated-invoice review fallback, changed-case replay refusal and reviewed-invoice requirements for returns. Final focused checks: 102 passed; OpenAPI checks: two passed; RDS follow-up: twelve passed with both new fixtures rolled back. Original ten-entry/twenty-check evidence remains preserved.
+- Native Make delivery is now verified: modules 154 and 166 returned HTTP 201 in execution 3d3b08a3355c409d9f91fcfc0d9621fe; strict modules 177/179 accepted the matching IDs and recorded delivery stages. Six new CS4 messages have successful native delivery receipts, separately from six recovered messages. A 120-second delivery timeout in run 39778cfbf64746659295f332c15bb118 subsequently obtained successful receipts for the original saved IDs; the current incomplete count returned to the historical baseline of thirty. No history replay or new scenario was created.
+- Final deployed browser verification opened twelve real recovered/automatic requests, matched source IDs, saved a reviewed test enquiry, followed all twelve saved notification links and checked 390px layout. Six unchanged payloads were replayed against the live API and all returned the existing IDs with duplicate=true, preserving the saved review. Read-only Sales/Operations/Accounts checks passed; all fifteen prior Accounts R2 records and its notification filter remain present.
+- Independent RDS read confirmed all twelve fixture IDs/notifications absent after rollback, migration 0068 checksum matches, no duplicate provider-message groups and no automatic support cases. Existing and new Support relations are documented in schema-policy.json. Final report with file inventory, commands/results, test record names and manual steps: verification-output/support-intake/RELEASE-REPORT.json.
+- User explicitly requested all current/future mail to remain active; the current four-inbox MEHETA is active on its existing five-minute schedule. The separately announced MEHETA SUPPORT TEST subject was not found across the four configured inboxes; user is checking that email. This does not negate the six separately evidenced native CS4 deliveries. No commit or push performed for this implementation.
+
+
+### 25 Nov 2026 - CRM expansion, scope decisions and first implementation slice
+
+- User confirmed responsive desktop/mobile web only; no Android app is in this release. Delivery tracking is a manual page with existing dispatch, LR/transporter and delivery-proof links; no carrier-provider adapter is requested.
+- Operations > Supplier comparisons adds exact pack/base-unit offer normalization, supplier validity and promised dates, explicitly confirmed freight/packing, an ex-GST landed-cost comparison and branded comparison PDF. Existing purchasing records, totals and approval services remain authoritative. Existing operational POs retain commercial charges, charge GST, dated conversion checks and landed-cost margin checks; the existing generic Excel export includes charge rows.
+- Pack conversion requests use item_pack_factors from migration 0040. A different authorised purchasing reviewer is required; overlap, missing conversions, non-representable base prices and expired conversion evidence block progression. No commercial policy values were inferred. Department permission provisioning is documented in the follow-up below.
+- Operations > Delivery tracking reads the existing shipment register, offers bounded search/status/pagination and opens the original order for delivery proof. It does not claim a carrier location or live transporter status.
+- Reports > Staff performance adds separate factual measures, not a blended score: non-cancelled enquiry cohorts with sent quotations; quotation cohorts recorded as sent or ordered, including subsequent losses; first recorded automation response minutes from assignment, with unanswered requests separate; tasks completed by their due date divided by all tasks due through now. Each linked enquiry/quotation counts once. Current ownership is explicit, historical reassignment attribution is not reconstructed, and no incentive/payroll amount or target is invented. Eligibility follows existing permissions; staff without tasks.assign see their own metrics. Formulas and limitations are displayed in the UI and PDF.
+- New implementation paths: src/modules/sourcing, src/modules/dispatch, src/modules/billing/performance.js, apps/web/features/sourcing, purchasing/sourcing and operations/delivery-tracking routes. Shared edits are routing/sidebar, existing purchasing charge display/export and report catalogue/rendering.
+- Verification: 18 focused checks passed; TypeScript, syntax lint and production web build passed. RDS rollback verification passed the actual report query/PDF, independent conversion review, permission rejection, shipment register and supplier-offer-to-existing-PO flow including charges/GST. Verification exports are ignored under verification-output/crm-expansion. No expansion migration was required and no fixture rows were retained. Final reruns after follow-up changes are recorded in the evidence files.
+- Initial browser checks identified an older running backend; it was restarted and actual local API/browser checks passed for reports, sourcing and manual delivery tracking. A later PDF-viewer fix and the new role setup require refreshed browser verification. These expansion changes have not been deployed, and the full requested CRM completion is not claimed.
+- Remaining beyond this slice: persisted split-award ordering; three-way receipt/invoice matching and adjustment links; schedule comparison; packing/barcode/serial custody; wider billing/GST-provider workflows; bank statement imports/matching and allocations; vendor payment controls; physical returns/replacement custody; extended reports/incentives and scoped customer/vendor portals. Existing Make branches and Tally connector were not changed by this slice. GST-provider credentials and confirmed monetary incentive rules remain external inputs.
+
+### 25 Nov 2026 - Department operating model and shared presentation follow-up
+
+- Added explicit permission presets for Owner, Sales executive, Sales/commercial manager, Operations/procurement coordinator, Logistics lead, Store staff, Accounts and Customer Support. Owner wildcard, existing role MFA settings, maker-checker and warehouse financial redaction remain intact. Two new roles are ordinary database-backed roles; no new runtime role switch or permission catalogue was introduced.
+- The operator-authorised RDS procedure applied the permission batch atomically with individual existing access-matrix and audit events. No real staff passwords were reset. New reserved Operations and Support TEST accounts require the normal first-password-change flow before acceptance. Private credentials and expiring MFA exceptions remain ignored under .vercel/acceptance; no production-wide MFA exemption was added.
+- Added versioned company-specific intake.department_owners configuration. New Operations, Accounts and Support receipts resolve business assignees separately from the integration authentication principal. Missing configuration preserves existing assignment; unavailable or ineligible recipients fall back to integration owners for review. Replays and existing records retain their original assignment; Sales policies and Make connections are unchanged.
+- Shared PageHeader presentation, responsive filter rows and permission-filtered department shortcuts improve navigation without new duplicate business pages. The shared PDF action validates MIME/signature before embedding and supplies a new-tab fallback. PDF preview and download retain separate audit events.
+- Commands: production build, TypeScript, design-token check and syntax lint passed. Seventy pure focused checks passed. Seven actual RDS rollback checks passed, including twelve KPI order-state fixtures and supplier-offer/comparison-PDF/PO charges. The ordinary local-DB metadata test refused RDS unchanged; this is a guard refusal, not a pass. Department routing, account setup and refreshed browser results are recorded separately when complete.
+- No additional migration was required for this follow-up. Current expansion remains undeployed pending refreshed acceptance. Full CRM completion, live statutory GST integration, persisted split awards and the remaining physical/financial workflows are not claimed.
+
+- Acceptance update: all eight reserved test identities passed normal login, exact permission checks and denied cross-department finance/admin access. The two new identities completed normal first-password change; no must-change flag was cleared directly. Test-only MFA exceptions expire on 2 December 2026 at 17:00 IST. Audited department ownership was configured for the existing integration companies; existing request assignments and source credentials were preserved. Final focused result: 143 passed, plus two OpenAPI/metadata checks.
+
+- Public release dpl_5aoVW6Y7TLcEvkWhQp4UD66sp1Ch was promoted after Ready/candidate checks. Public Chrome acceptance passed all eight role workspaces and six report/PDF/sourcing/delivery checks, including Operations/Support mobile layouts. Department routing passed actual RDS primary/backup, single-notification, audit and duplicate tests for all three inboxes; an independent read confirmed all three fixture IDs and notifications absent after rollback. Existing Owner MFA and wildcard were independently unchanged.
+- Final hardening adds assignment checks to Support mutations: ordinary operations.write alone cannot modify another owner's request; assigned owner, backup or work.reassign supervisor is required. Read behaviour and existing maker-checker remain. The final guard is a separate candidate until its Support handoff regression checks pass.
+
+- Final Support regression: all twelve focused RDS checks passed with the new configured department owner, including normal review and existing complaint handoff, stale versions, immutable sources, audited privacy and HTTP authentication/replay. The frontend now shows a read-only explanation when the person is not assigned and cannot supervise, matching the backend mutation gate.
+
+- Final deployment dpl_fxmTBJo3UuYwcSaikhHp2mYJQdz7 is Ready and aliased to the public CRM. The CLI watch had an ECONNRESET; an independent vercel inspect confirmed Ready and the exact public aliases, so no blind redeploy or rollback was performed. This includes the Support assignment guard and matching read-only explanation.
+
+- Final public Support acceptance passed: an unassigned Operations user sees the read-only explanation, has no review button, receives 403 for a valid-CSRF review attempt and cannot change the saved version; an assigned Owner retains the review form. Final pure suite: 144 passed plus two OpenAPI/metadata checks. Broader CRM completion remains explicitly open in the release report. The temporary local verification listener was stopped after testing.
+
+### 25 Nov 2026 - UI design review and source-control checkpoint
+
+- User requested a full UI redesign and explicitly requires approval before publishing it. The new visual direction is being implemented locally; the current production deployment is not updated by this redesign. No backend business rules, migrations or Tally connector code were changed for the design task.
+- Figma design review maps 58 existing routes to reusable desktop patterns and a mobile direction. All Figma examples are fictional; a rejected live-screen export was replaced with editable designs without CRM data. Editable source plans and route coverage are retained under design/controldesk. Route-map coverage is design evidence, not proof of runtime acceptance.
+- Local source changes include bounded icon dimensions, persistent field labels, query-aware active navigation, collapsible department groups, a branded dashboard, revised shared table/dialog styling and sign-in presentation. The eight-page visual preflight covered loading/layout states only; full populated-state and whole-site acceptance remain pending.
+- User requested a source-control checkpoint of all current changes in at least 50 small, meaningful commits before continuing the redesign. Pre-commit checks: 151 focused Node checks passed, TypeScript passed, design tokens passed; the production build already passed for the current preview. Ordinary RDS-disallowed test guards remain unchanged.
+- Read-only Vercel project metadata confirmed no Git repository is linked, so the requested Git push will not publish the unapproved design. Credentials, .vercel state, QA output, generated PDFs, dependencies and backups remain ignored. Raw link rows/contextual navigation and remaining visual polish are the next design work after this checkpoint.
