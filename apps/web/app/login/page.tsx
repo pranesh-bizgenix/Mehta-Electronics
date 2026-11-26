@@ -10,7 +10,7 @@ import {BrandLogo} from '@/components/brand-logo';
 
 type Step = 'password' | 'enrol' | 'verify' | 'codes';
 
-const POINTS = ['Every enquiry captured, owned and tracked to an SLA', 'Quotations priced from rate contracts and protected by margin rules', 'Tally stays the source of truth — read-only, always reconciled'];
+const POINTS = ['Manage customer enquiries and follow-ups', 'Prepare quotations with pricing and approval checks', 'Coordinate orders, purchasing and dispatch'];
 
 /** S-01 Login: brand panel + password; two-factor enrolment/verification when enabled. */
 function LoginInner() {
@@ -63,18 +63,18 @@ function LoginInner() {
       <section className="ds-auth-brand" aria-label="About ControlDesk">
         <div className="ds-brand" style={{ color: 'inherit' }}><BrandLogo /><span className="ds-brand-text"><small style={{ color: 'inherit', opacity: 0.8 }}>Mehta Electric Corporation</small><strong>ControlDesk</strong></span></div>
         <div className="stack-lg">
-          <h1>Every order, priced right and on time.</h1>
-          <p>The control room for Mehta Electric Corporation’s sales, purchasing and dispatch — built on top of Tally.</p>
+          <h1>Every order.<br/>Every detail.<br/>One workspace.</h1>
+          <p>Your shared workspace for sales, operations, accounts and customer support.</p>
           <ul className="ds-auth-points">{POINTS.map((p) => <li key={p}><Icon name="check" />{p}</li>)}</ul>
         </div>
-        <p style={{ fontSize: 'var(--text-xs)', opacity: 0.75 }}>Tally connection is read-only. Your data stays in your database.</p>
+        <p style={{ fontSize: 'var(--text-xs)', opacity: 0.75 }}>Access follows your account permissions and security policy.</p>
       </section>
 
       <section className="ds-auth-form">
         <div className="ds-auth-card">
           {step === 'password' && (
             <form className="stack" method="post" action="/login" onSubmit={submitPassword} noValidate>
-              <div className="stack-sm"><h2>Sign in</h2><p className="muted">Use your ControlDesk email and password.</p></div>
+              <div className="stack-sm"><p className="cd-auth-eyebrow">YOUR BUSINESS WORKSPACE</p><h2>Welcome back</h2><p className="muted">Use your ControlDesk email and password.</p></div>
               <TextField label="Email" name="email" type="email" autoComplete="username" required value={email} onChange={(e) => setEmail(e.target.value)} />
               <TextField label="Password" name="password" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
               {error && <Notice tone="danger">{error}</Notice>}
