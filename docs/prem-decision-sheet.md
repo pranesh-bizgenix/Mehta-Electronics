@@ -22,6 +22,7 @@ Every row below is decided by **Prem / authorised Owner**. Options are limited t
 
 | Setting key | Plain question | Options (at most three) | Evidence or unconfirmed suggestion | What the answer unlocks |
 |---|---|---|---|---|
+| `intake.department_owners` | Who should own and back up incoming requests for each company and department? | Provide active primary and backup users | Sales assignment stays unchanged; no staff assignment is invented | New Operations, Accounts and Customer Support request assignment |
 | `sla.policy` | Which working days, working hours, timezone and deadlines should staff follow? | Provide the agreed schedule | No confirmed schedule; Owner supplies details | Business-hours deadlines and escalation |
 | `escalation.policy` | How long after a deadline should the backup and reporting manager be alerted? | Provide both delays | No evidenced number | In-app escalation |
 | `tasks.reminder_interval_minutes` | How often should an unfinished task be brought back to its owner? | Choose one interval | F1 gives a 2–3 hour range only; no single interval is proposed | Task reminder timing |

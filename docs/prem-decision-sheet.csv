@@ -46,3 +46,4 @@
 "tally.write.categories","Which write category may be considered for a later Tally release? Options: Sales orders; Purchase orders; Party ledgers","PROPOSED","[""SALES_ORDER""]","Master Prompt v2 D3; 2 Nov: sales orders only; switches stay OFF","",""
 "tally.write.items","Where must item masters be created? Options: Only in Tally","PROPOSED","""NONE""","Master Prompt v2 D3; BR-17","",""
 "tally.conflict.winner","Which system is authoritative when linked records conflict? Options: Tally; CRM with separate release review","PROPOSED","""TALLY""","Master Prompt v2 D3; BR-18","",""
+"intake.department_owners","Who should own and back up new Operations, Accounts and Customer Support requests for each company?","EMPTY","","","",""
