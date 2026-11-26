@@ -57,7 +57,7 @@ export type IconName = keyof typeof PATHS;
 
 export function Icon({ name, title, ...rest }: { name: IconName; title?: string } & SVGProps<SVGSVGElement>) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round"
+    <svg width={24} height={24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round"
       role={title ? 'img' : undefined} aria-hidden={title ? undefined : true} focusable="false" {...rest}>
       {title && <title>{title}</title>}
       <path d={PATHS[name]} />
