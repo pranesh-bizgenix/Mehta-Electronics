@@ -12,6 +12,9 @@ import {calculateQuotation,scaled,money} from '../public/quotation-math.js';
 import {writeAudit} from './db.js';
 import {withCommercialCharges} from './modules/sourcing/domain.js';
 import {decimal as exactDecimal,compare as exactCompare} from '../public/money.js';
+import {threeWayMatch,invoiceReference} from './modules/sourcing/three-way-match.js';
+import {renderPdf} from './modules/billing/pdf.js';
+import {calendarDay,deliverySchedule} from './modules/sourcing/delivery-schedule.js';
 const decimalEqual=(a,b)=>exactCompare(exactDecimal(a),exactDecimal(b))===0;
 
 const tables={vendors:'crm_procurement_vendors',requests:'crm_purchase_requests',rfqs:'crm_rfqs',replies:'crm_rfq_vendor_replies',pos:'crm_supplier_pos',grns:'crm_grns',documents:'crm_supplier_documents'};
@@ -177,13 +180,46 @@ export async function documentComparison(db,documentId,user){const doc=await pur
  if(po.sales_order_id){customer=await orderDetail(db,po.sales_order_id,user);if(customer.version!==po.payload.sourceOrder.version)flags.push({code:'CUSTOMER_PO_CHANGED'});const customerAlerts=compareLines(customer.lines,actual);flags.push(...customerAlerts.filter(a=>!['RATE_DIFFERENCE','DISCOUNT_DIFFERENCE',...(!priced?['TAX_DIFFERENCE']:[])].includes(a.code)).map(a=>({...a,code:'CUSTOMER_'+a.code})));
  if(priced){const policy=await quotePolicy(db);margin=exactMargin(customer,actual,policy);if(!margin)flags.push({code:'MARGIN_UNAVAILABLE'});else if(margin.belowFloor)flags.push({code:'MARGIN_BELOW_FLOOR'});}
  }
- const result={flags,supplierPO:{id:po.id,number:po.number,lines:po.payload.lines,total:po.payload.total},customerPO:customer?{number:customer.poNumber,version:customer.version,lines:customer.lines,total:customer.total}:null,supplierDocument:{id:doc.id,reference:doc.payload.reference,lines:actual,total:doc.payload.total??null},margin};
+ let receiptMatch=null;
+ if(doc.kind==='DISPATCH_INVOICE'){
+  const receipts=await db.prepare("SELECT id,version,status,is_deleted,payload FROM crm_grns WHERE supplier_po_id=? AND status='POSTED' AND NOT is_deleted ORDER BY id").all(po.id);
+  const invoices=await db.prepare("SELECT id,version,status,kind,is_deleted,payload FROM crm_supplier_documents WHERE supplier_po_id=? AND kind='DISPATCH_INVOICE' AND id<>? AND status='REVIEWED' AND NOT is_deleted ORDER BY id").all(po.id,doc.id);
+  const duplicates=invoiceReference(doc.payload.reference)?await db.prepare("SELECT d.id,d.version FROM crm_supplier_documents d JOIN crm_supplier_pos p ON p.id=d.supplier_po_id WHERE p.vendor_id=? AND d.kind='DISPATCH_INVOICE' AND d.id<>? AND d.status<>'ARCHIVED' AND NOT d.is_deleted AND upper(trim(d.payload->>'reference'))=? ORDER BY d.id").all(po.vendor_id,doc.id,invoiceReference(doc.payload.reference)):[];
+  receiptMatch=threeWayMatch({po,invoice:doc,receipts,priorInvoices:invoices,duplicateInvoices:duplicates});flags.push(...receiptMatch.blockers,...receiptMatch.differences);
+ }
+ const result={flags,receiptMatch,supplierPO:{id:po.id,number:po.number,lines:po.payload.lines,total:po.payload.total},customerPO:customer?{number:customer.poNumber,version:customer.version,lines:customer.lines,total:customer.total}:null,supplierDocument:{id:doc.id,reference:doc.payload.reference,lines:actual,total:doc.payload.total??null},margin};
  return {...result,fingerprint:digest({version:doc.version,poVersion:po.version,customerVersion:customer?.version,result})};
 }
-export async function approveDocument(db,documentId,b,user){const why=reason(b);return work(db,user,why,async()=>{can(user,'purchasing.approve');const old=await purchaseRecord(db,'documents',documentId,user);stale(old,b);if(old.status!=='PENDING_REVIEW')fail(409,'Document is not pending review.');if(old.created_by===user.id||old.payload._editor===user.id)fail(403,'A different reviewer must verify the supplier document.');const check=await documentComparison(db,documentId,user);if(b.fingerprint!==check.fingerprint)fail(409,'Comparison changed. Reload.');if(!old.payload.lines?.length)fail(422,'Enter the supplier document details manually first.');if(check.flags.length&&b.acceptExceptions!==true)fail(422,'Explicitly accept the documented mismatches.');await db.prepare("UPDATE crm_supplier_documents SET status='REVIEWED',review_fingerprint=? WHERE id=?").run(check.fingerprint,old.id);const after=await purchaseRecord(db,'documents',documentId,user);await event(db,'documents',old,after,user,'SUPPLIER_DOCUMENT_REVIEWED',why,{check});return after;
+export async function approveDocument(db,documentId,b,user){const why=reason(b);return work(db,user,why,async()=>{can(user,'purchasing.approve');const old=await purchaseRecord(db,'documents',documentId,user);stale(old,b);if(old.status!=='PENDING_REVIEW')fail(409,'Document is not pending review.');if(old.created_by===user.id||old.payload._editor===user.id)fail(403,'A different reviewer must verify the supplier document.');const check=await documentComparison(db,documentId,user);if(b.fingerprint!==check.fingerprint)fail(409,'Comparison changed. Reload.');if(!old.payload.lines?.length)fail(422,'Enter the supplier document details manually first.');if(check.receiptMatch?.blockers.length)fail(409,'Resolve supplier invoice receipt, quantity and duplicate-reference blockers before approval.');if(check.flags.length&&b.acceptExceptions!==true)fail(422,'Explicitly accept the documented mismatches.');await db.prepare("UPDATE crm_supplier_documents SET status='REVIEWED',review_fingerprint=? WHERE id=?").run(check.fingerprint,old.id);const after=await purchaseRecord(db,'documents',documentId,user);await event(db,'documents',old,after,user,'SUPPLIER_DOCUMENT_REVIEWED',why,{check});return after;
  });}
 export async function purchaseHistory(db,kind,recordId,user){await purchaseRecord(db,kind,recordId,user);return db.prepare('SELECT e.*,u.name AS actor FROM crm_procurement_events e JOIN users u ON u.id=e.created_by WHERE entity=? AND record_id=? ORDER BY e.id DESC').all(kind,id(recordId));}
-export async function supplierPoDetail(db,poId,user){const po=await purchaseRecord(db,'pos',poId,user);return {...po,check:await supplierPoCheck(db,poId,user),documents:await db.prepare(`SELECT ${docColumns} FROM crm_supplier_documents WHERE supplier_po_id=? ORDER BY id DESC`).all(po.id),grns:await db.prepare('SELECT * FROM crm_grns WHERE supplier_po_id=? ORDER BY id DESC').all(po.id)};}
+export async function supplierInvoiceMatchPdf(db,documentId,body,user){
+ can(user);const why=reason(body),check=await documentComparison(db,documentId,user),match=check.receiptMatch;
+ if(!match)fail(422,'Receipt matching is available for supplier invoice documents only.');
+ const bytes=await renderPdf({title:'Supplier invoice matching',subtitle:`${check.supplierPO.number} | Invoice ${check.supplierDocument.reference||'Not supplied'}`,sections:[{label:'Basis',value:match.note},{label:'Review result',value:match.blockers.length?'Blocked: '+match.blockers.map(f=>f.code).join(', '):match.differences.length?'Commercial review: '+match.differences.map(f=>f.code).join(', '):'Quantities and recorded prices matched'},{label:'Evidence',value:`Posted receipt IDs: ${match.receiptEvidence.map(r=>r.id).join(', ')||'None'} | Prior reviewed invoice IDs: ${match.invoiceEvidence.map(r=>r.id).join(', ')||'None'}`}],columns:[{label:'Item / UoM',fraction:.23},{label:'Ordered',fraction:.12},{label:'Accepted',fraction:.13},{label:'Rejected',fraction:.12},{label:'Prior billed',fraction:.13},{label:'This invoice',fraction:.14},{label:'Unbilled',fraction:.13}],rows:match.rows.map(r=>[r.partCode+' / '+r.uom,r.ordered,r.accepted,r.rejected,r.previouslyInvoiced,r.thisInvoice,r.remainingAccepted]),afterSections:[{label:'Evidence fingerprint',value:check.fingerprint}]});
+ await writeAudit(db,{userId:user.id,entity:'PROCUREMENT',recordId:'documents:'+id(documentId),action:body.preview===true?'MATCH_PDF_PREVIEW':'MATCH_PDF_DOWNLOAD',reason:why,newValue:{fingerprint:check.fingerprint,rowCount:match.rows.length}});
+ return {bytes,filename:'supplier-invoice-'+id(documentId)+'-matching.pdf'};
+}
+export async function supplierDeliverySchedule(db,poId,user){
+ const po=await purchaseRecord(db,'pos',poId,user),receipts=await db.prepare("SELECT payload,status,is_deleted FROM crm_grns WHERE supplier_po_id=? AND status='POSTED' AND NOT is_deleted").all(po.id);
+ const revision=await db.prepare("SELECT id,detail,reason FROM crm_procurement_events WHERE entity='pos' AND record_id=? AND action='DELIVERY_PROMISE_REVISED' ORDER BY id DESC LIMIT 1").get(po.id);
+ const order=po.sales_order_id?await db.prepare('SELECT promised_date::text AS promised FROM sales_orders WHERE id=?').get(po.sales_order_id):null;
+ return deliverySchedule({po,receipts,revision,customerDate:order?.promised??null,today:today()});
+}
+export async function reviseSupplierDelivery(db,poId,b,user){
+ const why=reason(b),promisedDate=calendarDay(b.promisedDate),evidence=text(b.evidence??'',2000);
+ if(b.supplierConfirmed!==true||evidence.length<3)fail(422,'Confirm the supplier promise and provide its evidence reference.');
+ if(b.previousRevisionId!==null&&(!Number.isSafeInteger(b.previousRevisionId)||b.previousRevisionId<1))fail(422,'Reload the latest supplier delivery revision.');
+ return work(db,user,why,async()=>{
+  const po=await purchaseRecord(db,'pos',poId,user);stale(po,b);
+  const current=await supplierDeliverySchedule(db,po.id,user);
+  if(!current.canRevise)fail(409,'Only issued or partly received purchase orders accept delivery updates.');
+  if(current.revisionId!==b.previousRevisionId)fail(409,'Another delivery update was saved. Reload before recording this promise.');
+  await event(db,'pos',po,po,user,'DELIVERY_PROMISE_REVISED',why,{promisedDate,evidence,supplierConfirmed:true,previousRevisionId:current.revisionId,previousPromisedDate:current.promisedDate,originalDate:current.originalDate});
+  return supplierDeliverySchedule(db,po.id,user);
+ });
+}
+export async function supplierPoDetail(db,poId,user){const po=await purchaseRecord(db,'pos',poId,user);return {...po,deliverySchedule:await supplierDeliverySchedule(db,poId,user),check:await supplierPoCheck(db,poId,user),documents:await db.prepare(`SELECT ${docColumns} FROM crm_supplier_documents WHERE supplier_po_id=? ORDER BY id DESC`).all(po.id),grns:await db.prepare('SELECT * FROM crm_grns WHERE supplier_po_id=? ORDER BY id DESC').all(po.id)};}
 export async function cancelPurchaseRecord(db,kind,recordId,b,user){const why=reason(b);return work(db,user,why,async()=>{if(!['requests','rfqs','grns'].includes(kind))fail(422,'Cancellation is unavailable for this record type.');const old=await purchaseRecord(db,kind,recordId,user);stale(old,b);
  if(old.status==='CANCELLED'||kind==='grns'&&old.status==='POSTED')fail(409,'Posted or cancelled record cannot be cancelled.');
  if(kind==='requests'&&await db.prepare("SELECT id FROM crm_rfqs WHERE request_id=? AND status<>'CANCELLED'").get(old.id))fail(409,'Cancel active RFQs first.');
