@@ -26,12 +26,12 @@ export const NAV: NavGroup[] = [
     { href: '/email-automation/errors', label: 'Error center', icon: 'alert' as IconName, permission: 'email_automation.read' }
   ] }] : []),
   { label: 'Overview', items: [
-    { href: '/notifications', label: 'Saved notifications', icon: 'bell', permission: 'authenticated', keywords: 'notification history unread messages payment reminders dues' },
     { href: '/dashboard', label: 'Dashboard', icon: 'dashboard', permission: 'dashboard.read', keywords: 'home owner kpi' },
+    { href: '/notifications', label: 'Saved notifications', icon: 'bell', permission: 'authenticated', keywords: 'notification history unread messages payment reminders dues' },
     { href: '/reports', label: 'Business report PDFs', icon: 'quote', permission: 'authenticated', keywords: 'export pdf reports' },
     { href: '/work', label: 'My work', icon: 'clock', permission: 'work.read', badge: 'slaBreaches', badgeTone: 'danger', keywords: 'sla due' }
   ] },
-  { label: 'Sales', items: [
+  { label: 'Sales', collapsible: true, items: [
     { href: '/incoming-requests', label: 'Incoming requests', icon: 'inbox', permission: 'sales_intake.read', keywords: 'email whatsapp customer po enquiry quotation request inbox' },
     { href: '/customers', label: 'Customers', icon: 'customers', permission: 'customers.read', keywords: 'crm 360 party' },
     { href: '/contracts', label: 'Customer contracts', icon: 'quote', permission: 'customers.read', keywords: 'rate contract fixed price quantity validity' },
@@ -40,27 +40,35 @@ export const NAV: NavGroup[] = [
     { href: '/billing', label: 'Invoice documents', icon: 'ledger', permission: 'collections.read', keywords: 'invoice pdf tally copy billing' },
     { href: '/messages', label: 'Outbound drafts', icon: 'mail', permission: 'outbound.read', badge: 'draftsAwaitingApproval', keywords: 'email approval' }
   ] },
-  { label: 'Operations', items: [
+  { label: 'Operations', collapsible: true, items: [
     { href: '/orders', label: 'Order status', icon: 'truck', permission: 'orders.read', keywords: 'sales orders supplied pending partial dispatch lr delivery customer po' },
     { href: '/items/stock-checks', label: 'Stock', icon: 'items', permission: 'items.read', keywords: 'inventory availability warehouse free reserved stock checks daily analysis' },
-    { href: '/purchasing', label: 'Procurement', icon: 'cart', permission: 'purchasing.read', keywords: 'purchasing supplier comparison rfq purchase request po grn goods receipt' }
+    { href: '/purchasing', label: 'Procurement', icon: 'cart', permission: 'purchasing.read', keywords: 'purchasing supplier comparison rfq purchase request po grn goods receipt' },
+    { href: '/purchasing/sourcing', label: 'Supplier comparisons', icon: 'cart', permission: 'purchasing.read', keywords: 'pack conversions freight landed cost vendor quotations' },
+    { href: '/operations/delivery-tracking', label: 'Delivery tracking', icon: 'truck', permission: 'orders.read', keywords: 'manual shipment transporter lr delivery proof' }
   ] },
-  { label: 'Accounts', items: [
+  { label: 'Accounts', collapsible: true, items: [
     { href: '/accounts/incoming', label: 'Incoming Accounts requests', icon: 'inbox', permission: 'collections.read', keywords: 'finance email payments reminders due invoice requests' },
     { href: '/accounts/adjustments', label: 'Credit / debit requests', icon: 'ledger', permission: 'collections.read', keywords: 'credit debit adjustment approval review' }
   ] },
-  { label: 'Supply', items: [
+  { label: 'Customer Support', collapsible: true, items: [
+    { href: '/support/incoming', label: 'Incoming Support requests', icon: 'inbox', permission: 'operations.read', keywords: 'product enquiries complaints warranty email support inbox' },
+    { href: '/operations?kind=SUPPORT', label: 'Customer complaints', icon: 'inbox', permission: 'operations.read' },
+    { href: '/operations?kind=WARRANTY', label: 'Warranty claims', icon: 'quote', permission: 'operations.read' },
+    { href: '/operations?kind=RETURN', label: 'Returns & replacements', icon: 'truck', permission: 'operations.read' }
+  ] },
+  { label: 'Supply', collapsible: true, items: [
     { href: '/logistics', label: 'Logistics & store', icon: 'truck', permission: 'logistics.read', keywords: 'grn dispatch photos assigned orders store' },
     { href: '/items', label: 'Items & price lists', icon: 'items', permission: 'items.read', keywords: 'sku products stock' },
     { href: '/purchasing/rfqs', label: 'Vendor RFQ documents', icon: 'quote', permission: 'purchasing.read' },
     { href: '/purchasing/purchase-orders', label: 'Supplier PO documents', icon: 'quote', permission: 'purchasing.read' }
   ] },
-  { label: 'Work', items: [
+  { label: 'Work', collapsible: true, items: [
     { href: '/operations', label: 'Support & collections', icon: 'inbox', permission: 'operations.read', keywords: 'incoming email complaints warranty returns receipts payments invoices' },
     { href: '/tasks', label: 'Tasks', icon: 'tasks', permission: 'tasks.read', badge: 'openTasks', keywords: 'board todo' },
     { href: '/exceptions', label: 'Exceptions', icon: 'alert', permission: 'exceptions.read', badge: 'openExceptions', badgeTone: 'warning', keywords: 'approvals queue' }
   ] },
-  { label: 'Tally', items: [
+  { label: 'Tally', collapsible: true, items: [
     { href: '/tally', label: 'Tally & reconciliation', icon: 'ledger', permission: 'tally.read', keywords: 'ledgers stock groups' },
     { href: '/tally/conflicts', label: 'Tally conflicts', icon: 'ledger', permission: 'tally.read', keywords: 'differences recovery reconciliation' },
     { href: '/tally/monitor', label: 'Sync monitor', icon: 'plug', permission: 'tally.read', keywords: 'sync jobs queue delivery indexing retry' },
