@@ -1,6 +1,6 @@
 import PDFDocument from 'pdfkit';
 import {drawCompanyLogo} from '../../document-branding.js';
-import {formatIndian} from '../../../public/money.js';
+export {createInvoicePdf as invoicePdf} from './invoice-pdf.js';
 
 // One bounded, wrapping renderer for billing and reports. No HTML, network assets,
 // internal costs, margins, credentials or arbitrary payload fields enter PDFs.
@@ -21,11 +21,4 @@ export function renderPdf({title,subtitle,sections,afterSections=[],rows,columns
   const range=doc.bufferedPageRange();for(let i=0;i<range.count;i++){doc.switchToPage(i);const footerMargin=doc.page.margins.bottom;doc.page.margins.bottom=0;doc.fillColor('#566476').font('Helvetica').fontSize(8).text(`${draft?'DRAFT | ':''}Mehta ControlDesk | Page ${i+1} of ${range.count}`,42,doc.page.height-42,{width,align:'center',lineBreak:false});doc.page.margins.bottom=footerMargin;}
   doc.end();
  });
-}
-export function invoicePdf(record){
- const p=record.payload,t=p.totals,draft=record.status!=='ISSUED';
- return renderPdf({title:draft?'Invoice draft':'Tax invoice',subtitle:`${record.number||record.id} | ${p.date}`,draft,
-  sections:[{label:'Issuer',value:`${p.company.name||'[Company name unconfirmed]'}\n${p.company.address||'[Address unconfirmed]'}\nGSTIN: ${p.company.gstin||'[GSTIN unconfirmed]'}\n${p.company.contact||''}`},{label:'Bill to',value:`${p.customer.name}\n${p.billTo}\nGSTIN: ${p.customer.gstin||'Unregistered / not supplied'}`},{label:'Ship to / place of supply',value:`${p.shipTo}\nState: ${p.placeOfSupply}`}],afterSections:[{label:'Totals (INR)',value:`Taxable ${t.subtotal} | CGST ${t.cgst} | SGST ${t.sgst} | IGST ${t.igst}\nRound-off ${t.roundOff} | Grand total ${formatIndian(t.total)}\n${p.amountInWords}`},{label:'Terms / signatory',value:`${p.terms||'[Terms not supplied]'}\n${p.company.signatory||'[Signatory unconfirmed]'}`}],
-  columns:[{label:'Item / description',fraction:.32},{label:'HSN / UoM',fraction:.15},{label:'Qty',fraction:.1},{label:'Net rate INR',fraction:.15},{label:'GST %',fraction:.1},{label:'Amount INR',fraction:.18}],
-  rows:p.lines.map(l=>[`${l.code}\n${l.description}`,`${l.hsn}\n${l.uom}`,l.quantity,l.unitPrice,l.taxPercent,l.net])});
 }

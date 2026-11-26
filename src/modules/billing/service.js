@@ -5,7 +5,7 @@ import {writeAudit} from '../../db.js';
 import {forbidden,conflict,notFound,validationFailed} from '../../core/errors.js';
 import {format,decimal,mul,div,sub} from '../../../public/money.js';
 import {financialYear} from '../../purchase-document-math.js';
-import {text,uuid,validateBillingSettings,invoicePayload,invoiceNumber,originalPdf,requireIssuance} from './domain.js';
+import {text,uuid,validateBillingSettings,invoicePayload,invoiceNumber,originalPdf,requireIssuance,invoiceReferences} from './domain.js';
 import {invoicePdf} from './pdf.js';
 
 export function financeAccess(user,write=false,approve=false){
@@ -53,7 +53,7 @@ export async function create(db,u,b){
   if(b.source==='CRM'){if(customer.status!=='ACTIVE')throw conflict('CRM invoice drafts require an active customer.');await requireCustomerBillingApproval(db,customerId);}
   const config=await settings(db);let payload,number=null,shipment=null,reference=null;
   if(b.source==='CRM'){
-   let input=b;if(b.shipmentId){const data=await shipmentData(db,b.shipmentId,customerId);shipment=data.shipment;input={...b,lines:data.lines,placeOfSupply:shipment.public_snapshot.placeOfSupply};}
+   let input=b;if(b.shipmentId){const data=await shipmentData(db,b.shipmentId,customerId);shipment=data.shipment;const refs=invoiceReferences(b.references),source={salesOrderNumber:shipment.public_snapshot.order_number,customerPoNumber:shipment.public_snapshot.poNumber,consignmentNote:shipment.lr_number,carrier:shipment.transporter};input={...b,references:{...refs,...Object.fromEntries(Object.entries(source).filter(([,value])=>typeof value==='string'&&value.trim()))},lines:data.lines,placeOfSupply:shipment.public_snapshot.placeOfSupply};}
    payload=invoicePayload({...input,terms:input.terms||config.value.terms||''},customer,config.value);payload.shipmentVersion=shipment?.order_version??null;
   }else{
    reference=await db.prepare("SELECT * FROM crm_operations WHERE id=? AND kind='INVOICE' AND customer_id=? AND status<>'CANCELLED'").get(uuid(b.invoiceReferenceId),customerId);
