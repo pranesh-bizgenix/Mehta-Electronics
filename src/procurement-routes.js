@@ -17,6 +17,7 @@ export function procurementRoutes({db,route,json,readJson}){
  route('POST','/api/crm/purchasing/pos','purchasing.write',save((x,b,u)=>p.saveSupplierPo(db,null,b,u),201)),
  route('PUT','/api/crm/purchasing/pos/:id','purchasing.write',save((x,b,u)=>p.saveSupplierPo(db,x.id,b,u))),
  route('GET','/api/crm/purchasing/pos/:id/detail','purchasing.read',async({res,params,user})=>json(res,200,{data:await p.supplierPoDetail(db,params.id,user)})),
+ route('POST','/api/crm/purchasing/pos/:id/delivery-promise','purchasing.write',save((x,b,u)=>p.reviseSupplierDelivery(db,x.id,b,u))),
  route('POST','/api/crm/purchasing/pos/:id/actions','purchasing.write',save((x,b,u)=>p.supplierPoAction(db,x.id,b,u))),
  route('GET','/api/crm/purchasing/pos/:id/export','purchasing.read',async({res,params,user,url})=>{
  if(url.searchParams.get('format')!=='generic')fail(409,'Connectwell export is pending the original Excel template. Generic export is available explicitly with format=generic.');
@@ -31,6 +32,7 @@ export function procurementRoutes({db,route,json,readJson}){
  route('GET','/api/crm/purchasing/documents/:id/original','purchasing.read',async({res,params,user,url})=>{const d=await p.supplierOriginal(db,params.id,user),inline=url.searchParams.get('inline')==='1';res.writeHead(200,{'content-type':d.mime_type,'content-disposition':`${inline?'inline':'attachment'}; filename="original-${params.id}"; filename*=UTF-8''${encodeURIComponent(d.original_name)}`,'content-length':d.original_bytes.length,'cache-control':'no-store','x-content-type-options':'nosniff','x-frame-options':'SAMEORIGIN','content-security-policy':"sandbox; default-src 'none'; frame-ancestors 'self'"});res.end(d.original_bytes);}),
  route('PUT','/api/crm/purchasing/documents/:id/review-data','purchasing.write',save((x,b,u)=>p.saveDocumentReview(db,x.id,b,u))),
  route('GET','/api/crm/purchasing/documents/:id/comparison','purchasing.read',async({res,params,user})=>json(res,200,{data:await p.documentComparison(db,params.id,user)})),
+ route('POST','/api/crm/purchasing/documents/:id/matching-pdf','purchasing.read',async({req,res,params,user})=>{const body=await readJson(req);if(!body||typeof body!=='object'||Array.isArray(body))fail(422,'Provide a PDF access reason.');const file=await p.supplierInvoiceMatchPdf(db,params.id,body,user);res.writeHead(200,{'content-type':'application/pdf','content-length':file.bytes.length,'content-disposition':`${body.preview===true?'inline':'attachment'}; filename="${file.filename}"`,'cache-control':'no-store'});res.end(file.bytes);}),
  route('POST','/api/crm/purchasing/documents/:id/approve','purchasing.approve',save((x,b,u)=>p.approveDocument(db,x.id,b,u))),
  route('POST','/api/crm/purchasing/:kind/:id/cancel','purchasing.write',save((x,b,u)=>p.cancelPurchaseRecord(db,x.kind,x.id,b,u))),
  route('GET','/api/crm/purchasing/:kind/:id/history','purchasing.read',async({res,params,user})=>json(res,200,{data:await p.purchaseHistory(db,params.kind,params.id,user)})),
