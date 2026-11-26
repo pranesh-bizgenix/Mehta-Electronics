@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState, type ReactNode } from 'react';
 import { Avatar, Button, ErrorState, Icon, IconButton, Kbd, Menu, Spinner, useAsync, useHotkey } from '@/components/ds';
 import { formatRelative, initials } from '@/lib/format';
@@ -14,6 +14,7 @@ import { NAV, type BadgeKey } from './nav-config';
 import {CompanyFreshness} from '@/features/workflows/tally-freshness';
 import {TallyWriteLiveBanner} from '@/features/tally-write/live-banner';
 import {BrandLogo} from '@/components/brand-logo';
+import {selectNavigationItem} from '../../../../public/navigation-match.js';
 
 type Badges = Partial<Record<BadgeKey | 'unreadNotifications', number>>;
 interface Notification { id: string; type: string; title: string; message: string; read: boolean; createdAt: string;entityType?:string;entityId?:string }
@@ -23,6 +24,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { state, can, logout, refresh } = useSession();
   const api = useApi();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const selectedNavigation = selectNavigationItem(NAV.flatMap(group=>group.items),pathname,searchParams);
   const router = useRouter();
   const { preferences, update } = usePreferences();
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -32,7 +35,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   useHotkey('k', () => setPaletteOpen(true));
   useEffect(() => { setDrawerOpen(false); }, [pathname]);
-  useEffect(() => {for(const group of NAV)if((group.label==='Admin'||group.collapsible)&&group.items.some(item=>pathname===item.href||(group.collapsible&&pathname.startsWith(`${item.href}/`))))setOpenGroups(value=>({...value,[group.label]:true}));},[pathname]);
+  useEffect(() => {for(const group of NAV)if((group.label==='Admin'||group.collapsible)&&group.items.some(item=>item.href===selectedNavigation?.href))setOpenGroups(value=>({...value,[group.label]:true}));},[selectedNavigation?.href]);
   useEffect(() => {
     if (state.kind === 'anonymous') router.replace(`/login?next=${encodeURIComponent(pathname)}`);
     if (state.kind === 'ready' && state.mfa.required && !state.mfa.verified) router.replace('/login');
@@ -47,9 +50,9 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   const counts: Badges = badges.status === 'ready' ? badges.data : badges.data ?? {};
   const collapsed = preferences.sidebarCollapsed;
-  const protectedScreen = NAV.flatMap(group => group.items).filter(item => pathname === item.href || pathname.startsWith(`${item.href}/`)).sort((a, b) => b.href.length - a.href.length)[0];
+  const protectedScreen = selectedNavigation;
   const screenAllowed = pathname === '/operations/requests' ? ['orders.read','items.read','purchasing.read','operations.read'].some(key=>can(key)) : !protectedScreen || ((!protectedScreen.ownerOnly || state.user.role === 'OWNER') && (protectedScreen.permission === 'authenticated' || can(protectedScreen.permission)));
-  const activeScreen = NAV.flatMap(group=>group.items).filter(item=>pathname===item.href||pathname.startsWith(`${item.href}/`)).sort((a,b)=>b.href.length-a.href.length)[0]?.label ?? 'Workspace';
+  const activeScreen = selectedNavigation?.label ?? 'Workspace';
 
   return (
     <div className="ds-app" data-collapsed={collapsed}>
@@ -69,7 +72,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 {group.label==='Admin'||group.collapsible?<button type="button" className="ds-nav-group ds-nav-group-toggle" aria-expanded={Boolean(openGroups[group.label])||collapsed} onClick={()=>setOpenGroups(value=>({...value,[group.label]:!value[group.label]}))}>{group.label==='Admin'?'Administration':group.label}<Icon name={openGroups[group.label]?'chevronDown':'chevronRight'}/></button>:<p className="ds-nav-group">{group.label}</p>}
                 {(!(group.label==='Admin'||group.collapsible)||openGroups[group.label]||collapsed)&&items.map((item) => {
                   const count = item.badge ? counts[item.badge] : undefined;
-                  const current = protectedScreen?.href === item.href && (pathname === item.href || (item.href !== '/tally' && item.href !== '/purchasing' && pathname.startsWith(`${item.href}/`)));
+                  const current = protectedScreen?.href === item.href;
                   const content = <><Icon name={item.icon} /><span className="ds-nav-label">{item.label}</span>{!!count && <span className="ds-nav-badge" data-tone={item.badgeTone} aria-label={`${count} pending`}>{count > 99 ? '99+' : count}</span>}</>;
                   return <Link key={item.href} className="ds-nav-link" href={item.href} aria-current={current ? 'page' : undefined} title={collapsed ? item.label : undefined}>{content}</Link>;
                 })}
@@ -83,6 +86,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </nav>
 
       <div className="ds-main-column">
+        {process.env.NEXT_PUBLIC_UI_REVIEW === 'true' && <div className="cd-review-banner" role="status">Design preview ? Awaiting your approval ? Production is unchanged</div>}
         <header className="ds-topbar">
           <IconButton className="ds-mobile-only" icon="menu" label="Open navigation" aria-expanded={drawerOpen} aria-controls="app-sidebar" onClick={() => setDrawerOpen(true)} />
           <IconButton className="ds-desktop-only" icon="sidebar" label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'} onClick={() => update({ sidebarCollapsed: !collapsed })} />
@@ -151,7 +155,7 @@ function Notifications({ unread, onRead }: { unread: number; onRead: () => void 
       {items?.length === 0 && <p className="ds-menu-item muted">You’re all caught up.</p>}
       {items?.slice(0, 8).map((n) => (
         <button key={n.id} type="button" className="ds-menu-item" style={{ alignItems: 'flex-start', paddingBlock: 'var(--space-1)', height: 'auto' }}
-          onClick={() => { if (!n.read) void api.post(`/api/v1/notifications/${n.id}/read`, {}).then(onRead);if(n.entityId){const key=encodeURIComponent(n.entityId),href=n.entityType==='ACCOUNTS_INTAKE'?`/accounts/incoming?requestId=${key}`:n.entityType==='OPERATIONS_INTAKE'?`/operations/requests?operationRequestId=${key}`:n.entityType==='SALES_INTAKE'?`/incoming-requests?requestId=${key}`:n.entityType==='QUOTATION'?`/quotations/${key}`:n.entityType==='ENQUIRY'?`/enquiries?open=${key}`:null;if(href)router.push(href);} }}>
+          onClick={() => { if (!n.read) void api.post(`/api/v1/notifications/${n.id}/read`, {}).then(onRead);if(n.entityId){const key=encodeURIComponent(n.entityId),href=n.entityType==='SUPPORT_INTAKE'?`/support/incoming?requestId=${key}`:n.entityType==='ACCOUNTS_INTAKE'?`/accounts/incoming?requestId=${key}`:n.entityType==='OPERATIONS_INTAKE'?`/operations/requests?operationRequestId=${key}`:n.entityType==='SALES_INTAKE'?`/incoming-requests?requestId=${key}`:n.entityType==='QUOTATION'?`/quotations/${key}`:n.entityType==='ENQUIRY'?`/enquiries?open=${key}`:null;if(href)router.push(href);} }}>
           <Icon name={n.type === 'ESCALATION' ? 'alert' : 'bell'} />
           <span className="stack-sm" style={{ gap: 0, minWidth: 0 }}><strong className={n.read ? 'muted' : undefined}>{n.title}</strong><span className="ds-cell-secondary">{formatRelative(n.createdAt)}</span></span>
         </button>
