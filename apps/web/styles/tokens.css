@@ -259,3 +259,33 @@
   --elevation-4: 0 8px 18px rgb(var(--shadow-color) / 0.34), 0 24px 48px rgb(var(--shadow-color) / 0.28);
   --skeleton-base: #27354A; --skeleton-shine: #34445F;
 }
+/* Approval-preview workspace system. Figma: NgRXbN5qoITs3AGDXQT4H6.
+   All screens use the same tokens; existing business/status meanings are retained. */
+:root {
+  --sidebar-width: 240px; --topbar-height: 72px; --content-max: 1504px;
+  --font-display: var(--font-sans); --nav-row-height: 42px;
+  --cd-icon-well: 40px; --cd-card-radius: 12px; --cd-form-radius: 8px;
+  --cd-filter-width: 216px; --cd-dialog-max: 880px; --cd-field-height: 44px;
+  --cd-hero-start: #101B33; --cd-hero-end: #1B3D7A; --cd-on-hero: #FFFFFF; --cd-muted-hero: #B7C8E8; --cd-hero-orbit: #36548F;
+  --cd-preview-height: 640px; --cd-auth-panel-width: 520px;
+}
+:root, :root[data-theme="light"] {
+  --color-canvas: #F6F8FC; --color-surface: #FFFFFF; --color-surface-raised: #FFFFFF;
+  --color-surface-sunken: #F8FAFD; --color-border: #E6EBF3; --color-border-strong: #CCD5E3;
+  --color-text: #18263D; --color-text-heading: #18263D; --color-text-muted: #63718A; --color-text-subtle: #63718A;
+  --color-sidebar: #101B33; --color-sidebar-title: #FFFFFF; --color-sidebar-text: #BBC9E4; --color-sidebar-muted: #9AAED0;
+  --color-sidebar-hover: #1B2D4E; --color-sidebar-active: #264594; --color-sidebar-active-text: #FFFFFF;
+  --color-sidebar-border: #243553; --color-sidebar-accent: #88A7FF;
+  --color-primary: #315EFB; --color-primary-hover: #254ED7; --color-primary-soft: #EDF2FF; --color-primary-soft-text: #254ED7;
+  --color-focus: #315EFB; --color-hover: #F5F7FC; --color-selected: #EDF2FF;
+}
+:root[data-theme="dark"] {
+  --color-canvas: #0D1422; --color-surface: #151F30; --color-surface-raised: #1B2940; --color-surface-sunken: #111B2B;
+  --color-border: #2B3850; --color-border-strong: #465672; --color-text: #F3F6FC; --color-text-heading: #F3F6FC;
+  --color-text-muted: #A4B1C6; --color-text-subtle: #A4B1C6;
+  --color-sidebar: #111B2B; --color-sidebar-title: #F3F6FC; --color-sidebar-text: #BAC7DB; --color-sidebar-muted: #A4B1C6;
+  --color-sidebar-hover: #1B2940; --color-sidebar-active: #233456; --color-sidebar-active-text: #B9C9FF; --color-sidebar-border: #2B3850;
+  --color-sidebar-accent: #99B0FF; --color-primary: #99B0FF; --color-primary-hover: #B9C9FF; --color-primary-text: #0D1422;
+  --color-primary-soft: #233456; --color-primary-soft-text: #C5D2FF; --color-focus: #99B0FF;
+  --color-hover: #1B2940; --color-selected: #233456;
+}
