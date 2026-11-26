@@ -706,8 +706,8 @@
       "reason": "Added by S0 migration 0040 as a reserved workflow structure, not a delivered UI/API feature. No business rows or policy values seeded."
     },
     "item_pack_factors": {
-      "status": "FOUNDATION",
-      "reason": "Added by S0 migration 0040 as a reserved workflow structure, not a delivered UI/API feature. No business rows or policy values seeded."
+      "status": "ACTIVE",
+      "reason": "SourcingService reuses the existing foundation table for dated supplier-pack conversions, independent review, audit provenance and PO conversion revalidation. No conversion values are seeded."
     },
     "kpi_confirmed_events": {
       "status": "FOUNDATION",
@@ -836,6 +836,18 @@
     "crm_customer_onboarding_events": {
       "status": "ACTIVE",
       "reason": "Append-only customer onboarding review events retained by migration 0057."
+    },
+    "crm_support_intakes": {
+      "status": "ACTIVE",
+      "reason": "Company-scoped Customer Support review inbox; immutable original source and provider-message identity; src/modules/support-intake."
+    },
+    "crm_support_intake_events": {
+      "status": "ACTIVE",
+      "reason": "Append-only audited Support review and case-link events; no email bodies in event metadata."
+    },
+    "crm_support_deliveries": {
+      "status": "ACTIVE",
+      "reason": "Immutable versioned Make Support JSON receipts retained for replay and source-history checks."
     }
   },
   "exceptions": {
@@ -1091,6 +1103,13 @@
     "automation_service_credentials.status": [
       "ACTIVE",
       "REVOKED"
+    ],
+    "crm_support_intakes.status": [
+      "NEEDS_REVIEW",
+      "REVIEWED",
+      "LINKED",
+      "CLOSED",
+      "REJECTED"
     ]
   },
   "notes": [
