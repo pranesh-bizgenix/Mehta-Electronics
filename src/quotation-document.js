@@ -1,7 +1,6 @@
 import {lineNet,format,formatIndian} from '../public/money.js';
-import PDFDocument from 'pdfkit';
-import { fileURLToPath } from 'node:url';
-import {drawCompanyLogo} from './document-branding.js';
+import {renderQuotationPdf} from './quotation-pdf-layout.js';
+import {SUPPLIER_TERMS_LABEL} from './quotation-supplier-terms.js';
 
 // Customer-facing quotation documents (print view and PDF).
 // Whitelist of public fields only: item code, description, HSN, quantity, the
@@ -24,7 +23,7 @@ export function inr(value) { return `\u20b9${formatIndian(value)}`; }
 
 const qty = (value) => { const [w, f = ''] = String(value).split('.'); const frac = f.replace(/0+$/, ''); return `${group(w)}${frac ? `.${frac}` : ''}`; };
 const pct = (value) => `${String(value).replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '')}%`;
-const dateText = (iso) => { const d = new Date(`${iso}T00:00:00+05:30`); return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Kolkata' }); };
+const dateText = (iso) => { const d = new Date(typeof iso==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(iso)?`${iso}T00:00:00+05:30`:iso); return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Kolkata' }); };
 
 const ONES = ['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen'];
 const TENS = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety'];
@@ -58,152 +57,46 @@ function taxRows(q) {
 }
 
 export function quotationPrintHtml(q) {
-  const e = escape, l = q.letterhead ?? {}, issued = ISSUED.includes(q.status)&&!q.request?.referenceOnly;
-  return `<!doctype html><html lang="en-IN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Quotation ${e(q.quotation_number)}</title><link rel="stylesheet" href="/quotation-print.css"></head><body>
-<div class="toolbar"><button id="print" type="button">Print or save as PDF</button></div>
-<article class="sheet${issued ? '' : ' draft'}">
-
-<header class="letterhead"><div class="brand"><span class="mark">${e((l.name || 'M').trim().charAt(0))}</span><div><h1>${e(l.name)}</h1><p>${e(l.address)}</p></div></div>
-<dl class="contact">${l.gstin ? `<div><dt>GSTIN</dt><dd>${e(l.gstin)}</dd></div>` : ''}${l.phone ? `<div><dt>Phone</dt><dd>${e(l.phone)}</dd></div>` : ''}${l.email ? `<div><dt>Email</dt><dd>${e(l.email)}</dd></div>` : ''}</dl></header>
-<section class="title"><h2>Quotation</h2><p class="status">${issued ? '' : 'DRAFT — NOT APPROVED FOR ISSUE · '}Version ${e(q.version)}</p></section>
-${q.request?.referenceOnly?'<p class="block">DEVELOPMENT REFERENCE ONLY - HISTORICAL PRICING - NOT FOR CUSTOMER ISSUE</p>':''}
-<section class="parties"><div><h3>Bill to</h3><p class="strong">${e(q.customer_name)}</p><p class="multiline">${e(q.customerAddress || '')}</p>${q.customerGstin ? `<p>GSTIN ${e(q.customerGstin)}</p>` : ''}</div>
-<dl class="meta"><div><dt>Quotation no.</dt><dd>${e(q.quotation_number)}</dd></div><div><dt>Valid until</dt><dd>${e(dateText(q.validUntil))}</dd></div><div><dt>Place of supply</dt><dd>${e(stateLabel(q.placeOfSupply))}</dd></div></dl></section>
-${q.request?.reference?`<section class="block"><h3>Customer RFQ / reference</h3><p>${e(q.request.reference)}</p></section>`:''}
-${q.request?.quantityInstructions?`<section class="block"><h3>Quantity instructions${q.request.quantityConfirmed?' — reviewed':' — review pending'}</h3><p class="multiline">${e(q.request.quantityInstructions)}</p></section>`:''}
-<table><thead><tr><th>#</th><th>Item and description</th><th>HSN</th><th class="num">Qty</th><th class="num">Unit rate</th><th class="num">GST</th><th class="num">Amount</th></tr></thead><tbody>
-${rows(q).map((r) => `<tr><td class="idx">${r.n}</td><td class="item"><strong>${e(r.code)}</strong><span class="multiline">${e(r.description)}</span></td><td data-label="HSN">${e(r.hsn)}</td><td class="num" data-label="Qty">${e(r.qty)}</td><td class="num" data-label="Unit rate">${e(r.rate)}</td><td class="num" data-label="GST">${e(r.gst)}</td><td class="num" data-label="Amount">${e(r.amount)}</td></tr>`).join('')}
-</tbody></table>
-<section class="summary"><p class="words"><span>Amount in words</span>${e(amountInWords(q.total))}</p>
-<dl class="totals">${taxRows(q).map(([k, v]) => `<div><dt>${e(k)}</dt><dd>${e(inr(v))}</dd></div>`).join('')}<div class="grand"><dt>Total</dt><dd>${e(inr(q.total))}</dd></div></dl></section>
-${q.terms ? `<section class="block"><h3>Terms</h3><p class="multiline">${e(q.terms)}</p></section>` : ''}
-${q.notes ? `<section class="block"><h3>Notes</h3><p class="multiline">${e(q.notes)}</p></section>` : ''}
-<footer><p>This is a quotation, not a tax invoice. Prices in INR; GST as shown.</p><div class="sign"><span>For ${e(l.name)}</span><span>Authorised signatory</span></div></footer>
-</article><script type="module" src="/quotation-print.js"></script></body></html>`;
+ const e=escape,m=quotationDocumentModel(q),draft=m.notice?' draft':'';
+ const header=(section)=>`<header class="letterhead"><div class="brand"><img class="company-logo" src="/brand/mehta-logo.png" alt="Mehta company logo"><div><h1>${e(m.company.name)}</h1><p>${e(m.company.address)}</p><p>${e(m.company.contact)}</p><p>GSTIN: ${e(m.company.gstin||'[Not supplied]')}</p></div></div><p>${e(m.number)}<br>Version ${e(m.version)}</p></header><p class="section-label">${section}</p>${m.notice?`<p class="status">${e(m.notice)}</p>`:''}`;
+ return `<!doctype html><html lang="en-IN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Quotation ${e(m.number)}</title><link rel="stylesheet" href="/quotation-print.css"></head><body>
+ <div class="toolbar"><button id="print" type="button">Print or save as PDF</button></div>
+ <article class="sheet${draft}">${header('01 / Cover &amp; Summary')}
+ <section class="title"><h2>Supply quotation</h2></section>
+ <section class="parties"><div><h3>Prepared for</h3><p class="strong">${e(m.customer.name)}</p><p class="multiline">${e(m.customer.address)}</p><p>GSTIN: ${e(m.customer.gstin)}</p><p>Contact: ${e(m.customer.contact)}</p></div>
+ <dl class="meta">${[['Quotation no.',m.number],['Quotation date',m.date],['Valid until',m.validUntil],['Place of supply',m.placeOfSupply]].map(([label,value])=>`<div><dt>${label}</dt><dd>${e(value)}</dd></div>`).join('')}</dl></section>
+ <section class="block"><h3>Customer RFQ / reference</h3><p>${e(m.reference)}</p></section>
+ <section class="cover-total"><h3>Quotation total / INR</h3><p>${e(inr(q.total))}</p></section>
+ <section class="block"><h3>Included in this quotation</h3><ul>${m.items.slice(0,4).map(item=>`<li>${e(item.code)} - ${e(item.description.split('\n')[0])}</li>`).join('')}</ul><p>Full quantities, specifications and GST are shown in the pricing schedule.</p></section>
+ </article>
+ <article class="sheet${draft}">${header('02 / Itemized Pricing &amp; Scope')}<section class="title"><h2>Pricing schedule</h2></section><p>Prices in INR. Unit rates are net of any applicable discount.</p>
+ <table><thead><tr><th>#</th><th>Item and description</th><th>HSN</th><th class="num">Qty</th><th class="num">Unit rate</th><th class="num">GST</th><th class="num">Amount</th></tr></thead><tbody>
+ ${rows(q).map(r=>`<tr><td class="idx">${r.n}</td><td class="item"><strong>${e(r.code)}</strong><span class="multiline">${e(r.description)}</span></td><td data-label="HSN">${e(r.hsn)}</td><td class="num" data-label="Qty">${e(r.qty)}</td><td class="num" data-label="Unit rate">${e(r.rate)}</td><td class="num" data-label="GST">${e(r.gst)}</td><td class="num" data-label="Amount">${e(r.amount)}</td></tr>`).join('')}
+ </tbody></table><section class="summary"><p class="words"><span>Amount in words</span>${e(m.words)}</p><dl class="totals">${taxRows(q).map(([label,value])=>`<div><dt>${e(label)}</dt><dd>${e(inr(value))}</dd></div>`).join('')}<div class="grand"><dt>Total</dt><dd>${e(inr(q.total))}</dd></div></dl></section>
+ ${m.quantityInstructions?`<section class="block"><h3>Quantity instructions - ${q.request?.quantityConfirmed?'reviewed':'review pending'}</h3><p class="multiline">${e(m.quantityInstructions)}</p></section>`:''}</article>
+ <article class="sheet${draft}">${header('03 / Terms, Conditions &amp; Sign-Off')}<section class="title"><h2>Commercial terms</h2></section>
+ <section class="block"><h3>Payment, delivery, warranty and exclusions</h3><p class="multiline">${e(m.terms||'[Commercial terms not supplied. Confirm payment, delivery, warranty and exclusions before issue.]')}</p></section>
+ ${m.notes?`<section class="block"><h3>Notes</h3><p class="multiline">${e(m.notes)}</p></section>`:''}
+ <section class="block"><h3>Supplier reference attachment</h3><p>${e(m.supplierTermsLabel)}</p><p><a href="/api/crm/quotation-supplier-terms" target="_blank" rel="noopener">Download original KGEP supplier terms</a></p></section>
+ <div class="acceptance"><div class="sign"><span>For ${e(m.company.name)}</span><span>Authorised signatory</span></div><div><h3>Client acceptance / PO reference</h3><p>Name: _______________________</p><p>Signature: ____________________</p><p>Date: ________________________</p><p>PO reference: _________________</p></div></div>
+ <footer><p>This is a quotation, not a tax invoice. Prices in INR; GST as shown.</p></footer></article>
+ <script type="module" src="/quotation-print.js"></script></body></html>`;
 }
 
-const INK = '#1c2a24', MUTED = '#5e6b64', BRAND = '#125c40', LINE = '#dfe5e1', SOFT = '#eef6f1';
-
-export function quotationPdf(q) {
-  return new Promise((resolve, reject) => {
-    const doc = new PDFDocument({ size: 'A4', margins: { top: 48, bottom: 56, left: 48, right: 48 }, bufferPages: true, info: { Title: `Quotation ${q.quotation_number}`, Author: q.letterhead?.name ?? '' } });
-    const chunks = [];
-    doc.on('data', (c) => chunks.push(c)); doc.on('end', () => resolve(Buffer.concat(chunks))); doc.on('error', reject);
-    doc.font(fileURLToPath(new URL('./assets/NotoSansDevanagari.ttf', import.meta.url)));
-    const l = q.letterhead ?? {}, issued = ISSUED.includes(q.status)&&!q.request?.referenceOnly;
-    const left = 48, width = doc.page.width - 96, right = left + width;
-
-    // Letterhead band
-    doc.rect(0, 0, doc.page.width, 6).fill(BRAND);
-    drawCompanyLogo(doc,left,26);
-    doc.fillColor(INK).fontSize(13).text(l.name ?? '', left + 66, 30, { width: width / 2 - 20 });
-    doc.fillColor(MUTED).fontSize(8.5).text(l.address ?? '', left + 66, doc.y + 3, { width: width / 2 - 20, height: 28, ellipsis: true });
-    const contact = [l.gstin && `GSTIN ${l.gstin}`, l.phone, l.email].filter(Boolean).join('\n');
-    doc.fontSize(8.5).text(contact, right - 200, 34, { width: 200, align: 'right' });
-    doc.moveTo(left, 86).lineTo(right, 86).lineWidth(0.8).strokeColor(LINE).stroke();
-
-    // Title and meta
-    doc.fillColor(BRAND).fontSize(20).text('Quotation', left, 98);
-    doc.fillColor(issued ? MUTED : '#a8321f').fontSize(8.5).text(`${issued ? '' : 'DRAFT — NOT APPROVED FOR ISSUE · '}Version ${q.version}`, left, doc.y);
-    const metaTop = 98;
-    [['Quotation no.', q.quotation_number], ['Valid until', dateText(q.validUntil)], ['Place of supply', stateLabel(q.placeOfSupply)]].forEach(([k, v], i) => {
-      doc.fillColor(MUTED).fontSize(7.5).text(k.toUpperCase(), right - 220, metaTop + i * 22, { width: 100 });
-      doc.fillColor(INK).fontSize(9.5).text(v, right - 120, metaTop + i * 22 - 1, { width: 120, align: 'right' });
-    });
-
-    if(q.request?.referenceOnly)doc.fillColor('#a8321f').fontSize(8).text('DEVELOPMENT REFERENCE ONLY - HISTORICAL PRICING - NOT FOR CUSTOMER ISSUE',left,151,{width});
-    // Bill to
-    let y = 172;
-    doc.roundedRect(left, y, width, 64, 8).fill(SOFT);
-    doc.fillColor(MUTED).fontSize(7.5).text('BILL TO', left + 14, y + 10);
-    doc.fillColor(INK).fontSize(11).text(q.customer_name, left + 14, y + 22, { width: width - 28 });
-    doc.fillColor(MUTED).fontSize(8.5).text([q.customerAddress, q.customerGstin && `GSTIN ${q.customerGstin}`].filter(Boolean).join(' · '), left + 14, doc.y + 1, { width: width - 28, height: 24, ellipsis: true });
-    y += 82;
-    for(const [label,value]of [['Customer RFQ / reference',q.request?.reference],[`Quantity instructions — ${q.request?.quantityConfirmed?'reviewed':'review pending'}`,q.request?.quantityInstructions]]){
-      if(!value)continue;
-      doc.fillColor(MUTED).fontSize(8).text(label,left,y,{width});
-      doc.fillColor(INK).fontSize(9).text(value,left,doc.y+2,{width});y=doc.y+12;
-    }
-    if(y>doc.page.height-180){doc.addPage();y=48;}
-
-    // Table
-    const cols = [{ k: 'n', label: '#', w: 22 }, { k: 'item', label: 'Item and description', w: 186 }, { k: 'hsn', label: 'HSN', w: 52 }, { k: 'qty', label: 'Qty', w: 58, right: true }, { k: 'rate', label: 'Unit rate', w: 72, right: true }, { k: 'gst', label: 'GST', w: 34, right: true }, { k: 'amount', label: 'Amount', w: width - 424, right: true }];
-    const header = () => {
-      doc.rect(left, y, width, 22).fill(BRAND);
-      let x = left;
-      for (const c of cols) { doc.fillColor('#ffffff').fontSize(8).text(c.label, x + 6, y + 6, { width: c.w - 12, align: c.right ? 'right' : 'left' }); x += c.w; }
-      y += 22;
-    };
-    header();
-    rows(q).forEach((r, i) => {
-      // Split long source specifications across pages without dropping text or repeating money.
-      const descriptions=[];let remainder=r.description||'';
-      while(remainder){
-        let low=1,high=remainder.length,best=1;
-        while(low<=high){const mid=Math.floor((low+high)/2);if(doc.fontSize(8).heightOfString(remainder.slice(0,mid),{width:cols[1].w-12})<=420){best=mid;low=mid+1;}else high=mid-1;}
-        if(best<remainder.length){const space=remainder.lastIndexOf(' ',best);if(space>best/2)best=space+1;}
-        descriptions.push(remainder.slice(0,best));remainder=remainder.slice(best);
-      }
-      if(!descriptions.length)descriptions.push('');
-      descriptions.forEach((description,segment)=>{
-      const code=segment?`${r.code} (continued)`:r.code;
-      const descHeight = doc.fontSize(8).heightOfString(description, { width: cols[1].w - 12 });
-      const codeHeight = doc.fontSize(9).heightOfString(code, {width:cols[1].w-12});
-      const h = Math.max(30, 12 + codeHeight + descHeight);
-      if (y + h > doc.page.height - 100) { doc.addPage(); y = 48; header(); }
-      if (i % 2 === 1) doc.rect(left, y, width, h).fill('#f7f9f8');
-      let x = left;
-      const cells = { n: segment?'':String(r.n), item: null, hsn: segment?'':r.hsn, qty: segment?'':r.qty, rate: segment?'':r.rate, gst: segment?'':r.gst, amount: segment?'':r.amount };
-      for (const c of cols) {
-        if (c.k === 'item') { doc.fillColor(INK).fontSize(9).text(code, x + 6, y + 6, { width: c.w - 12 }); doc.fillColor(MUTED).fontSize(8).text(description, x + 6, doc.y, { width: c.w - 12 }); }
-        else doc.fillColor(INK).fontSize(8.5).text(cells[c.k], x + 6, y + 7, { width: c.w - 12, align: c.right ? 'right' : 'left' });
-        x += c.w;
-      }
-      y += h;
-      doc.moveTo(left, y).lineTo(right, y).lineWidth(0.5).strokeColor(LINE).stroke();
-      });
-    });
-
-    // Totals and amount in words
-    if (y > doc.page.height - 230) { doc.addPage(); y = 48; }
-    y += 14;
-    const totalsX = right - 210;
-    doc.fillColor(MUTED).fontSize(7.5).text('AMOUNT IN WORDS', left, y);
-    doc.fillColor(INK).fontSize(9).text(amountInWords(q.total), left, y + 12, { width: totalsX - left - 24 });
-    for (const [k, v] of taxRows(q)) {
-      doc.fillColor(MUTED).fontSize(9).text(k, totalsX, y, { width: 100 });
-      doc.fillColor(INK).text(inr(v), totalsX + 90, y, { width: 120, align: 'right' });
-      y += 16;
-    }
-    doc.roundedRect(totalsX - 8, y + 2, 218, 30, 6).fill(BRAND);
-    doc.fillColor('#ffffff').fontSize(10).text('Total', totalsX, y + 11, { width: 80 });
-    doc.fontSize(12).text(inr(q.total), totalsX + 60, y + 9, { width: 138, align: 'right' });
-    y += 50;
-
-    // Terms, notes, signature
-    for (const [title, body] of [['Terms', q.terms], ['Notes', q.notes]]) {
-      if (!body) continue;
-      if (y > doc.page.height - 140) { doc.addPage(); y = 48; }
-      doc.fillColor(BRAND).fontSize(10).text(title, left, y);
-      doc.fillColor(INK).fontSize(8.5).text(body, left, doc.y + 2, { width });
-      y = doc.y + 12;
-    }
-    if (y > doc.page.height - 120) { doc.addPage(); y = 48; }
-    doc.fillColor(MUTED).fontSize(8).text('This is a quotation, not a tax invoice. Prices in INR; GST as shown.', left, y + 6, { width: width / 2 });
-    doc.fillColor(INK).fontSize(9).text(`For ${l.name ?? ''}`, right - 200, y + 6, { width: 200, align: 'right' });
-    doc.moveTo(right - 160, y + 52).lineTo(right, y + 52).lineWidth(0.6).strokeColor(MUTED).stroke();
-    doc.fillColor(MUTED).fontSize(8).text('Authorised signatory', right - 200, y + 56, { width: 200, align: 'right' });
-
-    // Page footers; draft status remains in the document header
-    const range = doc.bufferedPageRange();
-    for (let i = range.start; i < range.start + range.count; i++) {
-      doc.switchToPage(i);
-      const bottom = doc.page.margins.bottom;
-      doc.page.margins.bottom = 0; // footer and watermark sit outside the flow; never trigger a new page
-
-      doc.fillColor(MUTED).fontSize(7.5).text(`${q.quotation_number} · Page ${i + 1} of ${range.count}`, left, doc.page.height - 36, { width, align: 'right', lineBreak: false });
-      doc.page.margins.bottom = bottom;
-    }
-    doc.end();
-  });
+// Keep all printable fields allowlisted; private pricing never enters the layout.
+export function quotationDocumentModel(q) {
+ const l=q.letterhead||{},missing='[Not supplied]';
+ return {
+  number:q.quotation_number||missing,version:String(q.version||1),
+  company:{name:l.name||missing,address:l.address||missing,contact:[l.phone,l.email].filter(Boolean).join(' | '),gstin:l.gstin||missing},
+  customer:{name:q.customer_name||missing,address:q.customerAddress||missing,gstin:q.customerGstin||missing,contact:q.customerContact||q.contact_email||missing},
+  date:q.documentDate||q.created_at?dateText(q.documentDate||q.created_at):missing,validUntil:q.validUntil?dateText(q.validUntil):missing,
+  placeOfSupply:q.placeOfSupply?stateLabel(q.placeOfSupply):missing,reference:q.request?.reference||missing,
+  notice:q.request?.referenceOnly?'DRAFT - NOT APPROVED FOR ISSUE | DEVELOPMENT REFERENCE ONLY - HISTORICAL PRICING - NOT FOR CUSTOMER ISSUE':ISSUED.includes(q.status)?'':'DRAFT - NOT APPROVED FOR ISSUE',
+  total:formatIndian(q.total),words:amountInWords(q.total),
+  items:q.lines.map(line=>({code:line.partCode||missing,description:quotationLineDescription(line),hsn:line.hsn||missing,quantity:qty(line.quantity)+'\n'+(line.uom||''),rate:formatIndian(netRate(line.unitPrice,line.discountPercent)),gst:pct(line.taxPercent),amount:formatIndian(line.net)})),
+  taxRows:taxRows(q).map(([label,value])=>[label,formatIndian(value)]),
+  quantityInstructions:q.request?.quantityInstructions||'',quantityConfirmed:q.request?.quantityConfirmed===true,terms:q.terms||'',notes:q.notes||'',supplierTermsLabel:SUPPLIER_TERMS_LABEL
+ };
 }
+export function quotationPdf(q,options={}) { return renderQuotationPdf(quotationDocumentModel(q),options); }
