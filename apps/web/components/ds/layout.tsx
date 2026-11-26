@@ -18,7 +18,7 @@ export function Breadcrumbs({ items }: { items: Crumb[] }) {
 /** Breadcrumbs, title, one-line description and the page's primary action. */
 export function PageHeader({ title, description, crumbs, actions }: { title: string; description?: ReactNode; crumbs?: Crumb[]; actions?: ReactNode }) {
   return (
-    <div className="page-enter">
+    <div className="page-enter ds-page-intro">
       {crumbs && <Breadcrumbs items={crumbs} />}
       <header className="ds-page-header">
         <div><h1>{title}</h1>{description && <p>{description}</p>}</div>
