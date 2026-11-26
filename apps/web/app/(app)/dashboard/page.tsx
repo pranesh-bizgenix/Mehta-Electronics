@@ -10,6 +10,7 @@ import { useDashboard } from '@/features/dashboard/use-dashboard';
 import type { Decision } from '@/features/dashboard/api';
 import {DecisionsReadiness} from '@/features/decisions/readiness';
 import {SalesIntakeSummary} from '@/features/incoming-requests/summary';
+import {DepartmentWorkspace} from '@/features/dashboard/department-workspace';
 import {
   BarChart, Button, Card, CardSkeleton, EmptyState, ErrorState, Funnel, Icon, Meter, Notice, StatCard, Timeline, type IconName
 } from '@/components/ds';
@@ -26,7 +27,7 @@ export default function DashboardPage() {
   return (
     <>
       <section className="ds-hero page-enter" aria-labelledby="dash-title">
-        <div><p className="ds-menu-label" style={{ padding: 0, color: 'inherit', opacity: 0.8 }}>{period.label}</p><h1 id="dash-title">{`${greeting}${name ? `, ${name}` : ''}`}</h1><p>Here’s what needs you today.</p></div>
+        <div><p className="ds-menu-label" style={{ padding: 0, color: 'inherit', opacity: 0.8 }}>{period.label}</p><h1 id="dash-title">Business overview</h1><p>{`${greeting}${name ? `, ${name}` : ''}. Your orders, requests and follow-ups in one place.`}</p></div>
         <div className="ds-page-actions">
           {can('enquiries.create') && <Button variant="secondary" icon="plus" onClick={() => { window.location.href = screenHref('/enquiries?new=1'); }}>New enquiry</Button>}
           {can('quotations.create') && <Button icon="plus" onClick={() => { window.location.href = screenHref('/quotations/new'); }}>New quotation</Button>}
@@ -34,6 +35,7 @@ export default function DashboardPage() {
       </section>
 
       {state.status === 'error' && !data && <ErrorState error={state.error} onRetry={reload} />}
+      <DepartmentWorkspace />
 
       {/* First fold: the numbers an owner checks every morning */}
       <section aria-label="Key numbers" className="grid-kpis ds-dashboard-metrics" style={{ marginBottom: 'var(--space-2)' }}>
@@ -50,10 +52,8 @@ export default function DashboardPage() {
         {data.kpis.operations&&Object.entries(data.kpis.operations).map(([kind,count])=><Link key={kind} className="ds-signal" href={`/operations?kind=${kind}`}><strong>{count}</strong> {titleCase(kind)}</Link>)}
       </nav>}
 
-      <TallyImportCoverage />
-      <DecisionsReadiness />
-      <SalesIntakeSummary />
-      {can('quotations.read')&&can('enquiries.read')&&<TallySalesSyncOverview/>}
+      <DepartmentWorkspace />
+
 
       <div className="grid-main-aside" style={{ marginBottom: 'var(--space-3)' }}>
         <Card title="Needs your decision" actions={data && data.decisions.length > 0 ? <span className="ds-nav-badge" data-tone="warning">{data.decisions.length}</span> : undefined} padded={false}>
@@ -97,6 +97,13 @@ export default function DashboardPage() {
           <Timeline items={data.activity.map((a) => ({ id: a.id, title: `${titleCase(a.action)} · ${titleCase(a.module)}`, at: a.at, by: a.user ?? 'System', body: a.reason ?? undefined, icon: 'audit' }))} empty="No activity yet." />
         </Card>
       )}
+      <section className="cd-system-checks" aria-label="Data and business policy checks"><h2>Data and policy checks</h2>
+      <TallyImportCoverage />
+      <DecisionsReadiness />
+      <SalesIntakeSummary />
+      {can('quotations.read')&&can('enquiries.read')&&<TallySalesSyncOverview/>}
+
+      </section>
     </>
   );
 }
