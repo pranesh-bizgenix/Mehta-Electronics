@@ -10,6 +10,8 @@ import {DeliveryCommitmentService} from '../src/modules/sourcing/commitments.js'
 import {BankService} from '../src/modules/accounts/bank-service.js';
 import {BANK_COLUMNS} from '../src/modules/accounts/bank-domain.js';
 import {renderPdf} from '../src/modules/billing/pdf.js';
+import {requirePackingDispatch} from '../src/modules/warehouse/dispatch-guard.js';
+import {GstPreparationService} from '../src/modules/billing/gst-preparation.js';
 
 const tag='ZZTEST_PAYABLE_'+randomUUID(),reason=tag+' rollback verification',checks=[];
 const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
@@ -34,6 +36,10 @@ await withAuthorizedRdsRollbackVerification(async db=>{
  const bytes=await renderPdf({title:tag,subtitle:'SAMPLE source fixture, rollback only',sections:[],columns:[{label:'Sample',fraction:1}],rows:[[tag]]});
  const uploaded=await uploadSupplierDocument(db,po.id,{kind:'DISPATCH_INVOICE',name:tag+'.pdf',base64:bytes.toString('base64'),reason},owner),doc=await saveDocumentReview(db,uploaded.id,{version:uploaded.version,reference:tag,documentDate:today,manualConfirmed:true,notes:reason,reason,lines:[{...lines[0],quantity:'6'}]},owner),comparison=await documentComparison(db,doc.id,reviewer);
  await approveDocument(db,doc.id,{version:doc.version,fingerprint:comparison.fingerprint,acceptExceptions:true,reason},reviewer);
+ const gst=new GstPreparationService({db});
+ const tax=await gst.create(owner,{requestKey:randomUUID(),kind:'PURCHASE_TAX',sourceId:String(doc.id),additional:{},reason});
+ await gst.decide(reviewer,tax.id,{version:tax.version,decision:'APPROVE',reason});
+ await check('Purchase-tax preparation retains reviewed goods evidence without claiming input-credit eligibility',async()=>{const file=await gst.export(owner,tax.id,{reason});assert.equal(file.kind,'PURCHASE_TAX');assert.equal(file.statutorySubmission,false);assert.equal(file.providerStatus,'NOT_CONFIGURED');});
  const authority={maximumAmount:'10000',checks:['SAMPLE verified bank source']};
  // This explicit in-memory test policy is never persisted as a business rule.
  const payables=new PayablesService({db,rules:{get:async()=>({value:authority}),require:async()=>({value:authority})}});
@@ -65,10 +71,41 @@ await withAuthorizedRdsRollbackVerification(async db=>{
  await check('Receipt custody creator cannot verify their own goods',()=>assert.rejects(warehouse.reviewLot(owner,lot.id,{decision:'APPROVE',reason}),{status:403}));await warehouse.reviewLot(reviewer,lot.id,{decision:'APPROVE',reason});
  await check('Verified custody contains exactly eight accepted serials',async()=>{const serials=await warehouse.serials(owner,lot.id);assert.equal(serials.length,8);assert.ok(serials.every(s=>s.status==='ACTIVE'));});
  await check('Rejected goods cannot be counted as extra receipt custody',()=>assert.rejects(warehouse.createLot(owner,{...custody,requestKey:randomUUID(),quantity:'1',serials:[]}),{status:409}));
+ let order,line;
+ await new TransactionRunner(db).run(owner,reason,async()=>{
+  // Raw approved-order source fixture only. This exercises packing controls,
+  // not customer PO approval, a physical dispatch or stock-source acceptance.
+  const customer=await db.prepare('INSERT INTO customers(name,normalized_name,created_by,updated_by) VALUES(?,?,?,?) RETURNING id').get(tag,tag.toLowerCase(),owner.id,owner.id);
+  await db.prepare('INSERT INTO crm_customer_profiles(customer_id,company_id,tally_ledger_name,created_by) VALUES(?,?,?,?)').run(customer.id,company.id,tag,owner.id);
+  order=await db.prepare("INSERT INTO sales_orders(order_number,customer_id,status,created_by,updated_by) VALUES(?,?,'CONFIRMED',?,?) RETURNING id").get(tag,customer.id,owner.id,owner.id);
+  line=await db.prepare('INSERT INTO sales_order_lines(sales_order_id,item_id,description,uom,ordered_quantity,unit_price) VALUES(?,?,?,?,2,100) RETURNING id').get(order.id,item.id,'SAMPLE packing source',item.uom);
+  const snapshot={order_number:tag,customer_name:tag,lines:[{id:line.id,itemId:item.id,partCode:po.payload.lines[0].partCode,description:'SAMPLE packing source',uom:item.uom,quantity:'2'}]};
+  await db.prepare("SELECT set_config('mehta.order_write','authorized',true)").get();
+  await db.prepare("INSERT INTO crm_order_workflows(sales_order_id,customer_id,po_key,public_snapshot,private_snapshot,created_by,status) VALUES(?,?,?,?::text::jsonb,'{}',?,'APPROVED')").run(order.id,customer.id,tag,JSON.stringify(snapshot),owner.id);
+ });
+ await warehouse.enable(owner,order.id,{reason});const box=await warehouse.createBox(owner,order.id,{number:tag+'-BOX',reason});
+ const version=async()=>(await warehouse.box(box.id)).version;
+ await warehouse.item(owner,box.id,{version:await version(),lineId:line.id,quantity:'2',reason});
+ await warehouse.scan(owner,box.id,{version:await version(),requestKey:randomUUID(),lineId:line.id,code:'SAMPLE-WRONG-CODE',quantity:'1',reason});
+ const incorrect=(await warehouse.packing(owner,order.id)).scans.find(s=>s.status==='MISMATCH');assert.ok(incorrect);
+ await warehouse.rejectScan(owner,box.id,incorrect.id,{version:await version(),reason});
+ await check('A mistaken barcode scan can be rejected without changing its recorded facts',async()=>{const row=await db.prepare('SELECT status,scanned_code,reviewed_by,review_reason FROM pick_scans WHERE id=?').get(incorrect.id);assert.equal(row.status,'REJECTED');assert.equal(row.scanned_code,'SAMPLE-WRONG-CODE');assert.equal(row.reviewed_by,owner.id);assert.equal(row.review_reason,reason);});
+ await warehouse.scan(owner,box.id,{version:await version(),requestKey:randomUUID(),lineId:line.id,code:po.payload.lines[0].partCode,quantity:'2',reason});
+ const serials=await warehouse.serials(owner,lot.id);await warehouse.allocate(owner,box.id,{version:await version(),lineId:line.id,lotId:lot.id,quantity:'2',serialIds:serials.slice(0,2).map(s=>s.id),reason});
+ const inspection=async()=>({version:await version(),action:'CHECK',quantitiesChecked:true,labelsChecked:true,conditionChecked:true,reason});
+ await check('A checked packing box requires retained photo evidence',async()=>assert.rejects(warehouse.decide(reviewer,box.id,await inspection()),{status:409}));
+ const png='iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a7mQAAAAASUVORK5CYII=';
+ await warehouse.photo(owner,box.id,{version:await version(),photo:{name:tag+'.png',base64:png},reason});
+ await check('The box creator cannot independently approve its packing',async()=>assert.rejects(warehouse.decide(owner,box.id,await inspection()),{status:403}));
+ await warehouse.decide(reviewer,box.id,await inspection());
+ await check('Checked boxes support only their exact selected dispatch quantity',async()=>{assert.deepEqual(await requirePackingDispatch(db,order.id,[{id:line.id,quantity:'2'}],[box.id]),[box.id]);await assert.rejects(requirePackingDispatch(db,order.id,[{id:line.id,quantity:'1'}],[box.id]),{status:409});});
+ await check('Packing PDF includes retained serial and batch trace',async()=>assert.equal((await warehouse.pdf(owner,order.id,{reason,preview:true})).bytes.subarray(0,5).toString(),'%PDF-'));
+ await warehouse.decide(reviewer,box.id,{version:await version(),action:'CANCEL',reason});
+ await check('Cancelling an undispatched checked box releases its serial reservations',async()=>assert.ok((await warehouse.serials(owner,lot.id)).every(s=>!s.allocated)));
  const delivery=new DeliveryCommitmentService({db}),schedule=await delivery.create(owner,{requestKey:randomUUID(),kind:'SUPPLIER',parentId:po.id,lineId:lineKey,replacesId:null,dates:[{date:later(14),quantity:'4'},{date:later(30),quantity:'6'}],evidence:reason,reason});
  await check('Supplier date changes require another reviewer',()=>assert.rejects(delivery.review(owner,schedule.id,{version:schedule.version,decision:'APPROVE',reason}),{status:403}));await delivery.review(reviewer,schedule.id,{version:schedule.version,decision:'APPROVE',reason});
  await check('Dated commitments show rejected quantities still pending after partial receipt',async()=>{const record=await delivery.parent(owner,'SUPPLIER',po.id);assert.equal(record.lines[0].progress[0].pending,'0.000000');assert.equal(record.lines[0].progress[1].pending,'2.000000');});
  await check('Supplier payable and schedule PDFs use the existing renderer',async()=>{for(const file of [await payables.pdf(owner,due.id,{reason,preview:true}),await delivery.pdf(owner,'SUPPLIER',po.id,{reason,preview:true})])assert.equal(file.bytes.subarray(0,5).toString(),'%PDF-');});
 },{productionTransactions:true});
 await withAuthorizedRdsRollbackVerification(async db=>{assert.equal((await db.prepare("SELECT count(*)::int AS n FROM crm_procurement_vendors WHERE payload->>'name'=?").get(tag)).n,0);assert.equal((await db.prepare('SELECT count(*)::int AS n FROM bank_accounts WHERE account_reference=?').get(tag)).n,0);});
-await fs.mkdir('verification-output/crm-completion',{recursive:true});await fs.writeFile('verification-output/crm-completion/payables-warehouse-rds.json',JSON.stringify({checks,passed:checks.length,cleanup:'ROLLBACK_VERIFIED',limitations:'PO issuance used a controlled rollback-only source state. Payment authority was an in-memory fictional test policy. No legal PO issuance, bank transfer, Tally write, order packing or customer dispatch was executed.'},null,2));
+await fs.mkdir('verification-output/crm-completion',{recursive:true});await fs.writeFile('verification-output/crm-completion/payables-warehouse-rds.json',JSON.stringify({checks,passed:checks.length,cleanup:'ROLLBACK_VERIFIED',limitations:'PO issuance and approved customer order used controlled rollback-only source fixtures. Payment authority was an in-memory fictional test policy. Internal packing, serial allocation and dispatch quantity gates were exercised; no legal PO issuance, physical customer dispatch, bank transfer, GST submission or Tally write was executed.'},null,2));
