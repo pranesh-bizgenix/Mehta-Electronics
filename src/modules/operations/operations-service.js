@@ -1,3 +1,4 @@
+import {assertMaterialOperationAction} from '../materials/domain.js';
 import crypto from 'node:crypto';
 import {assertIssuedInvoiceClosure} from '../accounts/collection-domain.js';
 import {financialInvoice,invoiceBalance} from '../accounts/collections-common.js';
@@ -89,9 +90,10 @@ export class OperationsService {
    const issued=await this.repository.db.prepare("SELECT id FROM billing_documents WHERE invoice_reference_id=? AND status='ISSUED' LIMIT 1").get(row.id);
    if(issued){const balance=await invoiceBalance(this.repository.db,row);assertIssuedInvoiceClosure({action,hasIssuedDocument:true,outstanding:balance.outstanding});}
   }
-  if(['RESOLVE','CANCEL'].includes(action)&&['WARRANTY','RETURN'].includes(row.kind)){
-   const material=await this.repository.db.prepare('SELECT id,status FROM crm_material_cases WHERE operation_id=?').get(row.id);
-   if(material&&(action==='RESOLVE'?material.status!=='CLOSED':material.status!=='CANCELLED'))throw conflict('Finish the linked physical material case first. Receipt, inspection, custody and remedy evidence must reconcile.');
+  if(['APPROVE','RESOLVE','CANCEL'].includes(action)&&['WARRANTY','RETURN'].includes(row.kind)){
+   const material=await this.repository.db.prepare("SELECT m.id,m.status,EXISTS(SELECT 1 FROM crm_material_events e WHERE e.case_id=m.id AND e.action='INSPECT') AS inspected FROM crm_material_cases m WHERE operation_id=?").get(row.id);
+   const cutover=await this.repository.db.prepare('SELECT EXISTS(SELECT 1 FROM mehta_schema_migrations WHERE name=? AND applied_at<=?::timestamptz) AS required').get('0081_support_material_custody.sql',new Date(row.created_at).toISOString());
+   assertMaterialOperationAction(action,cutover.required,material);
   }
   if(action==='APPROVE'&&row.kind==='WARRANTY'){
    const policy=(await this.rules.require('warranty.policy')).value;
