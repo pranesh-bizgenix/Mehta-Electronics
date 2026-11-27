@@ -38,3 +38,6 @@ database/postgres/migrations/0045_tally_write_isolated_foundation.sql text eol=c
 database/postgres/migrations/0046_tally_write_creation_audit.sql text eol=crlf
 database/postgres/migrations/0047_reviewed_price_imports.sql text eol=crlf
 database/postgres/migrations/0065_customer_management.sql text eol=crlf
+
+# Preserve the exact bytes applied to RDS for material custody.
+database/postgres/migrations/0081_support_material_custody.sql text eol=crlf
