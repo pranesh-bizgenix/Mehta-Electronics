@@ -21,6 +21,7 @@ import {warehouseRoutes} from './modules/warehouse/routes.js';
 import {commitmentRoutes} from './modules/sourcing/commitment-routes.js';
 import {payablesRoutes} from './modules/accounts/payables-routes.js';
 import {collectionsRoutes} from './modules/accounts/collections-routes.js';
+import {orderWorkbookRoutes} from './modules/order-imports/routes.js';
 import {dispatchRoutes} from './modules/dispatch/routes.js';
 import {isMfaExemptTestAccount} from './modules/mfa/test-account-policy.js';
 import { adaptRoutes } from './core/http.js';
@@ -225,6 +226,7 @@ export function createApp({ db, config, fetchImpl = fetch, sendMailImpl = sendQu
     ...warehouseRoutes({db,route,json,readJson}),
     ...commitmentRoutes({db,route,json,readJson}),
     ...collectionsRoutes({db,route,json,readJson,operations:modules.services.operations,work:modules.services.work}),
+    ...orderWorkbookRoutes({db,route,json,readJson}),
     ...payablesRoutes({db,route,json,readJson,rules:modules.services.rules}),
     ...dispatchRoutes({db,route,json}),
     ...quotationWorkflowRoutes({db,config,route,json,readJson}),
