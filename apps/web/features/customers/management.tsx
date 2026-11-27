@@ -1,5 +1,6 @@
 'use client';
 import Link from 'next/link';
+import {FieldVisits} from './field-visits';
 import {useEffect,useMemo,useState,type FormEvent} from 'react';
 import {useApi} from '@/lib/api/provider';
 import {newIdempotencyKey} from '@/lib/api/client';
@@ -21,6 +22,7 @@ function Management({customerId,section,financial,initialKind,onIdentityChanged}
  const refresh=()=>setRevision(v=>v+1),editable=!c.merged&&can('customers.update');
  return <div className="stack-lg">{c.merged&&<Notice tone="warning" title="Merged customer"><Link href={`/customers/${c.canonicalId}`}>Open surviving customer #{c.canonicalId}</Link>. Original records are preserved; new work belongs to the surviving customer.</Notice>}{c.customerIds.length>1&&<Notice tone="info" title="Linked customer history">{c.note}<div className="cluster">{c.relatedCustomers.map(r=><Link key={r.id} href={`/customers/${r.id}`}>{r.name}</Link>)}</div></Notice>}
   {section==='addresses'&&<Addresses client={client} customerId={customerId} editable={editable} revision={revision} refresh={refresh}/>}
+  {section==='sales-activity'&&<FieldVisits customerId={customerId} editable={editable} onChanged={refresh}/>}
   {section==='sales-activity'&&<Activities client={client} customerId={customerId} editable={editable} revision={revision} refresh={refresh}/>}
   {section==='opportunities'&&<Opportunities client={client} customerId={customerId} editable={editable&&can('enquiries.update')} revision={revision} refresh={refresh}/>}
   {section==='history'&&<HistoryPanel client={client} financial={financial} initialKind={initialKind}/>}
