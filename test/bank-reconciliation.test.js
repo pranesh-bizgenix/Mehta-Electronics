@@ -1,0 +1,32 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {bankStatementPlan,bankMatchCapacity,bankMoney,BANK_COLUMNS} from '../src/modules/accounts/bank-domain.js';
+import {BankService} from '../src/modules/accounts/bank-service.js';
+const rows=['2026-11-01,2026-11-01,CREDIT,100.01,1100.01,SAMPLE-UTR1,Customer receipt','2026-11-02,2026-11-02,DEBIT,0.01,1100.00,SAMPLE-UTR2,Fee'];
+const sample=()=>({csv:BANK_COLUMNS.join(',')+'\n'+rows.join('\n'),openingBalance:'1000',closingBalance:'1100',order:'OLDEST_FIRST',today:'2026-11-26'});
+test('Statement reconciles exact credit, debit and running balances without binary floats',()=>{const p=bankStatementPlan(sample());assert.equal(p.credits,'100.01');assert.equal(p.debits,'0.01');assert.equal(p.closingBalance,'1100.00');assert.equal(p.rows.length,2);assert.equal(p.rows[0].sourceRow,2);});
+test('Newest-first statements retain chronological balance validation and stable transaction keys',()=>{const s=sample(),first=bankStatementPlan(s);s.order='NEWEST_FIRST';s.csv=BANK_COLUMNS.join(',')+'\n'+[...rows].reverse().join('\n');assert.deepEqual(bankStatementPlan(s).rows.map(r=>r.key),first.rows.map(r=>r.key));});
+test('A one-paise running balance error blocks the entire import',()=>{const s=sample();s.csv=s.csv.replace('1100.01','1100.02');assert.throws(()=>bankStatementPlan(s),{status:422});});
+test('Closing and opening balances must reconcile independently',()=>{for(const patch of [{closingBalance:'1100.01'},{openingBalance:'1000.01'}])assert.throws(()=>bankStatementPlan({...sample(),...patch}),{status:422});});
+test('Impossible or future dates and nonpositive transactions are rejected',()=>{for(const [from,to] of [['2026-11-01','2026-02-30'],['2026-11-02','2026-11-27'],['100.01','0'],['100.01','-100.01']]){const s=sample();s.csv=s.csv.replaceAll(from,to);assert.throws(()=>bankStatementPlan(s),{status:422});}});
+test('Duplicate bank references, formula cells and unknown directions require review',()=>{for(const [from,to] of [['SAMPLE-UTR2','SAMPLE-UTR1'],['Customer receipt','=formula'],['CREDIT','IN']]){const s=sample();s.csv=s.csv.replace(from,to);assert.throws(()=>bankStatementPlan(s),{status:422});}});
+test('Signed overdrafts are preserved and account money is never coerced from numbers',()=>{const s=sample();s.csv=BANK_COLUMNS.join(',')+'\n2026-11-01,,DEBIT,1.00,-1.00,SAMPLE,Overdraft';s.openingBalance='0';s.closingBalance='-1';assert.equal(bankStatementPlan(s).closingBalance,'-1.00');for(const v of [100,'1e2','1,000','NaN','0.001'])assert.throws(()=>bankMoney(v),{status:422});});
+const capacity=()=>({line:{id:'line',account_status:'ACTIVE',import_status:'APPROVED',status:'UNMATCHED',direction:'CREDIT',amount:'100.000000',reference:'UTR'},operation:{id:'receipt',kind:'RECEIPT',status:'CONFIRMED',company_id:'company',payload:{amount:'100',transactionReference:'utr'}},amount:'100',companyId:'company'});
+test('Only confirmed receipts in the same company can support a customer bank credit',()=>{assert.equal(bankMatchCapacity(capacity()),'100.00');for(const patch of [{status:'DRAFT'},{kind:'INVOICE'},{company_id:'other'}]){const s=capacity();Object.assign(s.operation,patch);assert.throws(()=>bankMatchCapacity(s),{status:409});}});
+test('A receipt or bank credit cannot be consumed twice through separate matches',()=>{for(const patch of [{statementMatched:'0.01'},{operationMatched:'0.01'}])assert.throws(()=>bankMatchCapacity({...capacity(),...patch}),{status:409});const s=capacity();s.amount='40';s.statementMatched='60';s.operationMatched='60';assert.equal(bankMatchCapacity(s),'40.00');});
+test('Mismatched references, unapproved statements and bank debits do not become customer receipt matches',()=>{for(const patch of [{reference:'OTHER'},{import_status:'PENDING_REVIEW'},{direction:'DEBIT'},{status:'MATCHED'}]){const s=capacity();Object.assign(s.line,patch);assert.throws(()=>bankMatchCapacity(s),{status:409});}});
+test('Warehouse and unknown users are refused before any banking database read',async()=>{const s=new BankService({db:{prepare(){assert.fail('Must not query');}}});for(const role of ['STORE_STAFF','LOGISTICS_LEAD','EXECUTIVE','UNKNOWN'])await assert.rejects(s.accounts({id:1,role}),{status:403});});
+test('Supplier bank debits match only independently confirmed supplier payment records',()=>{
+ const input=capacity();input.line.direction='DEBIT';input.operation.kind='VENDOR_PAYMENT';
+ assert.equal(bankMatchCapacity(input),'100.00');
+ for(const patch of [{status:'APPROVED'},{status:'PENDING_APPROVAL'},{company_id:'other'}])assert.throws(()=>bankMatchCapacity({...input,operation:{...input.operation,...patch}}),{status:409});
+ assert.throws(()=>bankMatchCapacity({...input,line:{...input.line,direction:'CREDIT'}}),{status:409});
+ assert.throws(()=>bankMatchCapacity({...input,operationMatched:'0.01'}),{status:409});
+ assert.throws(()=>bankMatchCapacity({...input,line:{...input.line,reference:'OTHER'}}),{status:409});
+});
+test('A bank-match request names exactly one source and cannot mix a receipt with a supplier payment',async()=>{
+ const service=new BankService({db:{prepare(){assert.fail('Invalid mixed sources must fail before querying');}}});
+ const id='11111111-1111-4111-8111-111111111111',body={amount:'1',reason:'SAMPLE validation'};
+ await assert.rejects(service.propose({id:1,role:'OWNER'},id,body),{status:422});
+ await assert.rejects(service.propose({id:1,role:'OWNER'},id,{...body,operationId:id,vendorAdviceId:id}),{status:422});
+});
