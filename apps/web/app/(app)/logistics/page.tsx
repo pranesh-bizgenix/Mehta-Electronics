@@ -5,6 +5,7 @@ import { useApi } from '@/lib/api/provider';
 import { useSession } from '@/lib/session';
 import { TallyLogistics } from '@/features/workflows/tally-logistics';
 import {AvailabilityQueue} from '@/features/incoming-requests/availability';
+import {PackingPanel} from '@/features/warehouse/packing-panel';
 import { Button, Card, Checkbox, DataTable, Drawer, ErrorState, PageHeader, SelectField, StatusBadge, TextField, useToast } from '@/components/ds';
 
 type Line = { id?: number; poLineKey?: string; lineKey?: string; partCode?: string; actualPartCode?: string; description?: string; quantity?: string; uom?: string };
@@ -30,6 +31,7 @@ export default function LogisticsPage() {
   const [observed, setObserved] = useState<Record<string, string>>({});
   const [quantities, setQuantities] = useState<Record<string, string>>({}), [accepted, setAccepted] = useState<Record<string, string>>({}), [rejected, setRejected] = useState<Record<string, string>>({});
   const [requestKey, setRequestKey] = useState('');
+  const [packingBoxes,setPackingBoxes]=useState<string[]>([]);
   const [check, setCheck] = useState<{ fingerprint: string; alerts: { code: string }[] }>();
   const [acceptDifferences, setAcceptDifferences] = useState(false);
   useEffect(() => {
@@ -45,7 +47,7 @@ export default function LogisticsPage() {
     try { if (needsReason && why.trim().length < 3) throw new Error('Enter a reason of at least three characters.'); await fn(); setRevision(v => v + 1); }
     catch (e) { setError(e); } finally { setBusy(false); }
   };
-  const openOrder = async (id: number) => { setRequestKey(crypto.randomUUID()); setOrder(await api.data<Order>('GET', `${base}/orders/${id}`)); setPo(undefined); setGrn(undefined); setLineRef(''); setItemCode(''); setFile(undefined); setShipmentId(''); setQuantities({}); };
+  const openOrder = async (id: number) => { setRequestKey(crypto.randomUUID()); setOrder(await api.data<Order>('GET', `${base}/orders/${id}`)); setPo(undefined); setGrn(undefined); setLineRef(''); setItemCode(''); setFile(undefined); setShipmentId(''); setQuantities({});setPackingBoxes([]); };
   const openPo = async (id: number) => { setRequestKey(crypto.randomUUID()); setPo(await api.data<Po>('GET', `${base}/pos/${id}`)); setOrder(undefined); setGrn(undefined); setQuantities({}); setAccepted({}); setRejected({}); setObserved({}); };
   const openGrn = async (id: number) => { setGrn(await api.data<Grn>('GET', `${base}/grns/${id}`)); setPo(undefined); setLineRef(''); setItemCode(''); setFile(undefined); setCheck(undefined); setAcceptDifferences(false); };
   if (!can('logistics.read')) return <PageHeader title="Logistics & store" description="Your role does not have access to this workspace." />;
@@ -82,6 +84,7 @@ export default function LogisticsPage() {
           {po.grns.map(g => <Button key={g.id} variant="secondary" onClick={() => void run(() => openGrn(g.id), false)}>{g.number} · {g.status}</Button>)}
         </>}
         {order && !grn && <>
+          <PackingPanel order={order} selectedBoxes={packingBoxes} onSelectedBoxes={setPackingBoxes}/>
           {order.grns.map(g => <Button key={g.id} variant="secondary" onClick={() => void run(() => openGrn(g.id), false)}>{g.number} · {g.status}</Button>)}
           {can('logistics.assignment.manage') && <Card title="Store assignments"><div className="stack">
             <SelectField label="Store staff" value={staffId} onChange={e => setStaffId(e.target.value)} placeholder="Select a person" options={staff.map(u => ({ value: String(u.id), label: u.name }))} />
@@ -90,7 +93,7 @@ export default function LogisticsPage() {
           </div></Card>}
           {can('logistics.dispatch.manage') && <Card title="Dispatch approved order"><div className="stack">
             <TextField label="Vehicle number" value={vehicle} onChange={e => setVehicle(e.target.value)} /><TextField label="LR number" value={lr} onChange={e => setLr(e.target.value)} /><TextField label="Transporter" value={transporter} onChange={e => setTransporter(e.target.value)} />
-            <Button disabled={busy} onClick={() => void run(async () => { await api.data('POST', `${base}/orders/${order.id}/dispatch`, { version: order.version, requestKey, vehicleNumber: vehicle, lrNumber: lr, transporter, reason: why, lines: order.lines.filter(l => quantities[String(l.id)]).map(l => ({ lineId: l.id, quantity: quantities[String(l.id)] })) }); await openOrder(order.id); })}>Dispatch selected quantities</Button>
+            <Button disabled={busy} onClick={() => void run(async () => { await api.data('POST', `${base}/orders/${order.id}/dispatch`, { version: order.version, requestKey, vehicleNumber: vehicle, lrNumber: lr, transporter, reason: why,...(packingBoxes.length?{packingBoxIds:packingBoxes}:{}), lines: order.lines.filter(l => quantities[String(l.id)]).map(l => ({ lineId: l.id, quantity: quantities[String(l.id)] })) }); await openOrder(order.id); })}>Dispatch selected quantities</Button>
           </div></Card>}
           {order.evidence.map(e => <p key={e.id}>{e.kind} · {e.item_code ?? 'Photo'} {e.photo_name && <a href={`${base}/evidence/${e.id}/photo`} target="_blank" rel="noreferrer">View {e.photo_name}</a>}</p>)}
         </>}

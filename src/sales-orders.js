@@ -1,4 +1,5 @@
 import {compareCustomerPo} from './customer-po-comparison.js';
+import {requirePackingDispatch,consumePackingDispatch} from './modules/warehouse/dispatch-guard.js';
 import {bindCustomerPricing} from './modules/customers/commercial.js';
 import {contractForLine,requireContractBinding} from './modules/operations/customer-gates.js';
 import {pricingToday} from './modules/pricing/quotation-source.js';
@@ -249,9 +250,10 @@ export async function uploadOriginal(db,orderId,b,user,shipmentId=null){can(user
 }
 export async function downloadOriginal(db,documentId,user){can(user,'orders.read');const d=await db.prepare('SELECT original_name,mime_type,original_bytes,sha256 FROM crm_order_documents WHERE id=?').get(id(documentId));if(!d)fail(404,'Original not found.');return d;}
 export async function dispatchOrder(db,orderId,b,user){can(user,isLogisticsRole(user)?'logistics.dispatch.manage':'orders.dispatch');const reason=why(b);
+ if(b.packingBoxIds!==undefined&&(!Array.isArray(b.packingBoxIds)||b.packingBoxIds.length>100||b.packingBoxIds.some(value=>typeof value!=='string'||! /^[0-9a-f-]{36}$/i.test(value))))fail(422,'Select valid packing box identifiers.');
  if(typeof b.requestKey!=='string'||! /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(b.requestKey))fail(422,'A UUID dispatch retry key is required.');
  if(!Array.isArray(b.lines)||!b.lines.length||b.lines.length>100)fail(422,'Select at least one pick-list line.');
- const requestHash=fingerprint({vehicle:text(b.vehicleNumber??'',100),lr:text(b.lrNumber??'',100),transporter:text(b.transporter??'',200),eway:text(b.ewayBillNumber??'',100),notes:text(b.notes??'',2000),lines:b.lines.map(l=>({id:id(l.lineId),quantity:scaled(decimal(l.quantity)).toString()})).sort((a,b)=>a.id-b.id)});
+ const requestHash=fingerprint({vehicle:text(b.vehicleNumber??'',100),lr:text(b.lrNumber??'',100),transporter:text(b.transporter??'',200),eway:text(b.ewayBillNumber??'',100),notes:text(b.notes??'',2000),...(b.packingBoxIds?.length?{packingBoxIds:[...b.packingBoxIds].sort()}:{}),lines:b.lines.map(l=>({id:id(l.lineId),quantity:scaled(decimal(l.quantity)).toString()})).sort((a,b)=>a.id-b.id)});
  return work(db,user,reason,async()=>{if(tallyWriteActive(db,'SALES_ORDER'))await requireTallyWriteConfirmation(db,'SALES_ORDER',orderId);const r=await row(db,orderId);
  const receipt=await db.prepare("SELECT public_detail FROM crm_order_events WHERE sales_order_id=? AND action='DISPATCHED' AND public_detail->>'requestKey'=?").get(r.sales_order_id,b.requestKey);
  if(receipt){if(receipt.public_detail.requestHash!==requestHash)fail(409,'This retry key was already used for different dispatch details.');return {shipmentId:receipt.public_detail.shipmentId,replayed:true,order:await orderDetail(db,orderId,user)};}
@@ -261,14 +263,16 @@ export async function dispatchOrder(db,orderId,b,user){can(user,isLogisticsRole(
  if(!vehicle||!lr||!transporter)fail(422,'Vehicle, LR number and transporter are required.');
  const picked=[],seen=new Set();for(const l of b.lines){const lid=id(l.lineId);if(seen.has(lid))fail(422,'Duplicate pick-list line.');seen.add(lid);const current=await db.prepare('SELECT *,ordered_quantity::text AS ordered,fulfilled_quantity::text AS fulfilled FROM sales_order_lines WHERE id=? AND sales_order_id=? AND NOT is_deleted FOR UPDATE').get(lid,r.sales_order_id);
  if(!current)fail(422,'Pick-list line does not belong to this order.');const q=scaled(decimal(l.quantity));if(q<=0n||q>scaled(current.ordered)-scaled(current.fulfilled))fail(422,'Dispatch quantity exceeds the remaining order quantity.');picked.push({id:lid,quantity:String(l.quantity),fulfilled:quantity(scaled(current.fulfilled)+q)});}
+ const packingBoxes=await requirePackingDispatch(db,r.sales_order_id,picked,b.packingBoxIds);
  const stockEvidence=await checkDispatchStock(db,r,picked);
  const shipment=(await db.prepare('INSERT INTO crm_shipments(sales_order_id,vehicle_number,lr_number,transporter,eway_bill_number,notes,created_by) VALUES(?,?,?,?,?,?,?)').run(r.sales_order_id,vehicle,lr,transporter,eway||null,text(b.notes??'',2000),user.id)).insertedId;
  for(const l of picked){await db.prepare('INSERT INTO crm_shipment_items(shipment_id,order_line_id,quantity,created_by) VALUES(?,?,?,?)').run(shipment,l.id,l.quantity,user.id);await db.prepare('UPDATE sales_order_lines SET fulfilled_quantity=? WHERE id=?').run(l.fulfilled,l.id);}
+ await consumePackingDispatch(db,shipment,packingBoxes);
  await retainDispatchConsumption(db,r,shipment,picked,stockEvidence,user,reason);
  await consumeOrderAvailability(db,r.sales_order_id,user,reason);
  const remaining=await db.prepare('SELECT id FROM sales_order_lines WHERE sales_order_id=? AND NOT is_deleted AND fulfilled_quantity<ordered_quantity LIMIT 1').get(r.sales_order_id);
  const next=remaining?'PARTIALLY_DISPATCHED':'DISPATCHED';await db.prepare('UPDATE crm_order_workflows SET status=? WHERE sales_order_id=?').run(next,r.sales_order_id);await db.prepare('UPDATE sales_orders SET status=?,updated_by=?,updated_at=now() WHERE id=?').run(next,user.id,r.sales_order_id);
- await event(db,r,user,'DISPATCHED',reason,{shipmentId:shipment,lrNumber:lr,requestKey:b.requestKey,requestHash,lines:picked.map(l=>({lineId:l.id,quantity:l.quantity}))});return {shipmentId:shipment,order:await orderDetail(db,orderId,user)};
+ await event(db,r,user,'DISPATCHED',reason,{shipmentId:shipment,lrNumber:lr,requestKey:b.requestKey,requestHash,...(packingBoxes.length?{packingBoxIds:packingBoxes}:{}),lines:picked.map(l=>({lineId:l.id,quantity:l.quantity}))});return {shipmentId:shipment,order:await orderDetail(db,orderId,user)};
  });
 }
 export async function markDelivered(db,shipmentId,b,user){can(user,isLogisticsRole(user)?'logistics.dispatch.manage':'orders.dispatch');const reason=why(b);
