@@ -30,7 +30,7 @@ function lineFacts(cells,layout,system,bucket){
  return facts;
 }
 export function sourceRowIssues(facts,{formula=false,layout}={}){
- const issues=[];if(formula)issues.push('FORMULA_REQUIRES_LITERAL_SOURCE');if(!facts.externalCode)issues.push('MISSING_MATERIAL_CODE');if(!facts.description)issues.push('MISSING_DESCRIPTION');
+ const issues=[];if((facts.poNumber?.length||0)>100||(facts.poLine?.length||0)>100||(facts.externalCode?.length||0)>200)issues.push('IDENTIFIER_LENGTH_REQUIRES_REVIEW');for(const key of ['orderedQuantity','openQuantity'])if(facts[key]&&facts[key].split('.')[0].length>14)issues.push('QUANTITY_EXCEEDS_DATABASE_PRECISION');if(formula)issues.push('FORMULA_REQUIRES_LITERAL_SOURCE');if(!facts.externalCode)issues.push('MISSING_MATERIAL_CODE');if(!facts.description)issues.push('MISSING_DESCRIPTION');
  if(facts.openQuantity===null)issues.push('MISSING_OR_INVALID_OPEN_QUANTITY');
  if(facts.scheduleKind==='UNKNOWN'||facts.scheduleKind==='DATED'&&!excelCalendarDate(facts.requiredDate))issues.push('MISSING_OR_INVALID_REQUIRED_DATE');
  if(facts.kind==='PO_LINE'){
