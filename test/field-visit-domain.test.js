@@ -1,0 +1,9 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {validateFieldVisit} from '../src/modules/customers/field-visit-domain.js';
+const now=new Date('2026-11-27T12:00:00Z'),manual={requestKey:'11111111-1111-4111-8111-111111111111',title:'SAMPLE visit',locationSource:'MANUAL_NOTE',locationNote:'SAMPLE customer office',reason:'SAMPLE test'},gps={...manual,locationSource:'BROWSER',latitude:'13.082680',longitude:'80.270718',accuracyMetres:'15.25',capturedAt:now.toISOString()};
+test('Manual visits do not invent device location',()=>assert.deepEqual(validateFieldVisit(manual,now),manual));
+test('Device evidence preserves its explicit precision',()=>assert.equal(validateFieldVisit(gps,now).latitude,'13.082680'));
+test('Manual notes cannot carry claimed GPS evidence',()=>assert.throws(()=>validateFieldVisit({...gps,locationSource:'MANUAL_NOTE'},now),{status:422}));
+test('Coordinates cannot exceed earth bounds',()=>{for(const patch of [{latitude:'90.000001'},{longitude:'-180.000001'},{latitude:'NaN'}])assert.throws(()=>validateFieldVisit({...gps,...patch},now),{status:422});});
+test('Missing, stale and future location evidence is refused',()=>{for(const patch of [{accuracyMetres:undefined},{capturedAt:'2026-11-27T11:54:00Z'},{capturedAt:'2026-11-27T12:01:00Z'},{capturedAt:'2026-11-27T12:00:00'}])assert.throws(()=>validateFieldVisit({...gps,...patch},now),{status:422});});
+test('Invalid accuracy and controls cannot be saved',()=>{for(const patch of [{accuracyMetres:'0'},{accuracyMetres:'100000.01'},{title:'bad\u0000title'}])assert.throws(()=>validateFieldVisit({...gps,...patch},now),{status:422});});
+test('A visit cannot claim a different staff member or server time',()=>{for(const patch of [{staffId:8},{checkedInAt:now.toISOString()}])assert.throws(()=>validateFieldVisit({...manual,...patch},now),{status:422});});

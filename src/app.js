@@ -17,6 +17,7 @@ import {createSupportIntake,supportIntakeRoutes} from './modules/support-intake/
 import {sourcingRoutes} from './modules/sourcing/routes.js';
 import {bankRoutes} from './modules/accounts/bank-routes.js';
 import {gstRoutes} from './modules/billing/gst-routes.js';
+import {fieldVisitRoutes} from './modules/customers/field-visit-routes.js';
 import {materialRoutes} from './modules/materials/routes.js';
 import {warehouseRoutes} from './modules/warehouse/routes.js';
 import {commitmentRoutes} from './modules/sourcing/commitment-routes.js';
@@ -225,6 +226,7 @@ export function createApp({ db, config, fetchImpl = fetch, sendMailImpl = sendQu
     ...bankRoutes({db,route,json,readJson}),
     ...gstRoutes({db,route,json,readJson}),
     ...materialRoutes({db,route,json,readJson,operations:modules.services.operations}),
+    ...fieldVisitRoutes({db,route,json,readJson,customers:modules.services.customerManagement}),
     ...warehouseRoutes({db,route,json,readJson}),
     ...commitmentRoutes({db,route,json,readJson}),
     ...collectionsRoutes({db,route,json,readJson,operations:modules.services.operations,work:modules.services.work}),
