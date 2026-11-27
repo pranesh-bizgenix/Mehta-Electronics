@@ -1,3 +1,4 @@
+import {OPERATIONAL_REPORTS,operationalReport,operationalReportAccess} from './operational-reports.js';
 import {hasPermission} from '../../rbac.js';
 import {forbidden,validationFailed} from '../../core/errors.js';
 import {transaction,validDate} from '../../crm-modules.js';
@@ -10,6 +11,7 @@ import {reportWorkbook} from '../../core/xlsx.js';
 import {quotationMargin,MARGIN_REPORT_NOTE} from './margin-report.js';
 
 export const REPORTS={
+ ...OPERATIONAL_REPORTS,
  quotation_margin:{label:'Quoted margin and cost flags',permission:'quotations.cost.read',financial:false},
  quotations:{label:'Quotation register',permission:'quotations.read',financial:false},
  orders:{label:'Sales order quantities',permission:'orders.read',financial:false},
@@ -21,7 +23,7 @@ export const REPORTS={
  staff_performance:{label:'Staff performance',permission:'tasks.read',financial:false}
 };
 const performanceAccess=u=>['tasks.read','enquiries.read','quotations.read','orders.read','sales_intake.read'].every(p=>hasPermission(u,p));
-export const reportCatalogue=u=>Object.entries(REPORTS).filter(([key,r])=>hasPermission(u,r.permission)&&(!r.financial||['OWNER','ACCOUNTS'].includes(u.role))&&(key!=='quotation_margin'||hasPermission(u,'quotations.read'))&&(key!=='staff_performance'||performanceAccess(u))).map(([key,r])=>({key,label:r.label}));
+export const reportCatalogue=u=>Object.entries(REPORTS).filter(([key,r])=>operationalReportAccess(u,key)&&hasPermission(u,r.permission)&&(!r.financial||['OWNER','ACCOUNTS'].includes(u.role))&&(key!=='quotation_margin'||hasPermission(u,'quotations.read'))&&(key!=='staff_performance'||performanceAccess(u))).map(([key,r])=>({key,label:r.label}));
 export function reportFilters(b){
  if(!validDate(b.from)||!validDate(b.to)||b.from>b.to||Date.parse(b.to)-Date.parse(b.from)>366*86400000)throw validationFailed('Choose a valid date range of at most 366 days.');
  const status=text(b.status??'','Status',40,false);if(status&&!/^[A-Z_]+$/.test(status))throw validationFailed('Use an exact status, such as APPROVED.');
@@ -31,7 +33,10 @@ export async function reportData(db,u,key,b){
  const d=Object.hasOwn(REPORTS,key)?REPORTS[key]:null;if(!d)throw validationFailed('Choose an available report.');if(!hasPermission(u,d.permission))throw forbidden();if(d.financial)financeAccess(u);
  const f=reportFilters(b),args=[f.from,f.to,f.status,f.status];let rows,columns;
  const dates="created_at >= ?::date::timestamp AT TIME ZONE 'Asia/Kolkata' AND created_at < (?::date+1)::timestamp AT TIME ZONE 'Asia/Kolkata' AND (?='' OR status=?)";
- if(key==='quotation_margin'){
+ if(Object.hasOwn(OPERATIONAL_REPORTS,key)){
+  const result=await operationalReport(db,u,key,f);if(result.rows.length>1000)throw validationFailed('More than 1,000 rows match. Narrow the date or status filters; no partial report is exported.');
+  return {key,title:d.label,filters:f,columns:result.columns,rows:result.rows.map(row=>Object.fromEntries(result.columns.map(c=>[c,row[c] instanceof Date?row[c].toISOString():String(row[c]??'')]))),count:result.rows.length,generatedAt:new Date().toISOString(),note:result.note};
+ }else if(key==='quotation_margin'){
   if(!hasPermission(u,'quotations.read'))throw forbidden('Quotation read access is required for cost reporting.');
   rows=await db.prepare(`SELECT reference,customer_name,status,public_snapshot,private_snapshot FROM (SELECT q.quotation_number AS reference,c.name AS customer_name,w.status,w.public_snapshot,w.private_snapshot,q.created_at FROM quotations q JOIN crm_quotation_workflows w ON w.quotation_id=q.id JOIN customers c ON c.id=q.customer_id WHERE NOT q.is_deleted) r WHERE ${dates} ORDER BY created_at,reference LIMIT 1001`).all(...args);
   rows=rows.map(quotationMargin);columns=['reference','customer_name','status','net_ex_gst','captured_cost','quoted_profit','margin_percent','captured_floor','flag','basis'];
@@ -63,7 +68,7 @@ export async function reportPdf(db,u,key,b){
  const reason=text(b.reason,'Export reason');
  return transaction(db,u,reason,async()=>{
   const data=await reportData(db,u,key,b);
-  const performance=key==='staff_performance',margin=key==='quotation_margin',pdfColumns=margin?['Quotation / customer','Measure','Result']:performance?['staff','measure','result']:data.columns,pdfRows=margin?data.rows.flatMap(r=>[['Status',r.status],['Net excluding GST',r.net_ex_gst],['Captured cost',r.captured_cost||'Not available'],['Quoted profit',r.quoted_profit||'Not available'],['Captured margin %',r.margin_percent||'Not available'],['Captured floor %',r.captured_floor||'Not available'],['Flag / basis',r.flag+' / '+r.basis]].map(([measure,value])=>[r.reference+' | '+r.customer_name,measure,value])):performance?data.rows.flatMap(r=>[[r.staff,'Enquiry to quotation',`${r.enquiry_conversion} (${r.quoted_enquiries} / ${r.enquiries})`],[r.staff,'Quotation to order',`${r.order_conversion} (${r.ordered_quotes} / ${r.issued_quotes})`],[r.staff,'First response',`${r.average_response_minutes} minutes; ${r.responded_requests} responses; ${r.unanswered_requests} unanswered`],[r.staff,'Tasks on time',`${r.on_time_tasks} (${r.tasks_on_time} / ${r.tasks_due})`]]):data.rows.map(r=>data.columns.map(c=>r[c]));
+  const performance=key==='staff_performance',margin=key==='quotation_margin',wide=Object.hasOwn(OPERATIONAL_REPORTS,key)&&data.columns.length>6,pdfColumns=wide?['Record','Measure','Result']:margin?['Quotation / customer','Measure','Result']:performance?['staff','measure','result']:data.columns,pdfRows=wide?data.rows.flatMap(r=>data.columns.filter(c=>c!=='reference').map(c=>[r.reference||'Record',c.replaceAll('_',' '),r[c]||'Not available'])):margin?data.rows.flatMap(r=>[['Status',r.status],['Net excluding GST',r.net_ex_gst],['Captured cost',r.captured_cost||'Not available'],['Quoted profit',r.quoted_profit||'Not available'],['Captured margin %',r.margin_percent||'Not available'],['Captured floor %',r.captured_floor||'Not available'],['Flag / basis',r.flag+' / '+r.basis]].map(([measure,value])=>[r.reference+' | '+r.customer_name,measure,value])):performance?data.rows.flatMap(r=>[[r.staff,'Enquiry to quotation',`${r.enquiry_conversion} (${r.quoted_enquiries} / ${r.enquiries})`],[r.staff,'Quotation to order',`${r.order_conversion} (${r.ordered_quotes} / ${r.issued_quotes})`],[r.staff,'First response',`${r.average_response_minutes} minutes; ${r.responded_requests} responses; ${r.unanswered_requests} unanswered`],[r.staff,'Tasks on time',`${r.on_time_tasks} (${r.tasks_on_time} / ${r.tasks_due})`]]):data.rows.map(r=>data.columns.map(c=>r[c]));
   if(pdfRows.length>1000)throw validationFailed('More than 1,000 PDF rows match. Narrow the reporting period; no partial report is exported.');
   const bytes=await renderPdf({title:data.title,subtitle:`${data.filters.from} to ${data.filters.to} | ${data.count} records`,sections:[{label:'Scope',value:`${data.note}\nStatus: ${data.filters.status||'All'} | Generated: ${data.generatedAt}` }],columns:pdfColumns.map(c=>({label:c.replaceAll('_',' '),fraction:1/pdfColumns.length})),rows:pdfRows});
   await writeAudit(db,{userId:u.id,entity:'CRM_REPORT',recordId:key,action:b.preview?'PDF_PREVIEW':'PDF_DOWNLOAD',reason,newValue:{filters:data.filters,count:data.count}});
