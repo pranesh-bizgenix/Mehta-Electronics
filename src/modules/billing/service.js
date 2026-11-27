@@ -79,7 +79,7 @@ export async function upload(db,u,recordId,b){
   await audit(db,u,row.id,'UPLOAD_ORIGINAL',reason,{sha256:file.sha256,bytes:file.bytes.length});return detail(db,u,row.id);
  });
 }
-export async function act(db,u,recordId,b){
+export async function act(db,u,recordId,b,{operations}={}){
  financeAccess(u,true,['APPROVE','VERIFY'].includes(b.action));const reason=text(b.reason,'Reason');
  return transaction(db,u,reason,async()=>{await guard(db);const row=await detail(db,u,recordId,true);if(row.version!==b.version)throw conflict('Invoice changed. Reload.');
   const config=await settings(db);let next;
@@ -106,6 +106,7 @@ export async function act(db,u,recordId,b){
    const fy=financialYear(row.payload.date),counter=await db.prepare('INSERT INTO billing_document_counters(financial_year,next_value) VALUES(?,2) ON CONFLICT(financial_year) DO UPDATE SET next_value=billing_document_counters.next_value+1 RETURNING next_value-1 AS n').get(fy);
    row.number=invoiceNumber(config.value.prefix,row.payload.date,counter.n);next='ISSUED';
    if(await db.prepare("SELECT id FROM billing_documents WHERE customer_id=? AND lower(number)=lower(?) AND id<>? AND status<>'CANCELLED'").get(row.customer_id,row.number,row.id))throw conflict('This invoice number already belongs to a registered copy.');
+   if(operations&&!row.invoice_reference_id){const allocationReason=('Issued invoice '+row.number+' / '+reason).slice(0,900),reference=await operations.create(u,'INVOICE',{title:'Invoice '+row.number,customerId:row.customer_id,ownerId:row.created_by,backupId:row.approved_by,reason:allocationReason,...(row.payload.references?.dueDate?{dueAt:row.payload.references.dueDate+'T23:59:59.999+05:30'}:{}),payload:{invoiceNumber:row.number,invoiceDate:row.payload.date,amount:row.payload.totals.total,sourceReference:'CRM_INVOICE:'+row.id,sourceObservedAt:new Date().toISOString()}});await db.prepare('UPDATE billing_documents SET invoice_reference_id=? WHERE id=?').run(reference.record.id,row.id);row.invoice_reference_id=reference.record.id;}
   }else throw conflict('This action is not available for the current invoice state.');
   await db.prepare('UPDATE billing_documents SET status=?,number=?,approved_by=CASE WHEN ? THEN ? ELSE approved_by END,version=version+1,updated_at=now() WHERE id=?').run(next,row.number,['APPROVE','VERIFY'].includes(b.action),u.id,row.id);
   await audit(db,u,row.id,b.action,reason,{source:row.source,number:row.number,status:next});return detail(db,u,row.id);

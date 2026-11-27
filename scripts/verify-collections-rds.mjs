@@ -1,0 +1,54 @@
+import assert from 'node:assert/strict';
+import {randomUUID} from 'node:crypto';
+import fs from 'node:fs/promises';
+import {withAuthorizedRdsRollbackVerification} from '../test-support/transaction.js';
+import {getConfig} from '../src/config.js';
+import {createModules} from '../src/modules/container.js';
+import {CollectionsService} from '../src/modules/accounts/collections-service.js';
+
+const tag='ZZTEST_COLLECTIONS_'+randomUUID(),reason=tag+' rollback verification',checks=[];
+const date=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+await withAuthorizedRdsRollbackVerification(async db=>{
+ const schema=await db.prepare("SELECT to_regclass('public.crm_receipt_batches') AS batches").get();assert.ok(schema.batches,'Apply migration 0075 through the guarded runner before this verification.');
+ const owner=await db.prepare("SELECT id,role FROM users WHERE role='OWNER' AND status='ACTIVE' ORDER BY id LIMIT 1").get();assert.ok(owner);
+ const reviewer={id:(await db.prepare("INSERT INTO users(name,email,role,password_hash,must_change_password) VALUES(?,?,'OWNER','not-a-login',0) RETURNING id").get(tag,tag+'@example.test')).id,role:'OWNER'};
+ const company=await db.prepare('SELECT id FROM tally_companies ORDER BY created_at LIMIT 1').get();assert.ok(company);
+ const modules=createModules({db,config:getConfig()}),operations=modules.services.operations;
+ await modules.ready();
+ const service=new CollectionsService({db,operations,work:modules.services.work});
+ const customer=await modules.transactions.run(owner,reason,async()=>{
+  const row=await db.prepare('INSERT INTO customers(name,normalized_name,created_by,updated_by) VALUES(?,?,?,?) RETURNING id').get(tag,tag.toLowerCase(),owner.id,owner.id);
+  await db.prepare('INSERT INTO crm_customer_profiles(customer_id,company_id,tally_ledger_name,created_by) VALUES(?,?,?,?)').run(row.id,company.id,tag,owner.id);return row;
+ });
+ const check=async(name,fn)=>{await fn();checks.push(name);console.log('PASS',name);};
+ const invoices=[];for(let i=0;i<2;i++)invoices.push((await operations.create(owner,'INVOICE',{title:tag+'_'+i,customerId:customer.id,ownerId:owner.id,backupId:reviewer.id,reason,payload:{invoiceNumber:tag+'_'+i,invoiceDate:date,amount:'100',sourceReference:tag,sourceObservedAt:new Date().toISOString()}})).record);
+ const collection=(await operations.create(owner,'COLLECTION',{title:tag+' follow up',customerId:customer.id,ownerId:owner.id,backupId:reviewer.id,reason,payload:{invoiceId:invoices[0].id,amount:'100',dueDate:date,notes:reason}})).record;
+ const noteBody={requestKey:randomUUID(),invoiceId:invoices[0].id,kind:'CREDIT',number:tag+'-CREDIT',date,amount:'20',sourceReference:tag,evidence:reason,reason};
+ const note=await service.adjustment(owner,noteBody);
+ await check('Adjustment retry does not create another note',async()=>assert.equal((await service.adjustment(owner,noteBody)).id,note.id));
+ await check('Creator cannot confirm their own adjustment',()=>assert.rejects(service.reviewAdjustment(owner,note.id,{decision:'CONFIRM',reason}),{status:403}));
+ await service.reviewAdjustment(reviewer,note.id,{decision:'CONFIRM',reason});
+ const terms=await service.arrangement(owner,{requestKey:randomUUID(),invoiceId:invoices[0].id,kind:'DUE_DATE',replacesId:null,payload:{date},evidence:reason,reason});
+ await check('Creator cannot approve their own due date',()=>assert.rejects(service.reviewArrangement(owner,terms.id,{version:terms.version,decision:'APPROVE',reason}),{status:403}));
+ await service.reviewArrangement(reviewer,terms.id,{version:terms.version,decision:'APPROVE',reason});
+ const body={requestKey:randomUUID(),customerId:customer.id,companyId:company.id,backupId:reviewer.id,bankReference:tag,paymentDate:date,amount:'130',allocations:[{invoiceId:invoices[0].id,amount:'80'},{invoiceId:invoices[1].id,amount:'50'}],reason};
+ const batch=await service.createBatch(owner,body);
+ await check('One received payment creates two existing pending receipt records',async()=>{assert.equal(batch.lines.length,2);assert.ok(batch.lines.every(line=>line.status==='PENDING_APPROVAL'));});
+ await check('Allocation retry returns the same batch and receipts',async()=>assert.equal((await service.createBatch(owner,body)).id,batch.id));
+ await check('Individual approval cannot bypass a grouped receipt review',()=>assert.rejects(operations.act(reviewer,batch.lines[0].receipt_id,{version:batch.lines[0].version,action:'CONFIRM',reason}),{status:409}));
+ await check('Batch maker cannot confirm their own received payment',()=>assert.rejects(service.reviewBatch(owner,batch.id,{decision:'CONFIRM',reason}),{status:403}));
+ await check('A failure in the second receipt rolls back the first confirmation and its collection changes',async()=>{
+  let count=0;const failing=new CollectionsService({db,work:modules.services.work,operations:{act:async(...args)=>{if(++count===2)throw new Error('SAMPLE injected second-receipt failure');return operations.act(...args);}}});
+  await assert.rejects(failing.reviewBatch(reviewer,batch.id,{decision:'CONFIRM',reason}),/SAMPLE injected second-receipt failure/);
+  assert.ok((await service.batch(owner,batch.id)).lines.every(line=>line.status==='PENDING_APPROVAL'));
+  assert.equal((await operations.detail(owner,collection.id)).record.status,'OPEN');
+ });
+ await service.reviewBatch(reviewer,batch.id,{decision:'CONFIRM',reason});
+ await check('Both invoice balances reflect exactly their own confirmed allocation',async()=>{assert.equal((await service.invoice(owner,invoices[0].id)).balance.outstanding,'0.000000');assert.equal((await service.invoice(owner,invoices[1].id)).balance.outstanding,'50.000000');});
+ await check('Settled invoice closes its existing collection follow-up',async()=>assert.equal((await operations.detail(owner,collection.id)).record.status,'RESOLVED'));
+ await check('Confirmed adjustment remains included in ageing',async()=>{const report=await service.ageing(owner,{customerId:customer.id,asOf:date});assert.equal(report.rows.find(row=>row.id===invoices[0].id).bucket,'SETTLED');assert.equal(report.rows.find(row=>row.id===invoices[1].id).outstanding,'50.000000');});
+ await check('Duplicate bank payment reference cannot create a second allocation batch',()=>assert.rejects(service.createBatch(owner,{...body,requestKey:randomUUID()}),{status:409}));
+ await check('Ageing and received-payment allocation PDFs render',async()=>{for(const f of [await service.pdf(owner,{reason,search:tag,asOf:date,preview:true}),await service.batchPdf(owner,batch.id,{reason,preview:true})])assert.equal(f.bytes.subarray(0,5).toString(),'%PDF-');});
+},{productionTransactions:true});
+await withAuthorizedRdsRollbackVerification(async db=>assert.equal((await db.prepare('SELECT count(*)::integer AS n FROM customers WHERE name=?').get(tag)).n,0));
+await fs.mkdir('verification-output/crm-completion',{recursive:true});await fs.writeFile('verification-output/crm-completion/collections-rds.json',JSON.stringify({checks,passed:checks.length,cleanup:'ROLLBACK_VERIFIED',scope:'Actual internal receipt allocation and independent approvals. Invoice references were rollback-only source fixtures; no legal invoice issuance, transfer, provider call or Tally write.'},null,2));

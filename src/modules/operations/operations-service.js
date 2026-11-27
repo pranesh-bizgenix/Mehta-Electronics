@@ -1,4 +1,7 @@
 import crypto from 'node:crypto';
+import {assertIssuedInvoiceClosure} from '../accounts/collection-domain.js';
+import {financialInvoice,invoiceBalance} from '../accounts/collections-common.js';
+import {compare as compareMoney,decimal as exactDecimal} from '../../../public/money.js';
 import {requireUnmergedCustomer} from '../customers/identity.js';
 import {OPERATION_DESCRIPTORS,CLOSED_OPERATION_STATUSES} from '../../../public/operation-descriptors.js';
 import {forbidden,conflict,notFound,validationFailed} from '../../core/errors.js';
@@ -59,7 +62,8 @@ export class OperationsService {
    if(payload.invoiceId){const invoice=await this.repository.record(uuid(payload.invoiceId),{lock:true});
     if(!invoice||invoice.kind!=='INVOICE'||invoice.customer_id!==customerId||CLOSED_OPERATION_STATUSES.includes(invoice.status))throw validationFailed('Select an open invoice reference belonging to this customer.');
     if(kind==='RECEIPT'&&await this.repository.duplicateReceipt(invoice.id,payload.transactionReference))throw conflict('This transaction is already recorded against this invoice.');
-    if(scaled(payload.amount)>scaled(invoice.payload.amount))throw validationFailed('Amount exceeds the referenced invoice.');
+    if(kind==='RECEIPT'){const balance=await invoiceBalance(this.repository.db,invoice);if(compareMoney(exactDecimal(payload.amount),exactDecimal(balance.outstanding))>0)throw validationFailed('Receipt exceeds the confirmed invoice balance after adjustments.');}
+    else if(scaled(payload.amount)>scaled(invoice.payload.amount))throw validationFailed('Amount exceeds the referenced invoice.');
    }
    const original=kind==='INTAKE'?{...payload}:null;if(original)delete payload.originalText;
    const row=await this.repository.insert({kind,title,customerId,ownerId,backupId,payload,dueAt,actorId:user.id,now:this.clock.now().toISOString(),reference:`${kind}-${crypto.randomBytes(5).toString('hex').toUpperCase()}`});
@@ -75,10 +79,15 @@ export class OperationsService {
   const row=await this.repository.record(uuid(recordId),{lock:true});if(!row)throw notFound();const d=this.definition(user,row.kind,true);
   if(row.version!==input.version)throw conflict('Record changed. Reload before continuing.');
   const action=input.action,next=d.actions[action];if(!next||!(transitions[row.status]||[]).includes(action))throw conflict('This action is not available in the current state.');
+  if(row.kind==='RECEIPT'&&['CONFIRM','REJECT'].includes(action)){const batch=await this.repository.db.prepare("SELECT b.id FROM crm_receipt_batch_lines l JOIN crm_receipt_batches b ON b.id=l.batch_id WHERE l.receipt_id=? AND b.status='PENDING_REVIEW'").get(row.id);if(batch){const context=await this.repository.db.prepare("SELECT current_setting('mehta.collections_write',true) AS permission").get();if(context?.permission!=='authorized')throw conflict('Review the payment allocation batch so all invoice receipts are confirmed together.');}}
   if(!['APPROVE','CONFIRM','REJECT'].includes(action)&&![row.owner_id,row.backup_id].includes(user.id)&&!this.access.can(user,'work.reassign'))throw forbidden('Only the owner, backup or an authorised manager may progress this case.');
   if(['APPROVE','CONFIRM','REJECT'].includes(action)){
    this.access.require(user,d.financial?'collections.approve':'operations.approve');
    if(user.id===row.created_by)throw forbidden('A different person must review this request.');
+  }
+  if(row.kind==='INVOICE'&&['CANCEL','RESOLVE'].includes(action)){
+   const issued=await this.repository.db.prepare("SELECT id FROM billing_documents WHERE invoice_reference_id=? AND status='ISSUED' LIMIT 1").get(row.id);
+   if(issued){const balance=await invoiceBalance(this.repository.db,row);assertIssuedInvoiceClosure({action,hasIssuedDocument:true,outstanding:balance.outstanding});}
   }
   if(action==='APPROVE'&&row.kind==='WARRANTY'){
    const policy=(await this.rules.require('warranty.policy')).value;
@@ -99,12 +108,12 @@ export class OperationsService {
   if(action==='CONFIRM'&&row.kind==='RECEIPT'){
    const invoice=await this.repository.record(row.payload.invoiceId,{lock:true});
    if(!invoice||invoice.status!=='OPEN')throw conflict('The referenced invoice is not open.');
-   const prior=await this.repository.confirmedTotal(invoice.id);
-   if(scaled(prior)+scaled(row.payload.amount)>scaled(invoice.payload.amount))throw conflict('Confirmed receipts would exceed this invoice.');
+   const balance=await invoiceBalance(this.repository.db,invoice);
+   if(compareMoney(exactDecimal(row.payload.amount),exactDecimal(balance.outstanding))>0)throw conflict('Confirmed receipts would exceed this invoice after verified adjustments.');
   }
   if(action==='RESOLVE'&&row.kind==='COLLECTION'){
-   const total=await this.repository.confirmedTotal(row.payload.invoiceId);
-   if(scaled(total)<scaled(row.payload.amount))throw conflict('A confirmed receipt covering this outstanding amount is still required. Partial payment leaves collection open.');
+   const invoice=await financialInvoice(this.repository.db,row.payload.invoiceId,{lock:true}),balance=await invoiceBalance(this.repository.db,invoice);
+   if(compareMoney(exactDecimal(balance.outstanding),exactDecimal('0'))>0)throw conflict('The invoice still has a verified outstanding balance. Partial payment leaves collection open.');
   }
   const response=action==='RESPOND';if(response)text(input.response,'Response notes',10000);
   const closing=CLOSED_OPERATION_STATUSES.includes(next)||(row.kind==='PAYMENT'&&next==='APPROVED'),updated=await this.repository.transition(row,next,user.id,this.clock.now().toISOString(),{response,closing});
@@ -112,6 +121,7 @@ export class OperationsService {
   await this.repository.event(updated,action,row.status,reason,user.id,{...(response?{response:input.response}:{}),...(input.checks?{checks:input.checks}:{})});
   await this.audit.record({actorId:user.id,entity:'CRM_OPERATION',recordId:row.id,action,oldValue:{status:row.status},newValue:{status:next,version:updated.version},reason});
   if(closing)await this.work.closeForEntity(user,row.kind,row.id,next==='CANCELLED'?'CANCELLED':'DONE',reason);
+  if(action==='CONFIRM'&&row.kind==='RECEIPT')await this.closeSettledInvoice(user,row.payload.invoiceId,reason);
   return this.detail(user,row.id);
  });}
  async revise(user,recordId,input){const reason=text(input.reason,'Revision reason');return this.transactions.run(user,reason,async()=>{
@@ -130,6 +140,7 @@ export class OperationsService {
   await this.repository.event(updated,'REVISE_FINDINGS',row.status,reason,user.id,{before:row.payload,after:payload});
   await this.audit.record({actorId:user.id,entity:'CRM_OPERATION',recordId:row.id,action:'REVISE_FINDINGS',oldValue:row.payload,newValue:payload,reason});return this.detail(user,row.id);
  });}
+ async closeSettledInvoice(user,invoiceId,reason){this.access.require(user,'collections.approve');if(!finance(user))throw forbidden();return this.transactions.run(user,reason,async()=>{const invoice=await financialInvoice(this.repository.db,uuid(invoiceId),{lock:true}),balance=await invoiceBalance(this.repository.db,invoice);if(compareMoney(exactDecimal(balance.outstanding),exactDecimal('0'))>0)return {settled:false};const cases=await this.repository.db.prepare("SELECT * FROM crm_operations WHERE kind='COLLECTION' AND payload->>'invoiceId'=? AND status IN ('OPEN','IN_PROGRESS','RESPONDED') FOR UPDATE").all(invoiceId);for(const row of cases){const updated=await this.repository.transition(row,'RESOLVED',user.id,this.clock.now().toISOString(),{closing:true});await this.repository.event(updated,'INVOICE_SETTLED',row.status,reason,user.id,{invoiceId,outstanding:balance.outstanding});await this.work.closeForEntity(user,'COLLECTION',row.id,'DONE',reason);await this.audit.record({actorId:user.id,entity:'CRM_OPERATION',recordId:row.id,action:'INVOICE_SETTLED',reason,newValue:{invoiceId,status:'RESOLVED'}});}await this.repository.db.prepare("SELECT set_config('mehta.collections_write','authorized',true)").get();const arrangements=await this.repository.db.prepare("SELECT id,status,kind FROM crm_collection_arrangements WHERE invoice_id=? AND status IN ('PENDING_REVIEW','ACTIVE') FOR UPDATE").all(invoiceId);for(const arrangement of arrangements){const instrumentOpen=arrangement.kind==='PDC'&&arrangement.status==='ACTIVE',status=instrumentOpen?'ACTIVE':arrangement.status==='ACTIVE'?'SETTLED':'CANCELLED';if(!instrumentOpen)await this.repository.db.prepare('UPDATE crm_collection_arrangements SET status=?,version=version+1,review_reason=? WHERE id=?').run(status,reason,arrangement.id);await this.work.closeForEntity(user,'COLLECTION_ARRANGEMENT',arrangement.id,'DONE',reason);if(instrumentOpen)await this.work.open(user,{entityType:'PDC_HANDLING',entityId:arrangement.id,title:'Review or return cheque; invoice already settled',department:'ACCOUNTS',ownerUserId:invoice.owner_id,backupUserId:invoice.backup_id,assignmentReason:reason});await this.audit.record({actorId:user.id,entity:'COLLECTIONS',recordId:arrangement.id,action:'INVOICE_SETTLED',reason,newValue:{invoiceId,status,chequeHandlingRequired:instrumentOpen}});}return {settled:true,cases:cases.length,arrangements:arrangements.length};});}
  async controls(user,customerId,body){this.access.require(user,'customers.controls');const cid=Number(customerId);if(!Number.isSafeInteger(cid)||cid<1||!await this.repository.customer(cid))throw notFound('Customer not found.');
   if(!body)return await this.repository.controls(cid)||{customer_id:cid,classification:null,credit_exempt:false,version:0};
   await requireUnmergedCustomer(this.repository.db,cid);
