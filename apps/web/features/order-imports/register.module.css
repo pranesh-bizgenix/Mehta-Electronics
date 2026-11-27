@@ -1,0 +1,7 @@
+.register { min-inline-size: 0; }
+.register :global(.ds-table) { min-inline-size: var(--content-max); table-layout: auto; }
+.register :global(.ds-table td) { overflow-wrap: normal; word-break: normal; }
+.register :global(.ds-table td:last-child) { min-inline-size: var(--layout-card-min); }
+.entryGrid { min-inline-size: 0; }
+.entryGrid :global(.ds-table td), .entryGrid :global(.ds-table th) { min-inline-size: var(--layout-card-min); }
+.entryGrid :global(.ds-table td) { vertical-align: top; }
