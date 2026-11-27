@@ -68,7 +68,8 @@ export class CustomerManagementService{
    parts.push("SELECT o.kind,o.id::text,o.reference,o.title,o.status,o.customer_id,o.created_at,'/operations?kind='||o.kind||'&open='||o.id,o.payload->>'amount' FROM crm_operations o JOIN wanted c ON c.id=o.customer_id WHERE o.kind IN ('INVOICE','COLLECTION','RECEIPT','PAYMENT')");
    add('INVOICE_DOCUMENT',"SELECT 'INVOICE_DOCUMENT',d.id::text,coalesce(d.number,d.id::text),'Invoice document',d.status,d.customer_id,d.created_at,'/billing?open='||d.id,d.payload->'totals'->>'total' FROM billing_documents d JOIN wanted c ON c.id=d.customer_id");
   }
-  const kinds=['ALL','CUSTOMER_PO','ENQUIRY','QUOTATION','ORDER','PURCHASE','SUPPORT','WARRANTY','RETURN','INVOICE','INVOICE_DOCUMENT','COLLECTION','RECEIPT','PAYMENT'];if(!kinds.includes(kind))throw validationFailed('Choose a supported history type.');
+   if(can('orders.read'))add('ORDER_IMPORT',"SELECT 'ORDER_IMPORT',b.id::text,b.filename,'Customer PO / open-order source',b.status,b.customer_id,b.created_at,'/operations/order-imports?batch='||b.id,NULL::text FROM crm_order_import_batches b JOIN wanted c ON c.id=b.customer_id");
+   const kinds=['ALL','CUSTOMER_PO','ORDER_IMPORT','ENQUIRY','QUOTATION','ORDER','PURCHASE','SUPPORT','WARRANTY','RETURN','INVOICE','INVOICE_DOCUMENT','COLLECTION','RECEIPT','PAYMENT'];if(!kinds.includes(kind))throw validationFailed('Choose a supported history type.');
   return {...await this.repository.history(identity.customerIds,parts,{page,kind}),identity};
  }
  async merges(user,id){if(!hasPermission(user,'customers.merge.request')&&!hasPermission(user,'customers.merge.approve'))throw forbidden();await this.access(user,id);return this.repository.merges(id);}
