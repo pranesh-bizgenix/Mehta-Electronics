@@ -43,6 +43,7 @@ export const NAV: NavGroup[] = [
   { label: 'Operations', collapsible: true, items: [
     { href: '/orders', label: 'Order status', icon: 'truck', permission: 'orders.read', keywords: 'sales orders supplied pending partial dispatch lr delivery customer po' },
     { href: '/items/stock-checks', label: 'Stock', icon: 'items', permission: 'items.read', keywords: 'inventory availability warehouse free reserved stock checks daily analysis' },
+    { href: '/operations/order-imports', label: 'PO & open order imports', icon: 'quote', permission: 'orders.read', keywords: 'excel xlsx customer purchase order pending open order snapshot import' },
     { href: '/purchasing', label: 'Procurement', icon: 'cart', permission: 'purchasing.read', keywords: 'purchasing supplier comparison rfq purchase request po grn goods receipt' },
     { href: '/purchasing/sourcing', label: 'Supplier comparisons', icon: 'cart', permission: 'purchasing.read', keywords: 'pack conversions freight landed cost vendor quotations' },
     { href: '/purchasing/suppliers', label: 'Supplier performance', icon: 'cart', permission: 'purchasing.read', keywords: 'supplier scorecards schemes response quality delivery performance' },
