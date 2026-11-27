@@ -7,7 +7,7 @@ test('Order imports reuse permissions and deny capture, corrections and review b
  installPermissionProvider({permissionsFor:role=>role==='READ_ONLY'?['orders.read']:[],requiresMfa:()=>false});
  try{
   const service=new OrderWorkbookService({db:{prepare:()=>{throw new Error('Unexpected database access');}}}),reader={id:1,role:'READ_ONLY'};
-  for(const action of [()=>service.capture(reader,{}),()=>service.preview(reader,{}),()=>service.context(reader,'invalid',{}),()=>service.editRow(reader,'invalid','invalid',{}),()=>service.submit(reader,'invalid',{}),()=>service.decide(reader,'invalid',{})])await assert.rejects(action(),{status:403});
+  for(const action of [()=>service.createManual(reader,{}),()=>service.append(reader,'invalid',{}),()=>service.columns(reader,{}),()=>service.visibility(reader,'invalid',{}),()=>service.capture(reader,{}),()=>service.preview(reader,{}),()=>service.context(reader,'invalid',{}),()=>service.editRow(reader,'invalid','invalid',{}),()=>service.submit(reader,'invalid',{}),()=>service.decide(reader,'invalid',{})])await assert.rejects(action(),{status:403});
   await assert.rejects(service.scope(reader,{created_by:2,customer_id:null}),{status:403});
   await service.scope(reader,{created_by:1,customer_id:null});
  }finally{installPermissionProvider(null);}

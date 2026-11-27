@@ -5,6 +5,7 @@ import {withAuthorizedRdsRollbackVerification} from '../test-support/transaction
 import {priceWorkbookFixture} from '../test-support/xlsx-fixture.js';
 import {PO_HEADERS} from '../src/modules/order-imports/domain.js';
 import {OrderWorkbookService} from '../src/modules/order-imports/service.js';
+import {CustomerOrderRegister} from '../src/modules/order-imports/register.js';
 import {createModules} from '../src/modules/container.js';
 import {getConfig} from '../src/config.js';
 
@@ -49,6 +50,25 @@ await withAuthorizedRdsRollbackVerification(async db=>{
  await check('Date revisions do not double-count the customer open balance',async()=>{const row=await db.prepare("SELECT count(*)::integer AS n,sum(l.quantity)::text AS quantity FROM crm_order_schedule_registry r JOIN customer_open_order_lines l ON l.id=r.active_line_id WHERE r.customer_id=? AND r.status='ACTIVE'").get(customer.id);assert.equal(row.n,10);assert.equal(Number(row.quantity),40);});
  revised=await revise(workbook('4','2026-12-20','older'), '2026-10-25');plan=await service.reviewPlan(reviewer,revised.id);
  await check('An older snapshot cannot replace newer source evidence',()=>assert.rejects(service.decide(reviewer,revised.id,{version:revised.version,decision:'APPROVE',fingerprint:plan.fingerprint,replaceExisting:true,reason}),{status:409}));
+
+ const manualInput={title:tag+' manual rows',requestKey:randomUUID(),reason,rows:Array.from({length:10},(_,i)=>({poNumber:tag+'_MANUAL',poLine:String(i+1),externalCode:item.part_code,description:'SAMPLE manual row',orderedQuantity:'10',openQuantity:'4',scheduleKind:'IMMEDIATE',sourceUom:item.uom}))};
+ let manual=(await service.createManual(owner,manualInput)).batch;
+ await check('Ten manual rows use the same audited register without a fake Excel file',async()=>{assert.equal(manual.retained_rows,10);assert.equal(manual.manual_rows,10);assert.equal((await service.original(owner,manual.id,reason)).mimeType,'application/json');});
+ await check('Manual creation retries return the existing register',async()=>assert.equal((await service.createManual(owner,manualInput)).batch.id,manual.id));
+ const extraRows={version:manual.version,requestKey:randomUUID(),reason,rows:manualInput.rows.map((row,i)=>({...row,poLine:String(i+11)}))};
+ manual=(await service.append(owner,manual.id,extraRows)).batch;
+ await check('Ten additional rows are saved once with their own source identities',async()=>{assert.equal(manual.retained_rows,20);assert.equal((await service.append(owner,manual.id,extraRows)).batch.retained_rows,20);});
+ await check('Changed values cannot reuse an already completed row-addition key',()=>assert.rejects(service.append(owner,manual.id,{...extraRows,rows:[{...extraRows.rows[0],openQuantity:'3'}]}),{status:409}));
+ const first=(await service.rows(owner,manual.id)).rows[0];manual=await service.editRow(owner,manual.id,first.id,{batchVersion:manual.version,rowVersion:first.version,itemId:item.id,excluded:false,values:{openQuantity:'3',unitPrice:null},reason});
+ await check('Manual cell editing preserves original facts and allows explicit blank prices',async()=>{const row=(await service.rows(owner,manual.id)).rows.find(r=>r.id===first.id);assert.equal(row.source_facts.openQuantity,'4.000000');assert.equal(row.effective.openQuantity,'3.000000');assert.equal(row.effective.unitPrice,null);});
+ manual=await service.context(owner,manual.id,{version:manual.version,customerId:customer.id,companyId:company.id,asOfDate:'2026-10-28',reason});
+ let manualPlan=await service.reviewPlan(owner,manual.id);assert.deepEqual(manualPlan.blockers,[]);manual=await service.submit(owner,manual.id,{version:manual.version,fingerprint:manualPlan.fingerprint,reason});manualPlan=await service.reviewPlan(reviewer,manual.id);manual=await service.decide(reviewer,manual.id,{version:manual.version,decision:'APPROVE',fingerprint:manualPlan.fingerprint,reason});
+ await check('Approved manual rows cannot receive unreviewed additions',()=>assert.rejects(service.append(owner,manual.id,{...extraRows,requestKey:randomUUID(),version:manual.version}),{status:409}));
+ const register=new CustomerOrderRegister(service);
+ await check('Sales PO and Operations open-order views read the same saved manual rows',async()=>{for(const view of ['CUSTOMER_PO','OPEN_ORDERS']){const rows=await register.list(owner,{view,search:tag+'_MANUAL',source:'MANUAL'});assert.equal(rows.rows.length,20);assert.ok(rows.rows.every(r=>r.batch_id===manual.id&&r.fulfilled===null));}});
+ await check('Operations requests see only approved source rows in their exact customer/company scope',async()=>{assert.equal((await register.requestSources(owner,company.id,customer.id,[tag+'_MANUAL'])).length,20);assert.equal((await register.requestSources(owner,company.id,customer.id,[tag+'_UNKNOWN'])).length,0);});
+ const custom=priceWorkbookFixture([['Client order','Line','Code','Description','Qty','Balance','When'],...Array.from({length:10},(_,i)=>[tag+'_MAPPED',String(i+1),item.part_code,'SAMPLE mapped row','10','3','Immediate'])]),mappedInput={...body(custom),columnMapping:{sheet:'VERIFY- Prices',headerRow:1,columns:{poNumber:0,poLine:1,externalCode:2,description:3,orderedQuantity:4,openQuantity:5,requiredDate:6}}};
+ await check('Custom Excel headers map ten rows into the same form fields',async()=>{assert.equal((await service.columns(owner,mappedInput)).sheets[0].rows[0].cells[0],'Client order');assert.equal((await service.preview(owner,mappedInput)).summary.poRows,10);const mapped=(await service.capture(owner,mappedInput)).batch;assert.equal(mapped.parser_version,'MEHTA_MAPPED_PO_1');assert.equal((await service.rows(owner,mapped.id)).rows.length,10);});
 },{productionTransactions:true});
 await withAuthorizedRdsRollbackVerification(async db=>assert.equal((await db.prepare('SELECT count(*)::integer AS n FROM crm_order_import_batches WHERE filename=?').get(tag+'.xlsx')).n,0));
 await fs.mkdir('verification-output/crm-completion',{recursive:true});await fs.writeFile('verification-output/crm-completion/order-import-rds.json',JSON.stringify({passed:checks.length,checks,cleanup:'ROLLBACK_VERIFIED',scope:'Ten-line customer PO source fixtures; no persisted customers, real stock changes, dispatches, legal invoices or provider calls.'},null,2));
