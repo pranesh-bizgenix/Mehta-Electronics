@@ -54,7 +54,7 @@ export async function withAuthorizedRdsRollbackVerification(run, { productionTra
 }
 
 async function withRollbackTransaction(databaseUrl,run,{productionTransactions=false}={}) {
-  const pool = connectPostgres(databaseUrl,productionTransactions?{postgresOptions:{prepare:true}}:{});
+  const pool = connectPostgres(databaseUrl,{postgresOptions:{prepare:productionTransactions,connection:{timezone:'UTC',application_name:'controldesk-rollback-verification'}}});
   let connection;
   try {
     connection = await pool.reserve();
@@ -62,6 +62,10 @@ async function withRollbackTransaction(databaseUrl,run,{productionTransactions=f
     await connection.unsafe('BEGIN');
     await connection.unsafe("SET LOCAL lock_timeout = '5s'");
     await connection.unsafe("SET LOCAL statement_timeout = '30s'");
+    // Interrupted verification clients must not leave open transactions holding
+    // production locks indefinitely. Active checks continue to use the same
+    // uncommittable transaction; only an idle abandoned session is terminated.
+    await connection.unsafe("SET LOCAL idle_in_transaction_session_timeout = '2min'");
     const context = new AsyncLocalStorage();
     let queue = Promise.resolve(), statements = Promise.resolve(), counter = 0, closed = false;
     const serialize = (task, kind) => {

@@ -23,9 +23,13 @@ await withAuthorizedRdsRollbackVerification(async db=>{
  const company=await db.prepare('SELECT id FROM tally_companies ORDER BY created_at LIMIT 1').get(),item=await db.prepare("SELECT id,uom FROM items WHERE status='ACTIVE' AND NOT is_deleted AND length(trim(uom))>0 ORDER BY id LIMIT 1").get();assert.ok(company&&item);
  const check=async(name,fn)=>{await fn();checks.push(name);console.log('PASS',name);};
  const lines=[{itemId:item.id,quantity:'10',unitPrice:'100',discountPercent:'0',taxPercent:'18'}];
- const vendor=await saveVendor(db,null,{name:tag,stateCode:'33',reason},owner),request=await saveRequest(db,null,{subject:tag,requiredBy:later(30),reason,lines},owner);
- const rfq=await createRfq(db,{requestId:request.id,requestVersion:request.version,vendorIds:[vendor.id],replyBy:later(10),reason},owner),reply=await saveReply(db,rfq.id,{vendorId:vendor.id,rfqVersion:rfq.version,validUntil:later(20),terms:'SAMPLE rollback-only terms',leadDays:'',reason,lines},owner);
+ console.log('SETUP supplier and purchasing request');
+ const vendor=await saveVendor(db,null,{name:tag,stateCode:'33',reason},owner);console.log('SETUP supplier created');
+ const request=await saveRequest(db,null,{subject:tag,requiredBy:later(30),reason,lines},owner);console.log('SETUP purchasing request created');
+ const rfq=await createRfq(db,{requestId:request.id,requestVersion:request.version,vendorIds:[vendor.id],replyBy:later(10),reason},owner);console.log('SETUP supplier RFQ created');
+ const reply=await saveReply(db,rfq.id,{vendorId:vendor.id,rfqVersion:rfq.version,validUntil:later(20),terms:'SAMPLE rollback-only terms',leadDays:'',reason,lines},owner);console.log('SETUP supplier reply created');
  await selectWinner(db,rfq.id,{version:rfq.version,replyId:reply.id,replyVersion:reply.version,reason},owner);
+ console.log('SETUP supplier reply selected');
  const po=await saveSupplierPo(db,null,{rfqId:rfq.id,deliveryBy:later(30),reason},owner);
  // A rollback-only source-state fixture, as in the existing supplier matching
  // verification. This deliberately does not claim to test legal PO issuance.
@@ -33,9 +37,11 @@ await withAuthorizedRdsRollbackVerification(async db=>{
  const lineKey=po.payload.lines[0].lineKey;
  const grn=await createGrn(db,po.id,{requestKey:randomUUID(),receivedDate:today,reference:tag,notes:reason,reason,lines:[{poLineKey:lineKey,actualPartCode:po.payload.lines[0].partCode,received:'10',accepted:'8',rejected:'2',unitPrice:'100',taxPercent:'18',notes:'SAMPLE rollback-only receipt'}]},owner);
  const receiptCheck=await grnCheck(db,grn.id,reviewer);await postGrn(db,grn.id,{version:grn.version,fingerprint:receiptCheck.fingerprint,acceptExceptions:true,reason},reviewer);
+ console.log('SETUP accepted goods posted inside rollback fixture');
  const bytes=await renderPdf({title:tag,subtitle:'SAMPLE source fixture, rollback only',sections:[],columns:[{label:'Sample',fraction:1}],rows:[[tag]]});
  const uploaded=await uploadSupplierDocument(db,po.id,{kind:'DISPATCH_INVOICE',name:tag+'.pdf',base64:bytes.toString('base64'),reason},owner),doc=await saveDocumentReview(db,uploaded.id,{version:uploaded.version,reference:tag,documentDate:today,manualConfirmed:true,notes:reason,reason,lines:[{...lines[0],quantity:'6'}]},owner),comparison=await documentComparison(db,doc.id,reviewer);
  await approveDocument(db,doc.id,{version:doc.version,fingerprint:comparison.fingerprint,acceptExceptions:true,reason},reviewer);
+ console.log('SETUP supplier invoice independently reviewed');
  const gst=new GstPreparationService({db});
  const tax=await gst.create(owner,{requestKey:randomUUID(),kind:'PURCHASE_TAX',sourceId:String(doc.id),additional:{},reason});
  await gst.decide(reviewer,tax.id,{version:tax.version,decision:'APPROVE',reason});
