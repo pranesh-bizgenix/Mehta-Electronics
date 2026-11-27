@@ -45,9 +45,16 @@ export const NAV: NavGroup[] = [
     { href: '/items/stock-checks', label: 'Stock', icon: 'items', permission: 'items.read', keywords: 'inventory availability warehouse free reserved stock checks daily analysis' },
     { href: '/purchasing', label: 'Procurement', icon: 'cart', permission: 'purchasing.read', keywords: 'purchasing supplier comparison rfq purchase request po grn goods receipt' },
     { href: '/purchasing/sourcing', label: 'Supplier comparisons', icon: 'cart', permission: 'purchasing.read', keywords: 'pack conversions freight landed cost vendor quotations' },
-    { href: '/operations/delivery-tracking', label: 'Delivery tracking', icon: 'truck', permission: 'orders.read', keywords: 'manual shipment transporter lr delivery proof' }
+    { href: '/purchasing/suppliers', label: 'Supplier performance', icon: 'cart', permission: 'purchasing.read', keywords: 'supplier scorecards schemes response quality delivery performance' },
+    { href: '/operations/delivery-tracking', label: 'Delivery tracking', icon: 'truck', permission: 'orders.read', keywords: 'manual shipment transporter lr delivery proof' },
+    { href: '/operations/delivery-schedules', label: 'Delivery schedules', icon: 'clock', permission: 'orders.read', keywords: 'customer supplier promised dates quantities late delivery commitments' },
+    { href: '/operations/warehouse', label: 'Warehouse custody', icon: 'items', permission: 'logistics.grn.read', keywords: 'warehouse receipt batches serials locations packing physical custody' }
   ] },
   { label: 'Accounts', collapsible: true, items: [
+    { href: '/accounts/payables', label: 'Supplier dues & payments', icon: 'ledger', permission: 'collections.read', keywords: 'supplier vendor invoice accepted goods payment approvals adjustments' },
+    { href: '/accounts/collections', label: 'Collections & receipts', icon: 'ledger', permission: 'collections.read', keywords: 'payment allocations promises cheques overdue ageing invoices' },
+    { href: '/accounts/bank-reconciliation', label: 'Bank reconciliation', icon: 'ledger', permission: 'collections.read', keywords: 'bank statement import receipt matching verification balances' },
+    { href: '/accounts/gst', label: 'GST preparation', icon: 'ledger', permission: 'collections.read', keywords: 'gst irn eway purchase tax invoice preparation' },
     { href: '/accounts/incoming', label: 'Incoming Accounts requests', icon: 'inbox', permission: 'collections.read', keywords: 'finance email payments reminders due invoice requests' },
     { href: '/accounts/adjustments', label: 'Credit / debit requests', icon: 'ledger', permission: 'collections.read', keywords: 'credit debit adjustment approval review' }
   ] },

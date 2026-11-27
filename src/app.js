@@ -15,6 +15,12 @@ import {createOperationsIntake,operationsIntakeRoutes} from './modules/operation
 import {createAccountsIntake,accountsIntakeRoutes} from './modules/accounts-intake/routes.js';
 import {createSupportIntake,supportIntakeRoutes} from './modules/support-intake/routes.js';
 import {sourcingRoutes} from './modules/sourcing/routes.js';
+import {bankRoutes} from './modules/accounts/bank-routes.js';
+import {gstRoutes} from './modules/billing/gst-routes.js';
+import {warehouseRoutes} from './modules/warehouse/routes.js';
+import {commitmentRoutes} from './modules/sourcing/commitment-routes.js';
+import {payablesRoutes} from './modules/accounts/payables-routes.js';
+import {collectionsRoutes} from './modules/accounts/collections-routes.js';
 import {dispatchRoutes} from './modules/dispatch/routes.js';
 import {isMfaExemptTestAccount} from './modules/mfa/test-account-policy.js';
 import { adaptRoutes } from './core/http.js';
@@ -214,12 +220,18 @@ export function createApp({ db, config, fetchImpl = fetch, sendMailImpl = sendQu
     ...accountsIntakeRoutes({service:accountsIntake,route,json,readJson}),
     ...supportIntakeRoutes({service:supportIntake,route,json,readJson}),
     ...sourcingRoutes({db,route,json,readJson}),
+    ...bankRoutes({db,route,json,readJson}),
+    ...gstRoutes({db,route,json,readJson}),
+    ...warehouseRoutes({db,route,json,readJson}),
+    ...commitmentRoutes({db,route,json,readJson}),
+    ...collectionsRoutes({db,route,json,readJson,operations:modules.services.operations,work:modules.services.work}),
+    ...payablesRoutes({db,route,json,readJson,rules:modules.services.rules}),
     ...dispatchRoutes({db,route,json}),
     ...quotationWorkflowRoutes({db,config,route,json,readJson}),
     ...salesOrderRoutes({db,config,route,json,readJson}),
     ...procurementRoutes({db,route,json,readJson}),
     ...purchaseDocumentRoutes({db,route,json,readJson}),
-    ...billingRoutes({db,route,json,readJson}),
+    ...billingRoutes({db,route,json,readJson,operations:modules.services.operations}),
     ...emailAutomationRoutes({db,config,route,json}),
     ...logisticsRoutes({db,route,json,readJson}),
     ...storedTallyRoutes({db,config,route,json,readJson}),
