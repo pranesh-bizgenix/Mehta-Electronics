@@ -26,7 +26,7 @@ export function reportFilters(b){
  return {from:b.from,to:b.to,status};
 }
 export async function reportData(db,u,key,b){
- const d=REPORTS[key];if(!d)throw validationFailed('Choose an available report.');if(!hasPermission(u,d.permission))throw forbidden();if(d.financial)financeAccess(u);
+ const d=Object.hasOwn(REPORTS,key)?REPORTS[key]:null;if(!d)throw validationFailed('Choose an available report.');if(!hasPermission(u,d.permission))throw forbidden();if(d.financial)financeAccess(u);
  const f=reportFilters(b),args=[f.from,f.to,f.status,f.status];let rows,columns;
  const dates="created_at >= ?::date::timestamp AT TIME ZONE 'Asia/Kolkata' AND created_at < (?::date+1)::timestamp AT TIME ZONE 'Asia/Kolkata' AND (?='' OR status=?)";
  if(key==='staff_performance'){

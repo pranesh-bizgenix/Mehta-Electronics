@@ -9,7 +9,7 @@ await withAuthorizedRdsRollbackVerification(async db=>{
   assert.equal(data.rows.length,Number(count)+1);assert.ok(data.rows.every(r=>r.cells.every(c=>!c?.formula)));assert.ok(file.filename.endsWith('.xlsx'));await fs.writeFile(`${out}/rds-${report.key}.xlsx`,file.bytes);checks.push(report.key+' exports all selected rows with scope metadata and literal values');console.log('PASS',report.key,'Excel export');
  }
  await assert.rejects(reportXlsx(db,{...actor,role:'EXECUTIVE'},'invoices',body),{status:403});checks.push('Restricted staff cannot export financial invoice data');
- await assert.rejects(reportXlsx(db,actor,'not-a-report',body),{status:422});checks.push('Unknown report keys are rejected');
+ for(const key of ['not-a-report','constructor','toString','__proto__']){await assert.rejects(reportXlsx(db,actor,key,body),{status:422});checks.push('Unknown or inherited report key is rejected: '+key);}
  const audit=await db.prepare("SELECT count(*)::integer AS n FROM audit_logs WHERE entity='CRM_REPORT' AND action='XLSX_DOWNLOAD' AND reason=?").get(body.reason);assert.equal(audit.n,reportCatalogue(actor).length);checks.push('Every successful export uses the existing audit log');
 },{productionTransactions:true});
 await fs.writeFile(`${out}/rds-report.json`,JSON.stringify({passed:checks.length,checks,scope:'Existing CRM data read only; generated files local/private; all access-audit writes rolled back. No business import or financial posting.'},null,2));
