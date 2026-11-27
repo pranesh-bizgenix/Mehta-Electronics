@@ -1,0 +1,10 @@
+import {decimal,add,sub,compare,format} from '../../../public/money.js';
+import {calendarDay} from './delivery-schedule.js';
+import {validationFailed} from '../../core/errors.js';
+export function commitmentPlan(rows,ordered){
+ if(!Array.isArray(rows)||!rows.length||rows.length>100)throw validationFailed('Enter 1 to 100 delivery dates.');
+ const dates=new Set();let total=decimal('0');const result=rows.map(row=>{const date=calendarDay(row.date);if(dates.has(date))throw validationFailed('Combine quantities promised on the same delivery date.');dates.add(date);if(typeof row.quantity!=='string'||!/^\d{1,12}(?:\.\d{1,6})?$/.test(row.quantity)||compare(decimal(row.quantity),decimal('0'))<=0)throw validationFailed('Delivery quantities must be positive exact base-unit amounts.');total=add(total,decimal(row.quantity));return {date,quantity:format(decimal(row.quantity),6)};}).sort((a,b)=>a.date.localeCompare(b.date));
+ if(compare(total,decimal(ordered))!==0)throw validationFailed('Delivery quantities must cover the full original line quantity exactly, including any quantity already supplied.');return result;
+}
+export function commitmentProgress(rows,fulfilled,today){calendarDay(today);let remainingFulfilled=decimal(fulfilled);if(compare(remainingFulfilled,decimal('0'))<0)throw validationFailed('Supplied quantity cannot be negative.');return rows.map(row=>{const q=decimal(row.quantity),used=compare(remainingFulfilled,q)>=0?q:remainingFulfilled;remainingFulfilled=sub(remainingFulfilled,used);const pending=sub(q,used);return {...row,supplied:format(used,6),pending:format(pending,6),overdue:row.date<today&&compare(pending,decimal('0'))>0};});}
+export function commitmentCoverage(customerRows,supplierRows){return customerRows.map(row=>{const required=customerRows.filter(c=>c.date<=row.date).reduce((n,c)=>add(n,decimal(c.quantity)),decimal('0')),committed=supplierRows.filter(s=>s.date<=row.date).reduce((n,s)=>add(n,decimal(s.quantity)),decimal('0')),gap=sub(required,committed);return {date:row.date,requiredByDate:format(required,6),supplierCommittedByDate:format(committed,6),shortfall:format(compare(gap,decimal('0'))>0?gap:decimal('0'),6)};});}
