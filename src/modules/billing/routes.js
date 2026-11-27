@@ -11,6 +11,7 @@ export function billingRoutes({db,route,json,readJson,operations}){
   route('GET','/api/crm/billing','collections.read',async({res,user,url})=>json(res,200,await billing.list(db,user,Object.fromEntries(url.searchParams)))),
   route('POST','/api/crm/billing','collections.write',async({req,res,user})=>json(res,201,{data:await billing.create(db,user,await body(req))})),
   route('GET','/api/crm/billing/:id','collections.read',async({res,user,params})=>json(res,200,{data:await billing.detail(db,user,params.id)})),
+  route('PATCH','/api/crm/billing/:id/source-lines','collections.write',async({req,res,user,params})=>json(res,200,{data:await billing.saveSourceLines(db,user,params.id,await body(req))})),
   route('POST','/api/crm/billing/:id/original','collections.write',async({req,res,user,params})=>json(res,200,{data:await billing.upload(db,user,params.id,await originalBody(req))})),
   route('POST','/api/crm/billing/:id/actions','collections.write',async({req,res,user,params})=>json(res,200,{data:await billing.act(db,user,params.id,await body(req),{operations})})),
   route('POST','/api/crm/billing/:id/pdf','collections.read',async({req,res,user,params})=>{const b=await body(req);file(res,await billing.download(db,user,params.id,b),b.preview===true);}),

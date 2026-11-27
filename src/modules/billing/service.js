@@ -7,6 +7,9 @@ import {format,decimal,mul,div,sub} from '../../../public/money.js';
 import {financialYear} from '../../purchase-document-math.js';
 import {text,uuid,validateBillingSettings,invoicePayload,invoiceNumber,originalPdf,requireIssuance,invoiceReferences} from './domain.js';
 import {invoicePdf} from './pdf.js';
+import {fingerprint} from '../../core/runtime.js';
+import {financialCompany} from '../accounts/collections-common.js';
+import {invoiceSourceLines,sourceLineInput} from './source-lines.js';
 
 export function financeAccess(user,write=false,approve=false){
  if(!['OWNER','ACCOUNTS'].includes(user?.role)||!hasPermission(user,approve?'collections.approve':write?'collections.write':'collections.read'))throw forbidden('Authorised Accounts and Owner users only.');
@@ -42,6 +45,22 @@ async function shipmentData(db,shipmentId,customerId){
  if(!lines.length)throw conflict('The shipment has no billable lines.');
  return {shipment,lines:lines.map(l=>({code:l.part_code||String(l.item_id||l.id),description:l.description,hsn:l.hsn||'',uom:l.uom,quantity:String(l.quantity),unitPrice:format(mul(decimal(l.unit_price),div(sub(decimal('100'),decimal(l.discount_percent)),decimal('100'))),6),taxPercent:String(l.tax_percent)}))};
 }
+async function captureSourceLines(db,reference,input){
+ if(!Array.isArray(input)||!input.length||input.length>100)throw validationFailed('Capture between 1 and 100 original invoice product lines.');
+ const companyId=await financialCompany(db,reference);if(!companyId)throw conflict('Confirm this customer invoice company in Accounts before capturing product facts.');
+ if(input.some(line=>!line||typeof line!=='object'||Array.isArray(line)||Object.values(line).some(value=>typeof value==='string'&&/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/.test(value))))throw validationFailed('Original invoice facts contain unsupported values or control characters.');
+ const codes=input.flatMap(line=>line&&typeof line.code==='string'?[line.code.trim().toUpperCase()]:[]),items=await db.prepare('SELECT id,part_code,uom FROM items WHERE NOT is_deleted AND upper(trim(part_code))=ANY(?::text[])').all(codes);
+ return {companyId,lines:invoiceSourceLines(input,items)};
+}
+export async function saveSourceLines(db,u,recordId,b){
+ financeAccess(u,true);const reason=text(b.reason,'Reason');if(reason.length<3||/[\x00-\x1f\x7f]/.test(reason))throw validationFailed('Provide a plain-text reason of at least three characters.');return transaction(db,u,reason,async()=>{await guard(db);const row=await detail(db,u,recordId,true);
+  if(row.source!=='TALLY'||row.status!=='DRAFT'||row.version!==b.version)throw conflict('Capture product facts on the current unverified Tally-copy draft. Issued invoices remain immutable.');
+  const reference=await db.prepare("SELECT * FROM crm_operations WHERE id=? AND kind='INVOICE' AND customer_id=? AND status<>'CANCELLED'").get(row.invoice_reference_id,row.customer_id);if(!reference)throw conflict('Review the original customer invoice reference.');
+  const captured=await captureSourceLines(db,reference,b.lines),history=row.payload.sourceLineRevisions||[],payload={...row.payload,companyId:captured.companyId,sourceLines:captured.lines,sourceLinesEnteredBy:u.id,sourceLinesVerified:false,sourceLineRevisions:[...history,{version:row.version+1,lines:captured.lines,actorId:u.id,reason,recordedAt:new Date().toISOString()}]};
+  if(Buffer.byteLength(JSON.stringify(payload))>8*1024*1024)throw validationFailed('Invoice source-fact history exceeds the safe document size. Review the retained draft with Accounts.');
+  await db.prepare('UPDATE billing_documents SET payload=?::text::jsonb,version=version+1,updated_at=now() WHERE id=?').run(JSON.stringify(payload),row.id);await audit(db,u,row.id,'SOURCE_LINES_CAPTURED',reason,{lines:captured.lines.length,version:row.version+1});return detail(db,u,row.id);
+ });
+}
 export async function create(db,u,b){
  financeAccess(u,true);const reason=text(b.reason,'Reason'),key=uuid(b.requestKey),customerId=id(b.customerId);
  if(!['CRM','TALLY'].includes(b.source))throw validationFailed('Choose CRM draft or an existing Tally invoice copy.');
@@ -60,6 +79,7 @@ export async function create(db,u,b){
    if(!reference)throw validationFailed('Choose an existing, non-cancelled invoice reference for this customer.');
    number=text(reference.payload.invoiceNumber,'Existing invoice number',100);payload={customer:{id:customer.id,name:customer.name,gstin:customer.gstin},date:reference.payload.invoiceDate,totals:{total:reference.payload.amount},sourceEvidence:text(b.sourceEvidence,'Tally source verification evidence',2000)};
    if(!payload.date)throw validationFailed('The invoice reference must contain its invoice date.');
+   if(b.sourceLines!==undefined){const captured=await captureSourceLines(db,reference,b.sourceLines);payload.companyId=captured.companyId;payload.sourceLines=captured.lines;payload.sourceLinesEnteredBy=u.id;payload.sourceLinesVerified=false;payload.sourceLineRevisions=[{version:1,lines:captured.lines,actorId:u.id,reason,recordedAt:new Date().toISOString()}];}
    if(b.shipmentId)shipment=(await shipmentData(db,b.shipmentId,customerId)).shipment;
    if(await db.prepare("SELECT id FROM billing_documents WHERE customer_id=? AND lower(number)=lower(?) AND status<>'CANCELLED'").get(customerId,number))throw conflict('This customer invoice number is already registered.');
   }
@@ -92,6 +112,12 @@ export async function act(db,u,recordId,b,{operations}={}){
    if(!row.original)throw conflict('Upload the original invoice PDF first.');
    if([row.created_by,row.original.uploaded_by].includes(u.id))throw forbidden('A different authorised person must verify the original invoice.');
    if(b.confirmMatched!==true)throw validationFailed('Confirm that customer, invoice number, date and total match the original PDF and source evidence.');
+   if(row.payload.sourceLines?.length){
+    if(row.payload.sourceLinesEnteredBy===u.id)throw forbidden('A different authorised person must verify captured invoice product facts.');if(b.confirmLines!==true)throw validationFailed('Confirm product codes, units and quantities against the original invoice PDF.');
+    const reference=await db.prepare('SELECT * FROM crm_operations WHERE id=? AND customer_id=?').get(row.invoice_reference_id,row.customer_id),captured=await captureSourceLines(db,reference,sourceLineInput(row.payload.sourceLines));
+    if(captured.companyId!==row.payload.companyId||fingerprint(captured.lines)!==fingerprint(row.payload.sourceLines))throw conflict('Product identity, unit or company mapping changed. Recapture and independently review the invoice facts.');
+    await db.prepare('UPDATE billing_documents SET payload=?::text::jsonb WHERE id=?').run(JSON.stringify({...row.payload,sourceLinesVerified:true,sourceLinesVerifiedBy:u.id,sourceLinesOriginalSha:row.original.sha256}),row.id);
+   }
    await db.prepare('UPDATE billing_document_originals SET verified_by=?,verified_at=now() WHERE document_id=?').run(u.id,row.id);next='ISSUED';
   }else if(b.action==='ISSUE'&&row.source==='CRM'&&row.status==='APPROVED'){
    requireIssuance(config.value);if(row.settings_version!==config.version)throw conflict('Billing settings changed; approval is stale.');
