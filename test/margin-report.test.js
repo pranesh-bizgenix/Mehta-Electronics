@@ -7,3 +7,5 @@ test('Below-cost quoted profit remains visible as a loss',()=>{const r=quotation
 test('Malformed or inexact source numbers are not silently repaired',()=>{for(const value of [80,'1e2','bad','-10'])assert.equal(quotationMargin({...row,private_snapshot:{...row.private_snapshot,cost:value}}).flag,'COST_NOT_AVAILABLE');});
 
 test('Negative captured margins remain visible without changing their formula',()=>assert.equal(quotationMargin({...row,private_snapshot:{...row.private_snapshot,marginPercent:'-12.50'}}).margin_percent,'-12.50'));
+
+test('Large captured costs retain their declared thirty-digit precision',()=>{const r=quotationMargin({...row,public_snapshot:{subtotal:'999999999999999999999999999999.999999'},private_snapshot:{...row.private_snapshot,cost:'999999999999999999999999999998.999998'}});assert.equal(r.quoted_profit,'1.000001');});
