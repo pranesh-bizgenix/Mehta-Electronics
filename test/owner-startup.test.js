@@ -58,3 +58,11 @@ test('configuration and startup provide no automatic bootstrap credentials',()=>
   const startup=fs.readFileSync(new URL('../src/server.js',import.meta.url),'utf8');
   assert.match(startup,/'ACTIVE_OWNER_REQUIRED'/);
 });
+
+test('startup protects the selected Owner and role without locking unrelated user writes',async()=>{
+  const {db,statements}=ownerProtocol([{id:3,role:'OWNER',status:'ACTIVE'}]);
+  assert.equal(await assertActiveOwner(db),3);
+  assert.match(statements[0],/LIMIT 1 FOR SHARE OF u,r$/);
+  const database=fs.readFileSync(new URL('../src/db.js',import.meta.url),'utf8');
+  assert.doesNotMatch(database,/LOCK TABLE users IN EXCLUSIVE MODE/);
+});

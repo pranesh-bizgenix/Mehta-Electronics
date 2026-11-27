@@ -11,7 +11,6 @@ export async function openDatabase(config) {
     await db.withConnection(async () => {
       await db.exec('BEGIN');
       try {
-        await db.exec('LOCK TABLE users IN EXCLUSIVE MODE');
         await assertActiveOwner(db);
         await backfillDocumentRevisions(db);
         await db.exec('COMMIT');
@@ -23,8 +22,10 @@ export async function openDatabase(config) {
 
 /** Startup checks existing access only; first-account provisioning is never implicit. */
 export async function assertActiveOwner(db) {
+  // Protect the qualifying account and role until startup commits, without
+  // blocking unrelated user inserts or ordinary foreign-key references.
   const owner = await db.prepare(`SELECT u.id FROM users u JOIN roles r ON r.key=u.role
-    WHERE u.role='OWNER' AND u.status='ACTIVE' AND r.status='ACTIVE' ORDER BY u.id LIMIT 1`).get();
+    WHERE u.role='OWNER' AND u.status='ACTIVE' AND r.status='ACTIVE' ORDER BY u.id LIMIT 1 FOR SHARE OF u,r`).get();
   if (!owner) throw Object.assign(new Error('ControlDesk startup refused: no existing active Owner account in an active Owner role. Obtain an explicitly approved account provisioning or recovery procedure before restarting. No account or password was created.'), { code: 'ACTIVE_OWNER_REQUIRED' });
   return owner.id;
 }
