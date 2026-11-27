@@ -28,7 +28,7 @@ export const NAV: NavGroup[] = [
   { label: 'Overview', items: [
     { href: '/dashboard', label: 'Dashboard', icon: 'dashboard', permission: 'dashboard.read', keywords: 'home owner kpi' },
     { href: '/notifications', label: 'Saved notifications', icon: 'bell', permission: 'authenticated', keywords: 'notification history unread messages payment reminders dues' },
-    { href: '/reports', label: 'Business report PDFs', icon: 'quote', permission: 'authenticated', keywords: 'export pdf reports' },
+    { href: '/reports', label: 'Business reports', icon: 'quote', permission: 'authenticated', keywords: 'export excel xlsx pdf reports' },
     { href: '/work', label: 'My work', icon: 'clock', permission: 'work.read', badge: 'slaBreaches', badgeTone: 'danger', keywords: 'sla due' }
   ] },
   { label: 'Sales', collapsible: true, items: [
