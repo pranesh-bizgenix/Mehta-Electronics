@@ -19,3 +19,8 @@ test('Source summary reconciliation uses exact decimal quantities and does not i
  const difference=service.summaryComparison([row('PO_LINE','2'),row('SUMMARY','3')]);assert.equal(difference.status,'DIFFERENCE');assert.equal(difference.differences[0].difference,'1.000000');
  assert.equal(service.summaryComparison([row('PO_LINE',null),row('SUMMARY','3')]).status,'INCOMPLETE');
 });
+
+test('Changing a customer item alias after submission requires a fresh review',async()=>{
+ const service=new OrderWorkbookService({db:null});service.all=async()=>[{id:1,part_code:'OLD-SKU',description:'Original item',uom:'Nos',alias:null},{id:2,part_code:'NEW-SKU',description:'Changed item',uom:'Nos',alias:'CUSTOMER-CODE'}];
+ const [row]=await service.mappedRows({customer_id:1,status:'PENDING_REVIEW'},[{item_id:1,mapping_snapshot:{id:1,part_code:'OLD-SKU',uom:'Nos',alias:'CUSTOMER-CODE'},source_facts:{kind:'PO_LINE',externalCode:'CUSTOMER-CODE',description:'Sample',poNumber:'SAMPLE',poLine:'1',orderedQuantity:'10.000000',openQuantity:'4.000000',scheduleKind:'IMMEDIATE'},review_values:{},raw_row:{cells:[]},layout:'OPEN_PO',excluded:false}]);assert.ok(row.issues.includes('ITEM_MAPPING_CHANGED_SINCE_SUBMISSION'));
+});
