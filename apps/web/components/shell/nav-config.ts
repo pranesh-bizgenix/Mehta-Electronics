@@ -61,6 +61,7 @@ export const NAV: NavGroup[] = [
     { href: '/accounts/adjustments', label: 'Credit / debit requests', icon: 'ledger', permission: 'collections.read', keywords: 'credit debit adjustment approval review' }
   ] },
   { label: 'Customer Support', collapsible: true, items: [
+    { href: '/support/materials', label: 'Return material custody', icon: 'truck', permission: 'operations.read', keywords: 'rma warranty inspection supplier replacement quarantine' },
     { href: '/support/incoming', label: 'Incoming Support requests', icon: 'inbox', permission: 'operations.read', keywords: 'product enquiries complaints warranty email support inbox' },
     { href: '/operations?kind=SUPPORT', label: 'Customer complaints', icon: 'inbox', permission: 'operations.read' },
     { href: '/operations?kind=WARRANTY', label: 'Warranty claims', icon: 'quote', permission: 'operations.read' },
