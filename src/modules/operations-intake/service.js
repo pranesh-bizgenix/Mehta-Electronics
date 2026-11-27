@@ -1,3 +1,5 @@
+import {OrderWorkbookService} from '../order-imports/service.js';
+import {CustomerOrderRegister} from '../order-imports/register.js';
 import {s,validate} from '../../core/schema.js';
 import {TransactionRunner,AuditRepository,fingerprint,SystemClock} from '../../core/runtime.js';
 import {conflict,forbidden,notFound,validationFailed} from '../../core/errors.js';
@@ -100,7 +102,7 @@ export class OperationsIntakeService {
  }
  async detail(actor,id,companyId){const row=await this.row(actor,id,companyId);let procurementProgress=null;
   if(row.purchase_request_id&&hasPermission(actor,'purchasing.read'))procurementProgress={request:await this.repo.one('SELECT id,number,status FROM crm_purchase_requests WHERE id=?',row.purchase_request_id),rfqs:await this.repo.all('SELECT id,number,status FROM crm_rfqs WHERE request_id=? ORDER BY id DESC LIMIT 50',row.purchase_request_id),supplierOrders:await this.repo.all("SELECT p.id,p.number,p.status,p.payload->>'deliveryBy' AS delivery_by,coalesce((SELECT jsonb_agg(jsonb_build_object('id',g.id,'number',g.number,'status',g.status)) FROM crm_grns g WHERE g.supplier_po_id=p.id),'[]'::jsonb) AS receipts FROM crm_supplier_pos p JOIN crm_rfqs r ON r.id=p.rfq_id WHERE r.request_id=? ORDER BY p.id DESC LIMIT 50",row.purchase_request_id)};
-  return {...row,...await this.verify(actor,row),procurementProgress,events:await this.repo.events(row.id)};
+  return {...row,...await this.verify(actor,row),procurementProgress,sourceOrders:await new CustomerOrderRegister(new OrderWorkbookService({db:this.db})).requestSources(actor,row.company_id,row.customer_id,row.source.poNumbers),events:await this.repo.events(row.id)};
  }
  async review(actor,id,companyId,input){
   const b=validate(reviewSchema,input);
