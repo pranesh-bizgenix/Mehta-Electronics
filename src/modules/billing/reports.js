@@ -6,6 +6,7 @@ import {text} from './domain.js';
 import {financeAccess} from './service.js';
 import {renderPdf} from './pdf.js';
 import {staffPerformance,PERFORMANCE_NOTE} from './performance.js';
+import {reportWorkbook} from '../../core/xlsx.js';
 
 export const REPORTS={
  quotations:{label:'Quotation register',permission:'quotations.read',financial:false},
@@ -48,7 +49,7 @@ export async function reportData(db,u,key,b){
   const all=hasPermission(u,'tasks.assign');
   rows=await db.prepare(`SELECT title,status,owner_name,due_at FROM (SELECT t.title,t.status,u.name AS owner_name,t.due_at,t.created_at FROM tasks t JOIN users u ON u.id=t.owner_user_id WHERE NOT t.is_deleted AND (?::boolean OR t.owner_user_id=? OR t.created_by=? OR t.backup_user_id=?)) r WHERE ${dates} ORDER BY created_at,title LIMIT 1001`).all(all,u.id,u.id,u.id,...args);columns=['title','status','owner_name','due_at'];
  }
- if(rows.length>1000)throw validationFailed('More than 1,000 rows match. Narrow the date or status filters; no incomplete PDF is exported.');
+ if(rows.length>1000)throw validationFailed('More than 1,000 rows match. Narrow the date or status filters; no partial report is exported.');
  return {key,title:d.label,filters:f,columns,rows:rows.map(r=>Object.fromEntries([...columns,...(key==='staff_performance'?['staff_id']:[])].map(c=>[c,r[c] instanceof Date?r[c].toISOString():String(r[c]??'')]))),count:rows.length,generatedAt:new Date().toISOString(),note:key==='staff_performance'?PERFORMANCE_NOTE:'CRM records only. Collection amounts are recorded case amounts, not reconciled Tally balances. Quantities may use different UoMs; they are not summed across orders.'};
 }
 export async function reportPdf(db,u,key,b){
@@ -60,5 +61,13 @@ export async function reportPdf(db,u,key,b){
   const bytes=await renderPdf({title:data.title,subtitle:`${data.filters.from} to ${data.filters.to} | ${data.count} records`,sections:[{label:'Scope',value:`${data.note}\nStatus: ${data.filters.status||'All'} | Generated: ${data.generatedAt}` }],columns:pdfColumns.map(c=>({label:c.replaceAll('_',' '),fraction:1/pdfColumns.length})),rows:pdfRows});
   await writeAudit(db,{userId:u.id,entity:'CRM_REPORT',recordId:key,action:b.preview?'PDF_PREVIEW':'PDF_DOWNLOAD',reason,newValue:{filters:data.filters,count:data.count}});
   return {bytes,filename:`${key}-${data.filters.from}-${data.filters.to}.pdf`};
+ });
+}
+export async function reportXlsx(db,u,key,b){
+ const reason=text(b.reason,'Export reason');if(/[\x00-\x08\x0b\x0c\x0e-\x1f]/.test(reason))throw validationFailed('Export reason contains unsupported characters.');
+ return transaction(db,u,reason,async()=>{
+  const data=await reportData(db,u,key,b),bytes=reportWorkbook({title:data.title,columns:data.columns.map(key=>({key,label:key.replaceAll('_',' ')})),rows:data.rows,details:[['Reporting period',data.filters.from+' to '+data.filters.to],['Status',data.filters.status||'All'],['Records',String(data.count)],['Generated at',data.generatedAt],['Scope and calculation basis',data.note]]});
+  await writeAudit(db,{userId:u.id,entity:'CRM_REPORT',recordId:key,action:'XLSX_DOWNLOAD',reason,newValue:{filters:data.filters,count:data.count}});
+  return {bytes,filename:`${key}-${data.filters.from}-${data.filters.to}.xlsx`,mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'};
  });
 }
