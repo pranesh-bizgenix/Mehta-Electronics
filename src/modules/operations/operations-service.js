@@ -89,6 +89,10 @@ export class OperationsService {
    const issued=await this.repository.db.prepare("SELECT id FROM billing_documents WHERE invoice_reference_id=? AND status='ISSUED' LIMIT 1").get(row.id);
    if(issued){const balance=await invoiceBalance(this.repository.db,row);assertIssuedInvoiceClosure({action,hasIssuedDocument:true,outstanding:balance.outstanding});}
   }
+  if(['RESOLVE','CANCEL'].includes(action)&&['WARRANTY','RETURN'].includes(row.kind)){
+   const material=await this.repository.db.prepare('SELECT id,status FROM crm_material_cases WHERE operation_id=?').get(row.id);
+   if(material&&(action==='RESOLVE'?material.status!=='CLOSED':material.status!=='CANCELLED'))throw conflict('Finish the linked physical material case first. Receipt, inspection, custody and remedy evidence must reconcile.');
+  }
   if(action==='APPROVE'&&row.kind==='WARRANTY'){
    const policy=(await this.rules.require('warranty.policy')).value;
    if(row.payload.faultType==='UNDETERMINED'||policy.technicalFaultsOnly&&row.payload.faultType!=='TECHNICAL_FAULT')throw conflict('Warranty eligibility is not established for this fault.');
@@ -136,6 +140,7 @@ export class OperationsService {
    if(field.type==='date'&&!validDate(value))throw validationFailed('Enter a valid date.');
   }
   if(row.kind==='WARRANTY'&&!['TECHNICAL_FAULT','PHYSICAL_DAMAGE','UNDETERMINED'].includes(payload.faultType))throw validationFailed('Choose a supported fault classification.');
+  if(['WARRANTY','RETURN'].includes(row.kind)&&await this.repository.db.prepare('SELECT id FROM crm_material_cases WHERE operation_id=?').get(row.id)&&['invoiceReference','quantity','product','purchaseDate','serialNumber'].some(key=>payload[key]!==row.payload[key]))throw conflict('The physical material case binds these original findings. Review its custody history before changing the invoice, item, serial or quantity.');
   const updated=await this.repository.revise(row,payload,user.id,this.clock.now().toISOString());if(!updated)throw conflict('Record changed. Reload.');
   await this.repository.event(updated,'REVISE_FINDINGS',row.status,reason,user.id,{before:row.payload,after:payload});
   await this.audit.record({actorId:user.id,entity:'CRM_OPERATION',recordId:row.id,action:'REVISE_FINDINGS',oldValue:row.payload,newValue:payload,reason});return this.detail(user,row.id);
