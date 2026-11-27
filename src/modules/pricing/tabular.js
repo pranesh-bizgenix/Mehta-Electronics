@@ -44,10 +44,11 @@ function rowCells(row,shared){
 /** Literal values only. No formula evaluation, currency coercion or edition-number conversion. */
 export function readPriceWorkbook(bytes,selectedSheet){
  try{
-  const files=unzip(bytes),sheets=list(xml(files.get('xl/workbook.xml')).workbook?.sheets?.sheet);
+  const files=unzip(bytes),book=xml(files.get('xl/workbook.xml')).workbook,sheets=list(book?.sheets?.sheet);
+  const dateSystem=['1','true'].includes(book?.workbookPr?.['@_date1904'])?'1904':'1900';
   if(!sheets.length||sheets.length>30)fail('Choose a workbook with between 1 and 30 worksheets.');
   const names=sheets.map(s=>String(s['@_name']??''));if(new Set(names).size!==names.length)fail('Duplicate worksheet names are ambiguous.');
-  if(selectedSheet==null)return {sheets:names};
+  if(selectedSheet==null)return {sheets:names,dateSystem};
   const sheet=sheets.find(s=>s['@_name']===selectedSheet);if(!sheet)fail('Select an exact worksheet name.');
   const relation=list(xml(files.get('xl/_rels/workbook.xml.rels')).Relationships?.Relationship).find(r=>r['@_Id']===sheet['@_id']);
   const target=relation?.['@_Target'];if(!target||relation['@_TargetMode']==='External'||!/^\/?(?:xl\/)?worksheets\/[^/]+\.xml$/.test(target))fail('Unsupported worksheet relationship.');
@@ -56,7 +57,7 @@ export function readPriceWorkbook(bytes,selectedSheet){
   const data=xml(files.get(filename)).worksheet;if(data?.sheetProtection)fail('Remove sheet protection before reviewed import.');
   const source=list(data?.sheetData?.row);if(source.length>MAX_ROWS)fail('Selected worksheet exceeds 20,000 source rows.');
   const seen=new Set(),rows=source.map(row=>{const number=Number(row['@_r']);if(!Number.isSafeInteger(number)||number<1||number>MAX_ROWS||seen.has(number))fail('Invalid or duplicate worksheet row.');seen.add(number);return {number,cells:rowCells(row,shared)};});
-  rows.sort((a,b)=>a.number-b.number);return {sheets:names,sheet:selectedSheet,rows};
+  rows.sort((a,b)=>a.number-b.number);return {sheets:names,sheet:selectedSheet,rows,dateSystem};
  }catch(error){if(error.status)throw error;fail('The XLSX workbook is damaged or exceeds safe extraction limits.');}
 }
 export function readPriceCsv(text){
