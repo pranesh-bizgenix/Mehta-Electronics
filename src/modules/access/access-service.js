@@ -1,3 +1,4 @@
+import {restrictPortalPermissions,portalRolePermissions,isPortalRole} from '../../portal-policy.js';
 import { conflict, forbidden, notFound, validationFailed } from '../../core/errors.js';
 import { installPermissionProvider } from '../../rbac.js';
 import { logisticsPermissions, restrictLogisticsPermissions } from '../../logistics-policy.js';
@@ -64,10 +65,10 @@ export class AccessService {
     const entry = this.matrix.get(role);
     if (!entry?.active) return [];
     if (role === 'OWNER' && entry.allPermissions) return ['*'];
-    return restrictLogisticsPermissions(role, [...entry.permissions].filter(key => {
+    return restrictPortalPermissions(role,restrictLogisticsPermissions(role, [...entry.permissions].filter(key => {
       const permission = this.permissionCatalogue.get(key);
       return permission && !permission.owner_only;
-    }));
+    })));
   }
 
   can(user, permission) {
@@ -105,6 +106,7 @@ export class AccessService {
 
   async setGrant(actor, { role, permission, granted, reason }) {
     this.require(actor, 'access.manage');
+    if(granted&&isPortalRole(role)&&!portalRolePermissions[role].includes(permission))throw forbidden('Partner roles are restricted to their own portal permissions.');
     if (granted && Object.hasOwn(logisticsPermissions, role) && !logisticsPermissions[role].includes(permission)) throw forbidden('This logistics role is limited to its approved operational permissions.');
     await this.transactions.run(actor, reason, async () => {
       await this.repository.lockMatrix();

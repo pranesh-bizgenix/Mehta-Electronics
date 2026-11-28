@@ -1,3 +1,4 @@
+import {restrictPortalPermissions} from './portal-policy.js';
 // Permission checks used across the codebase.
 //
 // The authoritative matrix lives in PostgreSQL (roles, permissions,
@@ -28,7 +29,7 @@ let provider = seedProvider;
 export function installPermissionProvider(next) { provider = next ?? seedProvider; }
 
 export function permissionsFor(role) {
-  return restrictLogisticsPermissions(role, provider.permissionsFor(role));
+  return restrictPortalPermissions(role,restrictLogisticsPermissions(role, provider.permissionsFor(role)));
 }
 
 export function hasPermission(user, permission) {
