@@ -32,6 +32,7 @@ export const NAV: NavGroup[] = [
     { href: '/work', label: 'My work', icon: 'clock', permission: 'work.read', badge: 'slaBreaches', badgeTone: 'danger', keywords: 'sla due' }
   ] },
   { label: 'Sales', collapsible: true, items: [
+    { href: '/sales/portal-responses', label: 'Customer portal responses', icon: 'inbox', permission: 'quotations.read', keywords: 'partner acknowledgements acceptance changes' },
     { href: '/sales/customer-pos', label: 'Customer POs', icon: 'quote', permission: 'orders.read', keywords: 'purchase order email make excel manual rows columns' },
     { href: '/incoming-requests', label: 'Incoming requests', icon: 'inbox', permission: 'sales_intake.read', keywords: 'email whatsapp customer po enquiry quotation request inbox' },
     { href: '/customers', label: 'Customers', icon: 'customers', permission: 'customers.read', keywords: 'crm 360 party' },
@@ -42,6 +43,7 @@ export const NAV: NavGroup[] = [
     { href: '/messages', label: 'Outbound drafts', icon: 'mail', permission: 'outbound.read', badge: 'draftsAwaitingApproval', keywords: 'email approval' }
   ] },
   { label: 'Operations', collapsible: true, items: [
+    { href: '/purchasing/portal-replies', label: 'Supplier portal replies', icon: 'inbox', permission: 'purchasing.read', keywords: 'partner vendor offers publication review' },
     { href: '/orders', label: 'Order status', icon: 'truck', permission: 'orders.read', keywords: 'sales orders supplied pending partial dispatch lr delivery customer po' },
     { href: '/items/stock-checks', label: 'Stock', icon: 'items', permission: 'items.read', keywords: 'inventory availability warehouse free reserved stock checks daily analysis' },
     { href: '/operations/open-orders', label: 'Open orders', icon: 'quote', permission: 'orders.read', keywords: 'open order pending quantities excel schedule manual rows' },
@@ -61,6 +63,7 @@ export const NAV: NavGroup[] = [
     { href: '/accounts/adjustments', label: 'Credit / debit requests', icon: 'ledger', permission: 'collections.read', keywords: 'credit debit adjustment approval review' }
   ] },
   { label: 'Customer Support', collapsible: true, items: [
+    { href: '/support/portal-requests', label: 'Customer portal requests', icon: 'inbox', permission: 'operations.read', keywords: 'partner complaints review' },
     { href: '/support/materials', label: 'Return material custody', icon: 'truck', permission: 'operations.read', keywords: 'rma warranty inspection supplier replacement quarantine' },
     { href: '/support/incoming', label: 'Incoming Support requests', icon: 'inbox', permission: 'operations.read', keywords: 'product enquiries complaints warranty email support inbox' },
     { href: '/operations?kind=SUPPORT', label: 'Customer complaints', icon: 'inbox', permission: 'operations.read' },
@@ -87,6 +90,7 @@ export const NAV: NavGroup[] = [
     { href: '/tally/write', label: 'Tally write operations', icon: 'sliders', permission: 'tally.write.manage', ownerOnly: true, keywords: 'write create outbox mapping dry run approval kill switch' }
   ] },
   { label: 'Admin', items: [
+    { href: '/settings/portal-access', label: 'Partner account access', icon: 'shield', permission: 'portal.manage', ownerOnly: true },
     { href: '/setup', label: 'Setup checklist', icon: 'tasks', permission: 'users.read', ownerOnly: true, keywords: 'readiness onboarding backup configuration' },
     { href: '/decisions', label: 'Business decisions', icon: 'tasks', permission: 'rules.manage', ownerOnly: true, keywords: 'prem confirmation questions blocked workflows decision sheet' },
     { href: '/users', label: 'Users & roles', icon: 'shield', permission: 'users.read', keywords: 'permissions matrix' },
