@@ -22,10 +22,18 @@ const native=args.includes('--native');
 const target=new URL(getConfig().databaseUrl);
 if(process.platform!=='win32'||target.hostname!=='mehta-controldesk-db01.chs2eymsy2ec.ap-southeast-2.rds.amazonaws.com'||decodeURIComponent(target.pathname.slice(1))!=='postgres'||target.searchParams.get('sslmode')!=='require')throw new Error('This client-only runner requires Windows and the explicitly authorised RDS postgres target with SSL required.');
 if(args.includes('--dry-run')){
- console.log(`DRY RUN: verify workspace PostgreSQL 18 clients; take a complete ${args.includes('--parallel')?'four-worker synchronized directory backup, retain every member in a standard uncompressed TAR and fully parse it offline':'custom-format backup'} with the existing ${native?'native Windows':'Ubuntu WSL'} client; catalog-verify with the existing pg_restore method; hash and record the original snapshot timestamp; ${args.includes('--backup-only')?'stop without applying migrations':'immediately run applyMigrations through the unchanged ten-minute guard'}. No command, connection, backup or migration was executed.`);
+ console.log(`DRY RUN: check available working space without deleting completed backups; verify workspace PostgreSQL 18 clients; take a complete ${args.includes('--parallel')?'four-worker synchronized directory backup and retain every member in a standard uncompressed TAR':'custom-format backup'} with the existing ${native?'native Windows':'Ubuntu WSL'} client; fully parse the archive offline and catalog-verify with the existing pg_restore method; hash and record the original snapshot timestamp; ${args.includes('--backup-only')?'stop without applying migrations':'immediately run applyMigrations through the unchanged ten-minute guard'}. No command, connection, backup or migration was executed.`);
  process.exit(0);
 }
 const run=promisify(execFile),clientRoot=path.join(root,'.vercel/tools/pgsql18-linux/root');
+// Refuse before a long dump if there is no room for its full directory and
+// packaged archive plus Windows filesystem-compression working reserve.
+// Completed backups are never automatically removed.
+const backupRoot=path.join(root,'backups');
+const existingSizes=fs.existsSync(backupRoot)?fs.readdirSync(backupRoot).filter(name=>name.endsWith('.dump')).map(name=>fs.statSync(path.join(backupRoot,name)).size):[];
+const largestArchive=Math.max(2_000_000_000,...existingSizes),requiredBytes=largestArchive*(args.includes('--parallel')?4:1)+512*1024*1024;
+const capacity=fs.statfsSync(root),availableBytes=capacity.bavail*capacity.bsize;
+if(!args.includes('--probe')&&availableBytes<requiredBytes)throw new Error(`Insufficient backup working space: ${(availableBytes/1e9).toFixed(2)} GB available, ${(requiredBytes/1e9).toFixed(2)} GB required. Retain completed backups; clear only verified redundant working files before retrying.`);
 const dump=path.join(clientRoot,'usr/lib/postgresql/18/bin/pg_dump');
 if(!native&&!fs.existsSync(dump))throw new Error('The verified PostgreSQL 18 Linux client must first be extracted inside .vercel/tools/pgsql18-linux/root. Do not install a database.');
 const env={...process.env,PGHOST:target.hostname,PGPORT:target.port||'5432',PGDATABASE:'postgres',PGUSER:decodeURIComponent(target.username),PGPASSWORD:decodeURIComponent(target.password),PGSSLMODE:'require'};
@@ -46,11 +54,12 @@ if(args.includes('--probe')){
  const started=performance.now(),result=await wsl('psql',['--no-psqlrc','--tuples-only','--no-align','--command',"SELECT repeat('x',1048576)"]);
  console.log(JSON.stringify({mode:'READ_ONLY_SYNTHETIC_NETWORK_PROBE',client:version,bytes:result.stdout.trim().length,elapsedMs:Math.round(performance.now()-started)}));process.exit(0);
 }
-const sql=connectPostgres(getConfig().databaseUrl),wallStart=performance.now();
+const sql=connectPostgres(getConfig().databaseUrl),wallStart=performance.now();let stage='CONNECT';
 try{
  await sql.ready();fs.mkdirSync(path.join(root,'backups'),{recursive:true});
  const createdAt=new Date().toISOString(),name=`postgres-${createdAt.replace(/[:.]/g,'-')}-${crypto.randomBytes(4).toString('hex')}.dump`,file=path.join(root,'backups',name),partial=file+'.partial';
  console.log('Taking a complete same-RDS backup using the existing '+(native?'native Windows':'WSL Ubuntu')+' client.');
+ stage='DUMP';
  let directoryListing=null;
  if(args.includes('--parallel')){
   // PostgreSQL 18 deliberately writes the same TOC format for directory and
@@ -63,16 +72,23 @@ try{
   const ordered=directoryArchiveManifest(directory,directoryListing);
   const manifest=file+'.members';fs.writeFileSync(manifest,Buffer.from(ordered.join('\0')+'\0'),{flag:'wx',mode:0o600});
   console.log('Parallel dump completed; packaging all members with the native Windows Python TAR writer.');
+  stage='PACKAGE';
   const tarWriter="import sys,tarfile,pathlib; root=pathlib.Path(sys.argv[1]); names=pathlib.Path(sys.argv[2]).read_bytes().decode('utf-8').split('\\0'); archive=tarfile.open(sys.argv[3],mode='w',format=tarfile.USTAR_FORMAT); [archive.add(str(root/name),arcname=name,recursive=False) for name in names if name]; archive.close()";
   await run('python.exe',['-c',tarWriter,directory,manifest,partial],options);
   console.log('Packaging completed; fully reading the archive offline with the native Windows PostgreSQL verifier.');
+  stage='VERIFY';
   const verifierEnv={...process.env};for(const key of Object.keys(verifierEnv))if(key.startsWith('PG'))delete verifierEnv[key];
   // --file NUL emits SQL into the Windows null device. There is no --dbname,
   // no connection environment and no SQL execution or database restoration.
   await run(nativeRestore,['--no-owner','--no-acl','--file','NUL',partial],{cwd:root,env:verifierEnv,windowsHide:true,maxBuffer:4*1024*1024});
 
  }
- else await client('pg_dump',['--format=custom','--compress=1','--no-owner','--no-acl','--file',native?partial:await linuxPath(partial)]);
+ else {
+  await client('pg_dump',['--format=custom','--compress=1','--no-owner','--no-acl','--file',native?partial:await linuxPath(partial)]);
+  stage='VERIFY';console.log('Custom dump completed; fully reading the archive offline with the native Windows PostgreSQL verifier.');
+  const verifierEnv={...process.env};for(const key of Object.keys(verifierEnv))if(key.startsWith('PG'))delete verifierEnv[key];
+  await run(nativeRestore,['--no-owner','--no-acl','--file','NUL',partial],{cwd:root,env:verifierEnv,windowsHide:true,maxBuffer:4*1024*1024});
+ }
  if(!fs.statSync(partial).size)throw new Error('Empty backup archive.');
  const catalog=await runPostgresTool('pg_restore',getConfig().databaseUrl,['--list',partial]);
  if(directoryListing){const entries=text=>text.split(/\r?\n/).filter(line=>/^\d+;/.test(line)).join('\n');if(entries(directoryListing)!==entries(catalog.stdout))throw new Error('TAR and original directory catalogs differ.');}
@@ -86,11 +102,11 @@ try{
   // applyMigrations must still enforce the original snapshot age when invoked.
   process.exitCode=0;
  }else{
- const before=new Set((await sql`SELECT name FROM mehta_schema_migrations`).map(row=>row.name));
+ stage='MIGRATE';const before=new Set((await sql`SELECT name FROM mehta_schema_migrations`).map(row=>row.name));
  const result=await applyMigrations(sql);
  const applied=(await sql`SELECT name FROM mehta_schema_migrations ORDER BY name`).map(row=>row.name).filter(name=>!before.has(name));
  const report={...result,backupPath:file,originalSnapshotAt:createdAt,migrationsApplied:applied,elapsedMs:Math.round(performance.now()-wallStart)};
  const out=path.join(root,'verification-output/crm-completion');fs.mkdirSync(out,{recursive:true});fs.writeFileSync(path.join(out,'wsl-migration-result.json'),JSON.stringify(report,null,2));console.log(JSON.stringify(report));
  }
-}catch(error){console.error(JSON.stringify({status:'BACKUP_OR_MIGRATION_FAILED',code:error.code||'BACKUP_FAILED',elapsedMs:Math.round(performance.now()-wallStart),migrations:'Not confirmed; inspect the ledger before retrying.'}));process.exitCode=1;}
+}catch(error){const noSpace=/no space left|not enough space|disk full|winerror 112/i.test(String(error.stderr||'')+' '+String(error.message||''));console.error(JSON.stringify({status:'BACKUP_OR_MIGRATION_FAILED',stage,code:noSpace?'INSUFFICIENT_DISK_SPACE':error.code||'BACKUP_FAILED',elapsedMs:Math.round(performance.now()-wallStart),migrations:'Not confirmed; inspect the ledger before retrying.'}));process.exitCode=1;}
 finally{await sql.end({timeout:5});}
