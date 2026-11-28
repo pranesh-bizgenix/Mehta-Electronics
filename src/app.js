@@ -1,3 +1,4 @@
+import {portalPathAllowed} from './portal-policy.js';
 import {compareDecimal,s,validate} from './core/schema.js';
 import {requireCustomerHandler} from './modules/operations/customer-gates.js';
 import {createTallyWriteModule} from './modules/tally-write/module.js';
@@ -18,6 +19,7 @@ import {sourcingRoutes} from './modules/sourcing/routes.js';
 import {bankRoutes} from './modules/accounts/bank-routes.js';
 import {gstRoutes} from './modules/billing/gst-routes.js';
 import {fieldVisitRoutes} from './modules/customers/field-visit-routes.js';
+import {portalRoutes} from './modules/portals/routes.js';
 import {materialRoutes} from './modules/materials/routes.js';
 import {warehouseRoutes} from './modules/warehouse/routes.js';
 import {commitmentRoutes} from './modules/sourcing/commitment-routes.js';
@@ -227,6 +229,7 @@ export function createApp({ db, config, fetchImpl = fetch, sendMailImpl = sendQu
     ...gstRoutes({db,route,json,readJson}),
     ...materialRoutes({db,route,json,readJson,operations:modules.services.operations}),
     ...fieldVisitRoutes({db,route,json,readJson,customers:modules.services.customerManagement}),
+    ...portalRoutes({db,route,json,readJson,operations:modules.services.operations,work:modules.services.work}),
     ...warehouseRoutes({db,route,json,readJson}),
     ...commitmentRoutes({db,route,json,readJson}),
     ...collectionsRoutes({db,route,json,readJson,operations:modules.services.operations,work:modules.services.work}),
@@ -545,6 +548,7 @@ export function createApp({ db, config, fetchImpl = fetch, sendMailImpl = sendQu
         if (!user && res.hasHeader?.('set-cookie')) user = await localReviewUser(db,req,res,config,await sessionUser(db,req,config));
       }
       if (user) await modules.services.access.refreshIfStale(user.access_version);
+      if(user&&!portalPathAllowed(user.role,req.method,url.pathname))throw new HttpError(403,'Partner accounts can access only their scoped portal and personal security settings.');
       if (found.r.permission) {
         if (!user) throw new HttpError(401,'Authentication required.');
         if (!found.r.mfaExempt && mfaState(user).required && !user.mfa_verified_at) throw Object.assign(new HttpError(403, mfaState(user).enrolled ? 'Enter your two-factor code to continue.' : 'Set up two-factor authentication to continue.'), { code: 'MFA_REQUIRED', details: { enrolled: mfaState(user).enrolled } });

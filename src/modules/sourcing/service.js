@@ -7,6 +7,8 @@ import {normalizeOffer,landedComparison,sameUnit,exact} from './domain.js';
 import {renderPdf} from '../billing/pdf.js';
 const text=s.string({min:1,max:80}),decimal=s.string({pattern:/^\d{1,12}(?:\.\d{1,6})?$/}),day=s.string({pattern:/^\d{4}-\d{2}-\d{2}$/});
 const quoteSchema=s.object({rfqVersion:s.int({min:1}),replyVersion:s.int({min:1}).nullable(),vendorId:s.id(),validUntil:day,promisedOn:day.nullable(),currency:s.enum(['INR']),terms:s.text({max:10000}).default(''),reason:s.reason(),evidence:s.string({min:3,max:2000}),chargesConfirmed:s.bool(),charges:s.array(s.object({kind:s.enum(['FREIGHT','PACKING','INSURANCE','OTHER']),amount:decimal,taxPercent:decimal}),{max:10}),lines:s.array(s.object({itemId:s.id(),uom:text,quantity:decimal,unitPrice:decimal,discountPercent:decimal,taxPercent:decimal}),{min:1,max:100})});
+// Partner submissions and staff entry share the exact same commercial contract.
+export const supplierOfferSchema=quoteSchema;
 const conversionSchema=s.object({itemId:s.id(),fromUom:text,toUom:text,factor:decimal,validFrom:day,validTo:day.nullable(),sourceDocumentId:s.uuid().nullable(),reason:s.reason()});
 export class SourcingService {
  constructor({db}){this.db=db;this.transactions=new TransactionRunner(db);this.audit=new AuditRepository(db);}
