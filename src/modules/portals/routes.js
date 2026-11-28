@@ -13,7 +13,7 @@ export function portalRoutes({db,route,json,readJson,operations,work}){
   post('/api/crm/portal/requests','authenticated',(c,b)=>requests.submit(c.user,b)),
   get('/api/crm/portal/acknowledgements','authenticated',c=>requests.acknowledgements(c.user,Object.fromEntries(c.url.searchParams))),
   post('/api/crm/portal/acknowledgements','authenticated',(c,b)=>requests.acknowledge(c.user,b)),
-  route('POST','/api/crm/portal/documents/:type/:id','authenticated',async c=>{const b=await readJson(c.req),f=await records.document(c.user,c.params.type,c.params.id,b);c.res.writeHead(200,{'content-type':'application/pdf','content-disposition':`${b.preview?'inline':'attachment'}; filename="${f.filename}"`,'content-length':f.bytes.length,'cache-control':'no-store','x-content-type-options':'nosniff'});c.res.end(f.bytes);}),
+  route('POST','/api/crm/portal/documents/:type/:id','authenticated',async c=>{const b=await readJson(c.req),f=await records.document(c.user,c.params.type,c.params.id,b);c.res.writeHead(200,{'content-type':'application/pdf','content-disposition':`${b.preview?'inline':'attachment'}; filename="${f.filename}"`,'content-length':f.bytes.length,'cache-control':'no-store','x-content-type-options':'nosniff','content-security-policy':"sandbox; default-src 'none'; frame-ancestors 'self'"});c.res.end(f.bytes);}),
   get('/api/crm/portal-admin/memberships','portal.manage',c=>access.list(c.user,Object.fromEntries(c.url.searchParams))),
   get('/api/crm/portal-admin/staff','portal.manage',async c=>({data:await access.eligibleStaff(c.user)})),
   post('/api/crm/portal-admin/memberships','portal.manage',(c,b)=>access.create(c.user,b)),
