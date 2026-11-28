@@ -23,7 +23,7 @@ export class FieldVisitService{
   let activityId=null;if(b.action==='COMPLETE'){
    // Finish under the existing customer write context even if this customer was
    // merged during a visit; preserve its original identity and source history.
-   const activity=await this.db.prepare("INSERT INTO crm_customer_activities(customer_id,kind,title,notes,occurred_at,owner_id,created_by,updated_by) VALUES(?,'VISIT',?,?,?, ?,?,?) RETURNING id").get(customerId,row.title,b.notes,row.checked_in_at,row.staff_id,actor.id,actor.id);activityId=activity.id;await this.customers.audit(actor,'CUSTOMER_ACTIVITY',activityId,'CREATE',null,{customerId,kind:'VISIT',fieldVisitId:row.id},b.reason);
+   const activity=await this.db.prepare("INSERT INTO crm_customer_activities(customer_id,kind,title,notes,occurred_at,owner_id,created_by,updated_by) SELECT customer_id,'VISIT',title,?,checked_in_at,staff_id,?,? FROM crm_field_visits WHERE id=? RETURNING id").get(b.notes,actor.id,actor.id,row.id);activityId=activity.id;await this.customers.audit(actor,'CUSTOMER_ACTIVITY',activityId,'CREATE',null,{customerId,kind:'VISIT',fieldVisitId:row.id},b.reason);
   }
   const saved=await this.db.prepare("UPDATE crm_field_visits SET status=?,checked_out_at=clock_timestamp(),activity_id=?,closing_note=?,version=version+1,updated_by=?,updated_at=clock_timestamp() WHERE id=? RETURNING *").get(b.action==='COMPLETE'?'COMPLETED':'CANCELLED',activityId,b.notes,actor.id,row.id);await this.customers.audit(actor,'FIELD_VISIT',row.id,b.action,null,{customerId,staffId:row.staff_id,activityId,version:saved.version},b.reason);return publicVisit(saved);
  });}
