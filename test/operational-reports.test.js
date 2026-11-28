@@ -4,3 +4,6 @@ test('Ageing report reconciles confirmed amounts without floating-point rounding
 test('Missing due dates remain unconfirmed rather than assumed overdue',()=>{const r=receivableReportRow({...row,due_date:null},'2026-11-27');assert.equal(r.bucket,'DUE_DATE_NOT_CONFIRMED');assert.equal(r.days_overdue,'Not confirmed');});
 test('Overpayments remain visible as credit balances',()=>{const r=receivableReportRow({...row,receipts:[{amount:'200'}]},'2026-11-27');assert.equal(r.bucket,'CREDIT_BALANCE');assert.equal(r.outstanding,'-114.999999');});
 test('Invalid financial or date evidence stops export',()=>{for(const patch of [{amount:'NaN'},{receipts:[{amount:'-1'}]},{due_date:'2026-02-30'}])assert.throws(()=>receivableReportRow({...row,...patch},'2026-11-27'),{status:422});});
+
+test('Unknown adjustment types cannot disappear from a financial balance',()=>assert.throws(()=>receivableReportRow({...row,adjustments:[{kind:'UNKNOWN',amount:'5'}]},'2026-11-27'),{status:422}));
+test('Reference-only amounts stay visibly unverified',()=>assert.equal(receivableReportRow(row,'2026-11-27').source_status,'REFERENCE_ONLY_REVIEW'));
