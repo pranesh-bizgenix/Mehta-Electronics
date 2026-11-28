@@ -4,7 +4,7 @@ import {validationFailed} from '../../core/errors.js';
 const coordinate=s.string({pattern:/^-?\d{1,3}(?:\.\d{1,6})?$/});
 export const fieldVisitStart=s.object({requestKey:s.uuid(),title:s.string({min:3,max:200}),locationSource:s.enum(['BROWSER','MANUAL_NOTE']),locationNote:s.string({min:3,max:1000}),latitude:coordinate.optional(),longitude:coordinate.optional(),accuracyMetres:s.string({pattern:/^\d{1,6}(?:\.\d{1,2})?$/}).optional(),capturedAt:s.string({max:50}).optional(),reason:s.reason()});
 export const fieldVisitEnd=s.object({version:s.int({min:1}),action:s.enum(['COMPLETE','CANCEL']),notes:s.text({min:3,max:10000}),reason:s.reason()});
-export const FIELD_VISIT_NOTE='Check-in times are recorded by the server. Browser coordinates are device-provided evidence, not verified attendance or proof that a customer was visited. Manual location notes are labelled separately. No payroll, incentive or attendance decision is made from this record.';
+export const FIELD_VISIT_NOTE='Check in when your customer visit starts and check out with its outcome. Times are recorded automatically. Location is optional and may be approximate; you can use a meeting-place note instead. Checkout saves a linked visit in the customer activity history. Cancelled visits keep their history.';
 export function validateFieldVisit(input,now=new Date(),{fresh=true}={}){
  const b=validate(fieldVisitStart,input);
  if(Object.values(b).some(v=>typeof v==='string'&&/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/.test(v)))throw validationFailed('Visit details contain unsupported control characters.');
