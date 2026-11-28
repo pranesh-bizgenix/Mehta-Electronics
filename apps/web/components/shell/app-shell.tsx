@@ -14,6 +14,7 @@ import { NAV, type BadgeKey } from './nav-config';
 import {CompanyFreshness} from '@/features/workflows/tally-freshness';
 import {TallyWriteLiveBanner} from '@/features/tally-write/live-banner';
 import {BrandLogo} from '@/components/brand-logo';
+import {isPartnerRole} from '@/features/portals/navigation';
 import {selectNavigationItem} from '../../../../public/navigation-match.js';
 
 type Badges = Partial<Record<BadgeKey | 'unreadNotifications', number>>;
@@ -31,7 +32,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   const [paletteOpen, setPaletteOpen] = useState(false);
-  const [badges, reloadBadges] = useAsync(() => state.kind === 'ready' && !state.user.mustChangePassword ? api.data<Badges>('GET', '/api/v1/me/badges') : Promise.resolve({} as Badges), [state.kind, state.kind === 'ready' && state.user.mustChangePassword, pathname]);
+  const [badges, reloadBadges] = useAsync(() => state.kind === 'ready' && !state.user.mustChangePassword && !isPartnerRole(state.user.role) ? api.data<Badges>('GET', '/api/v1/me/badges') : Promise.resolve({} as Badges), [state.kind, state.kind === 'ready' && state.user.mustChangePassword, state.kind==='ready'&&state.user.role, pathname]);
 
   useHotkey('k', () => setPaletteOpen(true));
   useEffect(() => { setDrawerOpen(false); }, [pathname]);
@@ -40,6 +41,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     if (state.kind === 'anonymous') router.replace(`/login?next=${encodeURIComponent(pathname)}`);
     if (state.kind === 'ready' && state.mfa.required && !state.mfa.verified) router.replace('/login');
     else if (state.kind === 'ready' && state.user.mustChangePassword && pathname !== '/settings') router.replace('/settings');
+    else if (state.kind === 'ready' && isPartnerRole(state.user.role) && pathname !== '/settings') router.replace('/portal');
     else if (state.kind === 'ready' && pathname === '/dashboard' && ['LOGISTICS_LEAD','STORE_STAFF'].includes(state.user.role)) router.replace('/logistics');
   }, [state, router, pathname]);
   useEffect(() => { const t = setInterval(reloadBadges, 60_000); return () => clearInterval(t); }, [reloadBadges]);
@@ -47,6 +49,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   if (state.kind === 'loading' || state.kind === 'anonymous') return <main className="ds-state" style={{ minHeight: '100vh' }}><Spinner size="lg" /><p>Opening ControlDesk…</p></main>;
   if (state.kind === 'error') return <main style={{ minHeight: '100vh', display: 'grid', placeItems: 'center' }}><ErrorState error={new Error(state.message)} onRetry={() => void refresh()} /></main>;
   if (state.kind === 'ready' && state.user.mustChangePassword) return <main id="main" className="ds-main"><div className="ds-page">{pathname === '/settings' && (!state.mfa.required || state.mfa.verified) ? <><Button variant="secondary" onClick={() => void logout()}>Sign out</Button>{children}</> : <Spinner size="lg" />}</div></main>;
+  if(isPartnerRole(state.user.role))return <main id="main" className="ds-content stack-lg"><div className="cluster"><BrandLogo/><Link href="/portal" className="ds-button" data-variant="secondary">Back to partner portal</Link><Button variant="secondary" onClick={()=>void logout()}>Sign out</Button></div>{pathname==='/settings'&&(!state.mfa.required||state.mfa.verified)?children:<Spinner/>}</main>;
 
   const counts: Badges = badges.status === 'ready' ? badges.data : badges.data ?? {};
   const collapsed = preferences.sidebarCollapsed;
@@ -155,7 +158,7 @@ function Notifications({ unread, onRead }: { unread: number; onRead: () => void 
       {items?.length === 0 && <p className="ds-menu-item muted">You’re all caught up.</p>}
       {items?.slice(0, 8).map((n) => (
         <button key={n.id} type="button" className="ds-menu-item" style={{ alignItems: 'flex-start', paddingBlock: 'var(--space-1)', height: 'auto' }}
-          onClick={() => { if (!n.read) void api.post(`/api/v1/notifications/${n.id}/read`, {}).then(onRead);if(n.entityId){const key=encodeURIComponent(n.entityId),href=n.entityType==='MATERIAL_CASE'?`/support/materials?caseId=${key}`:n.entityType==='SUPPORT_INTAKE'?`/support/incoming?requestId=${key}`:n.entityType==='ACCOUNTS_INTAKE'?`/accounts/incoming?requestId=${key}`:n.entityType==='OPERATIONS_INTAKE'?`/operations/requests?operationRequestId=${key}`:n.entityType==='SALES_INTAKE'?`/incoming-requests?requestId=${key}`:n.entityType==='QUOTATION'?`/quotations/${key}`:n.entityType==='ENQUIRY'?`/enquiries?open=${key}`:null;if(href)router.push(href);} }}>
+          onClick={() => { if (!n.read) void api.post(`/api/v1/notifications/${n.id}/read`, {}).then(onRead);if(n.entityId){const key=encodeURIComponent(n.entityId),href=n.entityType==='CUSTOMER_PORTAL_RESPONSE'?'/sales/portal-responses':n.entityType==='CUSTOMER_PORTAL_REQUEST'?`/support/portal-requests?requestId=${key}`:n.entityType==='SUPPLIER_PORTAL_REQUEST'?`/purchasing/portal-replies?requestId=${key}`:n.entityType==='MATERIAL_CASE'?`/support/materials?caseId=${key}`:n.entityType==='SUPPORT_INTAKE'?`/support/incoming?requestId=${key}`:n.entityType==='ACCOUNTS_INTAKE'?`/accounts/incoming?requestId=${key}`:n.entityType==='OPERATIONS_INTAKE'?`/operations/requests?operationRequestId=${key}`:n.entityType==='SALES_INTAKE'?`/incoming-requests?requestId=${key}`:n.entityType==='QUOTATION'?`/quotations/${key}`:n.entityType==='ENQUIRY'?`/enquiries?open=${key}`:null;if(href)router.push(href);} }}>
           <Icon name={n.type === 'ESCALATION' ? 'alert' : 'bell'} />
           <span className="stack-sm" style={{ gap: 0, minWidth: 0 }}><strong className={n.read ? 'muted' : undefined}>{n.title}</strong><span className="ds-cell-secondary">{formatRelative(n.createdAt)}</span></span>
         </button>

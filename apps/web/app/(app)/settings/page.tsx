@@ -7,6 +7,7 @@ import { useSession } from '@/lib/session';
 import { usePreferences, type ThemeChoice } from '@/lib/preferences';
 import { Button, Card, CardSkeleton, Facts, Icon, Notice, PageHeader, Switch, TextField, fieldErrors, useToast } from '@/components/ds';
 import { titleCase } from '@/lib/format';
+import {isPartnerRole} from '@/features/portals/navigation';
 
 /** Personal settings: appearance, density and password. */
 export default function SettingsPage() {
@@ -47,7 +48,7 @@ export default function SettingsPage() {
         </Card>}
         {!passwordRequired && <Card title="Account">
           {state.kind === 'ready' && <Facts items={[{ label: 'Name', value: state.user.name }, { label: 'Email', value: state.user.email }, { label: 'Role', value: titleCase(state.user.role) }, { label: 'Two-factor', value: state.mfa.enrolled ? 'On' : 'Off' }]} />}
-          <p className="ds-cell-secondary" style={{ marginTop: 'var(--space-2)' }}><Icon name="info" style={{ display: 'inline', width: 'var(--icon-sm)', height: 'var(--icon-sm)', verticalAlign: 'text-bottom' }} /> Role, department and backup are set by the owner in <Link href="/users">Users &amp; roles</Link>.</p>
+          <p className="ds-cell-secondary" style={{ marginTop: 'var(--space-2)' }}><Icon name="info" style={{ display: 'inline', width: 'var(--icon-sm)', height: 'var(--icon-sm)', verticalAlign: 'text-bottom' }} /> Role, department and backup are set by the owner in {state.kind==='ready'&&isPartnerRole(state.user.role)?<Link href="/portal">your partner account review</Link>:<Link href="/users">Users &amp; roles</Link>}.</p>
         </Card>}
         <Card title="Change password">
           <form className="stack" onSubmit={(e) => void changePassword(e)} noValidate>

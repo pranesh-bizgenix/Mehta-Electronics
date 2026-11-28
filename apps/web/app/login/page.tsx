@@ -7,6 +7,7 @@ import { useApi } from '@/lib/api/provider';
 import { useSession } from '@/lib/session';
 import { Button, Icon, Notice, TextField } from '@/components/ds';
 import {BrandLogo} from '@/components/brand-logo';
+import {partnerDestination} from '@/features/portals/navigation';
 
 type Step = 'password' | 'enrol' | 'verify' | 'codes';
 
@@ -18,7 +19,7 @@ function LoginInner() {
   const { state, refresh, signIn } = useSession();
   const router = useRouter();
   const next = useSearchParams().get('next');
-  const destination = state.kind === 'ready' && state.user.mustChangePassword ? '/settings' : next && next.startsWith('/') && !next.startsWith('//') ? next : state.kind === 'ready' && ['LOGISTICS_LEAD','STORE_STAFF'].includes(state.user.role) ? '/logistics' : '/dashboard';
+  const destination = state.kind === 'ready' && state.user.mustChangePassword ? '/settings' : state.kind==='ready'&&partnerDestination(state.user.role,next) || (next && next.startsWith('/') && !next.startsWith('//') ? next : state.kind === 'ready' && ['LOGISTICS_LEAD','STORE_STAFF'].includes(state.user.role) ? '/logistics' : '/dashboard');
   const [step, setStep] = useState<Step>('password');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
